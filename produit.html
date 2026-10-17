@@ -30,6 +30,7 @@
     const zone = document.getElementById("contenu");
     let photo = "";
     let photoNom = "";
+    let photoCle = "";
     let averti = false;
 
     // Date indicative : aujourd'hui + délai, sans compter les dimanches.
@@ -218,8 +219,19 @@
         if (!fichier) return;
         photo = "";
         photoNom = fichier.name;
+        photoCle = "";
         const img = new Image();
         img.onload = () => {
+          // Version haute qualité (2400 px) pour la fabrication, envoyée avec la commande
+          const cle = "photo-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          const rh = Math.min(1, 2400 / Math.max(img.width, img.height));
+          const ch = document.createElement("canvas");
+          ch.width = img.width * rh;
+          ch.height = img.height * rh;
+          ch.getContext("2d").drawImage(img, 0, 0, ch.width, ch.height);
+          ch.toBlob(async (blob) => {
+            if (blob && (await MTB.photoStocker(cle, blob))) photoCle = cle;
+          }, "image/jpeg", 0.9);
           const r = Math.min(1, 900 / Math.max(img.width, img.height));
           const c = document.createElement("canvas");
           c.width = img.width * r;
@@ -247,10 +259,12 @@
           prix: prixUnitaire(),
           quantite: Math.min(99, Math.max(1, parseInt($("qte").value, 10) || 1)),
           variante: v ? `${v.nom || "Option"} : ${v.choix[$("variante").value].nom}` : "",
+          varianteIndex: v ? Number($("variante").value) : null,
           texte: opt.texte ? $("texte").value.trim() : "",
           police: opt.texte ? police().nom : "",
           photo,
           photoNom,
+          photoCle,
           remarque: $("remarque").value.trim(),
         });
         $("confirmation").innerHTML = `<p class="message">✓ Ajouté au panier. <a href="panier.html">Voir le panier</a> ou <a href="boutique.html">continuer mes achats</a>.</p>`;

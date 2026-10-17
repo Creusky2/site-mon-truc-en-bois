@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Suivre ma commande — Mon Truc en Bois</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
+  <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="conteneur" style="padding-bottom:5rem;max-width:860px">
+    <div id="contenu"></div>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="data/donnees.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { echapper, euros, appelServeur, serveur, STATUTS, icone, telLien } = MTB;
+    const zone = document.getElementById("contenu");
+    const params = new URLSearchParams(location.search);
+    const ETAPES = ["nouvelle", "confirmee", "en_fabrication", "prete_ou_expediee", "terminee"];
+    const PAIEMENTS = { en_ligne: "Paiement en ligne par carte", apres_validation: "Paiement après validation de la maquette", boutique: "Paiement à la boutique au retrait" };
+
+    function formulaire(erreur = "") {
+      zone.innerHTML = `
+        <div class="page-tete">
+          <span class="etiquette">Ma commande</span>
+          <h1>Suivre ma commande</h1>
+          <p class="chapeau">Le plus simple : cliquez sur le lien reçu dans votre email de confirmation. Sinon, indiquez votre numéro de commande et votre adresse email.</p>
+        </div>
+        ${serveur() ? `
+        <form class="carte" id="recherche" style="max-width:520px">
+          <div class="champ"><label for="s-numero">Numéro de commande</label><input type="text" id="s-numero" required placeholder="MTB-2026-0001" autocomplete="off" value="${echapper(params.get("numero") || "")}"></div>
+          <div class="champ"><label for="s-email">Email utilisé pour la commande</label><input type="email" id="s-email" required autocomplete="email"></div>
+          <button class="btn" type="submit">Voir ma commande</button>
+          ${erreur ? `<p class="message message-alerte">${echapper(erreur)}</p>` : ""}
+        </form>` : `<p class="message message-alerte">Le suivi en ligne sera bientôt disponible. En attendant, appelez-nous au <a href="${telLien(SITE.telephone)}">${echapper(SITE.telephone)}</a>.</p>`}`;
+      document.getElementById("recherche")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        charger({ numero: document.getElementById("s-numero").value, email: document.getElementById("s-email").value });
+      });
+    }
+
+    function etapeAtteinte(statut) {
+      const ordre = { nouvelle: 0, confirmee: 1, en_fabrication: 2, prete: 3, expediee: 3, terminee: 4 };
+      return ordre[statut] ?? 0;
+    }
+
+    function afficher(c) {
+      const merci = params.has("merci") || params.get("paiement") === "ok";
+      const annule = params.get("paiement") === "annule";
+      const etape = etapeAtteinte(c.statut);
+      const libelles = ["Reçue", "Maquette validée", "En fabrication", c.mode_reception === "retrait" ? "Prête à retirer" : "Expédiée", "Terminée"];
+      zone.innerHTML = `
+        <div class="page-tete">
+          <span class="etiquette">Commande ${echapper(c.numero)}</span>
+          <h1>${merci ? "Merci pour votre commande !" : echapper(c.statut_libelle)}</h1>
+          ${merci ? `<p class="chapeau">Vous allez recevoir un email de confirmation. Nous vous recontactons pour valider la personnalisation avant fabrication. Gardez cette page : elle vous permet de suivre l'avancement.</p>` : ""}
+        </div>
+        ${params.get("paiement") === "ok" && c.paiement_statut !== "paye" ? `<p class="message">Paiement en cours de confirmation : rechargez la page dans quelques instants.</p>` : ""}
+        ${annule && c.paiement_statut !== "paye" ? `<p class="message message-alerte">Le paiement n'a pas été finalisé. Votre commande est bien enregistrée : vous pouvez payer ci-dessous quand vous le souhaitez.</p>` : ""}
+        ${params.get("photos") === "a-envoyer" ? `<p class="message message-alerte">Une photo n'a pas pu être envoyée. Envoyez-la-nous par email à <a href="mailto:${echapper(SITE.email)}?subject=${encodeURIComponent("Photo commande " + c.numero)}">${echapper(SITE.email)}</a> en indiquant le numéro ${echapper(c.numero)}.</p>` : ""}
+
+        ${c.statut === "annulee" ? `<p class="message message-alerte">Cette commande a été annulée. Une question ? Appelez-nous au ${echapper(SITE.telephone)}.</p>` : `
+        <ol class="frise" aria-label="Avancement de la commande">
+          ${libelles.map((l, i) => `<li class="${i < etape ? "faite" : i === etape ? "en-cours" : ""}"><span>${l}</span></li>`).join("")}
+        </ol>`}
+        ${c.suivi_colis ? `<p class="encart">${icone("camion")}<span>Numéro de suivi du colis : <strong>${echapper(c.suivi_colis)}</strong></span></p>` : ""}
+
+        <div class="carte" style="margin-top:1.5rem">
+          <div class="bloc-tete" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;align-items:center">
+            <h2 style="font-size:1.25rem">Paiement</h2>
+            <span class="dispo ${c.paiement_statut === "paye" ? "" : "dispo-commande"}">${c.paiement_statut === "paye" ? "Payée" : c.paiement_statut === "rembourse" ? "Remboursée" : "En attente"}</span>
+          </div>
+          <p class="aide">${echapper(PAIEMENTS[c.paiement_mode] || "")}${c.paiement_mode === "apres_validation" && c.paiement_statut === "en_attente" && !c.paiement_possible ? " : vous recevrez un lien par email une fois la maquette validée." : ""}</p>
+          ${c.paiement_possible ? `<button class="btn" id="payer">${icone("cadeau")} Payer ${euros(c.total)} par carte</button><div id="payer-etat" aria-live="polite"></div>` : ""}
+        </div>
+
+        <div class="carte" style="margin-top:1.25rem">
+          <h2 style="font-size:1.25rem">Détail</h2>
+          <div class="lignes">
+            ${c.lignes.map((l) => `
+              <div class="recap-ligne" style="padding:.7rem 0;border-bottom:1px solid var(--trait)">
+                <span><strong>${echapper(l.nom)}</strong> × ${l.quantite}${l.variante ? `<br><small class="aide">${echapper(l.variante)}</small>` : ""}${l.texte ? `<br><small class="aide">« ${echapper(l.texte)} »</small>` : ""}</span>
+                <span>${euros(l.total)}</span>
+              </div>`).join("")}
+          </div>
+          <div class="pile" style="gap:.4rem">
+            ${Number(c.port) ? `<div class="recap-ligne"><span>Livraison</span><span>${euros(c.port)}</span></div>` : ""}
+            ${Number(c.emballage) ? `<div class="recap-ligne"><span>Emballage cadeau</span><span>${euros(c.emballage)}</span></div>` : ""}
+            <div class="recap-ligne recap-total"><span>Total</span><span>${euros(c.total)}</span></div>
+          </div>
+          <p class="aide">${c.mode_reception === "retrait" ? `Retrait à la boutique : ${echapper(SITE.adresse)}` : "Livraison à domicile"} · commandée le ${new Date(c.cree_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
+        </div>
+
+        <div class="actions-secondaires" style="margin-top:1.5rem">
+          <a class="btn btn-ligne" href="${telLien(SITE.telephone)}">${icone("tel")} ${echapper(SITE.telephone)}</a>
+          <a class="btn btn-ligne" href="mailto:${echapper(SITE.email)}?subject=${encodeURIComponent("Commande " + c.numero)}">${icone("mail")} Nous écrire</a>
+          <a class="btn btn-ligne" href="boutique.html">Continuer mes achats</a>
+        </div>`;
+
+      document.getElementById("payer")?.addEventListener("click", async (e) => {
+        e.target.disabled = true;
+        try {
+          const r = await appelServeur("suivi", { jeton: c.jeton, action: "payer", retour: new URL("suivi.html", location.href).href });
+          location.href = r.paiement_url;
+        } catch (err) {
+          document.getElementById("payer-etat").innerHTML = `<p class="message message-alerte">${echapper(err.message)}</p>`;
+          e.target.disabled = false;
+        }
+      });
+    }
+
+    async function charger(critere) {
+      zone.innerHTML = `<p class="aide" style="padding:3rem 0">Chargement de votre commande…</p>`;
+      try {
+        const c = await appelServeur("suivi", critere);
+        // Le lien de la page devient le lien de suivi (sans l'email)
+        if (!params.get("jeton")) history.replaceState(null, "", `suivi.html?jeton=${c.jeton}`);
+        afficher(c);
+      } catch (err) {
+        formulaire(err.message);
+      }
+    }
+
+    if (params.get("jeton") && serveur()) charger({ jeton: params.get("jeton") });
+    else formulaire();
+  </script>
+</body>
+</html>

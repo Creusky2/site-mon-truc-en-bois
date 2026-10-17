@@ -1,0 +1,48 @@
+# Installe (ou met à jour) les fonctions serveur sur Supabase, avec leurs réglages secrets.
+# À lancer depuis GitHub : onglet « Actions » → « Supabase : fonctions serveur » → « Run workflow ».
+# Se relance aussi tout seul quand les fichiers de supabase/functions changent.
+# Secrets à créer dans Settings → Secrets and variables → Actions (voir docs/mise-en-ligne.md, étape 4).
+name: "Supabase : fonctions serveur"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [site-vitrine-boutique, main]
+    paths: ["supabase/functions/**", "supabase/config.toml"]
+
+jobs:
+  deployer:
+    runs-on: ubuntu-latest
+    if: ${{ vars.SUPABASE_PROJECT_REF != '' }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJET: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Tests des fonctions
+        run: deno test --allow-env --allow-read supabase/tests/
+      - name: Réglages secrets des fonctions
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          {
+            echo "SITE_URL=${{ vars.SITE_URL }}"
+            echo "SITE_ORIGINES=${{ vars.SITE_ORIGINES }}"
+            echo "BOUTIQUE_EMAIL=${{ vars.BOUTIQUE_EMAIL }}"
+            echo "EMAIL_EXPEDITEUR=${{ vars.EMAIL_EXPEDITEUR }}"
+            [ -n "$STRIPE_SECRET_KEY" ] && echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY"
+            [ -n "$STRIPE_WEBHOOK_SECRET" ] && echo "STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET"
+            [ -n "$RESEND_API_KEY" ] && echo "RESEND_API_KEY=$RESEND_API_KEY"
+          } | grep -v '=$' > secrets.env
+          supabase secrets set --project-ref "$PROJET" --env-file secrets.env
+          rm secrets.env
+      - name: Déploiement des fonctions
+        run: supabase functions deploy commande suivi admin stripe-webhook --project-ref "$PROJET"

@@ -1,0 +1,15 @@
+# Réglages Supabase des fonctions serveur.
+# Ces fonctions sont appelées par les visiteurs du site (ou par Stripe) sans compte Supabase :
+# la vérification automatique du jeton est donc désactivée, et chaque fonction fait ses propres contrôles
+# (prix recalculés, signature Stripe, compte administrateur…).
+[functions.commande]
+verify_jwt = false
+
+[functions.suivi]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.admin]
+verify_jwt = false

@@ -42,7 +42,18 @@ window.DONNEES = {
         "note": 0,
         "nombre": 0
       }
-    }
+    },
+    "commandes": {
+      "supabaseUrl": "",
+      "supabaseCle": "",
+      "paiement": {
+        "enLigne": false,
+        "apresValidation": true,
+        "boutique": true
+      }
+    },
+    "siret": "",
+    "mentionTva": ""
   },
   "annonce": {
     "actif": false,
@@ -1020,8 +1031,12 @@ window.DONNEES = {
       "r": "Oui, le retrait est gratuit à la boutique, 3 rue Salengro à Auchel, aux horaires d'ouverture. Nous vous prévenons dès que votre création est prête."
     },
     {
+      "q": "Comment suivre ma commande ?",
+      "r": "Après votre commande, vous recevez un email avec un lien de suivi. Vous pouvez aussi ouvrir la page « Suivre ma commande » (en bas du site) avec votre numéro de commande et votre email : vous y voyez l'avancement, de la validation de la maquette jusqu'au retrait ou à l'expédition."
+    },
+    {
       "q": "Comment payer ?",
-      "r": "Aucun paiement n'est demandé sur le site : nous vous indiquons les modalités de paiement au moment où nous validons votre commande avec vous."
+      "r": "Selon les options proposées au moment de la commande : par carte bancaire en ligne (paiement sécurisé par Stripe), après validation de la maquette grâce à un lien de paiement envoyé par email, ou directement à la boutique lors du retrait."
     },
     {
       "q": "Puis-je envoyer ma propre photo ou mon logo ?",

@@ -116,3 +116,19 @@ body.admin { background: var(--fond-alt); min-height: 100vh; }
 .grille-avis { display: grid; grid-template-columns: 1.2fr 0.6fr 1fr 1fr; gap: 0.6rem; }
 @media (max-width: 760px) { .grille-avis { grid-template-columns: 1fr 1fr; } }
 .mini.oeil[aria-pressed="true"] { background: #e3f1e9; border-color: #bfdccb; color: var(--succes); }
+
+/* Commandes */
+.ligne-commande { width: 100%; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; grid-template-columns: 1fr auto auto; padding-inline: 0.4rem; border-radius: 8px; }
+.ligne-commande:hover { background: var(--fond-alt); }
+@media (max-width: 640px) { .ligne-commande { grid-template-columns: 1fr auto; } .ligne-commande .pastilles { grid-column: 1 / -1; grid-row: 2; } }
+.statut-nouvelle { background: #2b4c7e; color: #fff; }
+.statut-confirmee { background: #e7effd; color: #1b4fa8; }
+.statut-en_fabrication { background: #fdeccf; color: #8a5a00; }
+.statut-prete, .statut-expediee { background: #e3f1e9; color: var(--succes); }
+.statut-terminee { background: #eee; color: #555; }
+.statut-annulee { background: #fde7e7; color: #8a1f1f; }
+.paiement-en_attente { background: #fff3d1; color: #6b4e00; }
+.paiement-paye { background: #e3f1e9; color: var(--succes); }
+.paiement-rembourse { background: #eee; color: #555; }
+.onglets .compteur { background: #2b4c7e; color: #fff; border-radius: 999px; font-size: 0.72rem; padding: 0.1em 0.5em; margin-left: 0.2em; }
+.filtre small { color: inherit; opacity: 0.7; }

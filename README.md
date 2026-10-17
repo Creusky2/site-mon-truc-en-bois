@@ -46,6 +46,7 @@ La clé reste enregistrée uniquement dans le navigateur de l'appareil utilisé.
 | `atelier.html` | Qui sommes-nous ? (présentation, savoir-faire, galerie) |
 | `avis.html` | Avis clients Google et Facebook, boutons « Laisser un avis » |
 | `faq.html` | Questions fréquentes |
+| `suivi.html` | Suivi de commande, paiement en ligne d'une commande en attente |
 | `contact.html` | Coordonnées, horaires, itinéraire, demande de devis |
 | `cgv.html`, `mentions-legales.html` | Pages légales (modèles à compléter) |
 | `admin.html` | Administration du contenu |
@@ -61,14 +62,28 @@ Le benchmark qui a guidé ces choix est dans [`docs/benchmark.md`](docs/benchmar
 
 ## Fonctionnement des commandes
 
-Le client remplit son panier puis envoie une **demande de commande**. Elle arrive par email au commerce, qui
-recontacte le client pour valider la personnalisation (maquette) et encaisser le paiement
-(virement, PayPal, lien de paiement, espèces au retrait…).
+**Avec les commandes en ligne activées** (Supabase + Stripe + Resend, guide pas à pas : [`docs/mise-en-ligne.md`](docs/mise-en-ligne.md)) :
 
-- Par défaut, la commande s'ouvre dans la messagerie du client (lien `mailto:`).
-- **Recommandé** : créer un formulaire gratuit sur [formspree.io](https://formspree.io) et coller son adresse
-  dans l'admin (Infos boutique → Adresse Formspree). Les commandes et devis arrivent alors directement par email.
-- Tant que le **mode « site en construction »** est actif, l'envoi des commandes et devis est bloqué.
+1. Le client valide son panier et choisit son paiement : **carte en ligne**, **après validation de la maquette**
+   (lien envoyé depuis l'admin) ou **à la boutique** au retrait.
+2. La commande est enregistrée (prix recalculés côté serveur), les photos du client sont envoyées en haute qualité,
+   la boutique et le client reçoivent un email.
+3. Le commerçant gère tout dans l'admin, onglet **Commandes** : statuts (le client est prévenu par email),
+   lien de paiement, paiement en boutique, photos, notes internes, bon de commande, facture numérotée, export tableur.
+4. Le client suit sa commande sur `suivi.html` (lien reçu par email, ou numéro + email).
+
+**Sans activation** : la commande part par email (Formspree si configuré, sinon messagerie du client) ou WhatsApp.
+
+Tant que le **mode « site en construction »** est actif, l'envoi des commandes et devis est bloqué (côté site et côté serveur).
+
+### Partie serveur
+
+| Dossier | Contenu |
+|---|---|
+| `supabase/migrations/` | Tables, sécurité (RLS), numéros de commande et de facture, stockage des photos |
+| `supabase/functions/` | Fonctions Deno : `commande`, `stripe-webhook`, `suivi`, `admin` |
+| `supabase/tests/` | Tests des fonctions (`deno test --allow-env --allow-read supabase/tests/`) |
+| `.github/workflows/` | Déploiement des fonctions sur Supabase, maintien du projet actif |
 
 ## Voir le site en local
 

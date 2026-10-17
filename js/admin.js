@@ -96,6 +96,8 @@
     d.site ||= {};
     d.site.horaires ||= [];
     d.site.emballage ||= { actif: false, prix: 0 };
+    d.site.commandes ||= { supabaseUrl: "", supabaseCle: "", paiement: { enLigne: false, apresValidation: true, boutique: true } };
+    d.site.commandes.paiement ||= { enLigne: false, apresValidation: true, boutique: true };
     d.site.plateformesAvis ||= {};
     d.site.plateformesAvis.facebook ||= { lien: "", taux: 100, nombre: 0 };
     d.site.plateformesAvis.google ||= { lien: "", lienAvis: "", note: 0, nombre: 0 };
@@ -228,6 +230,7 @@
     $("#connexion").hidden = true;
     $("#app").hidden = false;
     majStatut();
+    if (location.hash === "#commandes") return allerA("commandes");
     rendre();
   }
 
@@ -299,6 +302,7 @@
 
   const VUES = {
     accueil: () => vueAccueil(),
+    commandes: () => `<div id="zone-commandes"></div>`,
     produits: () => vueProduits(),
     categories: () => vueCategories() + vueOccasions(),
     avis: () => vueAvis(),
@@ -307,7 +311,23 @@
     textes: () => vueTextes(),
     galerie: () => vueGalerie(),
   };
-  const rendre = () => ($("#contenu").innerHTML = VUES[onglet]());
+  const contexte = () => ({ D, toast, echapper, euros });
+  function rendre() {
+    $("#contenu").innerHTML = VUES[onglet]();
+    if (onglet === "commandes") window.AdminCommandes?.monter($("#zone-commandes"), contexte());
+    if (onglet === "accueil") resumeCommandes();
+  }
+  // Encadré « commandes à traiter » du tableau de bord
+  async function resumeCommandes() {
+    const el = $("#resume-commandes");
+    const r = await window.AdminCommandes?.resume(contexte());
+    if (!el || !r) return;
+    el.innerHTML = r.connecte
+      ? `<div class="bloc-tete"><h2>Commandes</h2><button class="btn" data-aller="commandes">Ouvrir les commandes</button></div>
+         <p>${r.nouvelles ? `<strong>${r.nouvelles} nouvelle${r.nouvelles > 1 ? "s" : ""} commande${r.nouvelles > 1 ? "s" : ""}</strong> · ` : "Aucune nouvelle commande · "}${r.aTraiter} à traiter en tout.</p>`
+      : `<div class="bloc-tete"><h2>Commandes</h2><button class="btn btn-ligne" data-aller="commandes">Se connecter aux commandes</button></div>`;
+    el.hidden = false;
+  }
 
   // Champs simples liés aux données : data-chemin="site.telephone", data-type="nombre|lignes|case"
   const lire = (chemin) => chemin.split(".").reduce((o, k) => o?.[k], D);
@@ -407,6 +427,8 @@
         <div class="chiffre"><strong>${D.avis.length}</strong><span>avis clients affichés</span></div>
       </div>
 
+      <section class="bloc" id="resume-commandes" hidden></section>
+
       <section class="bloc">
         <div class="bloc-tete">
           <h2>Avant d'ouvrir les commandes</h2>
@@ -418,6 +440,7 @@
           ${etape(sansPhoto.length ? "afaire" : "ok", "Photos des produits", sansPhoto.length ? `${sansPhoto.length} produit(s) sans photo : ${sansPhoto.slice(0, 3).map((p) => echapper(p.nom)).join(", ")}${sansPhoto.length > 3 ? "…" : ""}` : "Tous les produits ont une photo.", sansPhoto.length ? aller("produits", "Voir") : "")}
           ${etape(D.avis.length >= 3 ? "ok" : "afaire", "Avis clients", D.avis.length >= 3 ? `${D.avis.length} avis affichés sur l'accueil.` : "Recopiez 3 avis de votre page Facebook : ils rassurent les nouveaux clients.", aller("avis", D.avis.length ? "Gérer" : "Ajouter"))}
           ${etape(D.site.plateformesAvis.google.lienAvis || D.site.plateformesAvis.google.lien ? "ok" : "option", "Avis Google reliés au site", D.site.plateformesAvis.google.lienAvis || D.site.plateformesAvis.google.lien ? "Les boutons « Laisser un avis Google » et la carte QR sont actifs." : "Ajoutez le lien de votre fiche Google : bouton « Laisser un avis » et carte QR à imprimer.", aller("avis", "Régler"))}
+          ${etape(D.site.commandes?.supabaseUrl ? "ok" : "option", "Commandes en ligne et paiement par carte", D.site.commandes?.supabaseUrl ? `Reliées à Supabase${D.site.commandes?.paiement?.enLigne ? " · paiement par carte activé" : " · paiement par carte désactivé"}.` : "Recommandé : commandes enregistrées ici avec les photos, paiement par carte, suivi pour le client (guide : docs/mise-en-ligne.md).", aller("boutique", "Régler"))}
           ${etape(D.site.formulaireCommande ? "ok" : "option", "Réception des commandes par email (Formspree)", D.site.formulaireCommande ? "Activée." : "Recommandé : sans cela, le client doit envoyer lui-même l'email depuis sa messagerie.", D.site.formulaireCommande ? "" : aller("boutique", "Régler"))}
           ${etape(D.site.whatsapp ? "ok" : "option", "Commandes et questions par WhatsApp", D.site.whatsapp ? `Numéro : ${echapper(D.site.whatsapp)}` : "Facultatif : ajoute un bouton « Commander par WhatsApp » et un bouton de contact.", D.site.whatsapp ? "" : aller("boutique", "Ajouter"))}
           ${etape("option", "Pages légales (CGV, mentions légales)", "À compléter une fois : SIRET, forme juridique, médiateur…", `<a class="mini" style="display:inline-grid;place-items:center;text-decoration:none" href="${lienGithub(`edit/${cfg.branche}/cgv.html`)}" target="_blank" rel="noopener">Modifier sur GitHub</a>`)}
@@ -931,6 +954,19 @@
       <section class="bloc">
         <div class="bloc-tete"><h2>Horaires</h2></div>
         ${champ("site.horaires", "Une ligne par jour, au format « Jour : horaires »", { type: "lignes" })}
+      </section>
+      <section class="bloc">
+        <div class="bloc-tete"><h2>Commandes en ligne et paiement</h2></div>
+        <p class="aide">À remplir une fois Supabase installé (guide : <a href="https://github.com/Creusky2/site-mon-truc-en-bois/blob/site-vitrine-boutique/docs/mise-en-ligne.md" target="_blank" rel="noopener">docs/mise-en-ligne.md</a>). Sans ces réglages, les commandes arrivent par email ou WhatsApp.</p>
+        <div class="grille-champs">
+          ${champ("site.commandes.supabaseUrl", "Adresse du projet Supabase", { type: "url", large: true, placeholder: "https://xxxxxxxx.supabase.co", aide: "Supabase → Project Settings → API → Project URL." })}
+          ${champ("site.commandes.supabaseCle", "Clé publique Supabase (anon public)", { large: true, placeholder: "eyJhbGciOi…", aide: "Supabase → Project Settings → API → clé « anon public ». Ne collez jamais la clé « service_role » ici." })}
+          ${champ("site.commandes.paiement.enLigne", "Proposer le paiement par carte à la commande (Stripe)", { type: "case", large: true, aide: "La clé secrète Stripe s'installe dans Supabase, jamais ici (guide, étape 4)." })}
+          ${champ("site.commandes.paiement.apresValidation", "Proposer « payer après validation de la maquette » (lien envoyé depuis l'admin)", { type: "case", large: true })}
+          ${champ("site.commandes.paiement.boutique", "Proposer « payer à la boutique au retrait »", { type: "case", large: true })}
+          ${champ("site.siret", "SIRET (bons de commande et factures)", { placeholder: "14 chiffres" })}
+          ${champ("site.mentionTva", "Mention TVA sur les factures", { placeholder: "TVA non applicable, art. 293 B du CGI", aide: "À vérifier avec votre comptable selon votre statut." })}
+        </div>
       </section>
       <section class="bloc">
         <div class="bloc-tete"><h2>Livraison, cadeau et commandes</h2></div>

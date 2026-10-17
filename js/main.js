@@ -235,6 +235,7 @@
           </div>
           <div class="pile">
             <h4>Aide</h4>
+            <a href="suivi.html">Suivre ma commande</a>
             <a href="avis.html">Avis clients</a>
             <a href="faq.html">Questions fréquentes</a>
             <a href="contact.html">Demande de devis</a>
@@ -376,6 +377,85 @@
     return e ? `<span class="ouverture ${e.ouvert ? "ouvert" : "ferme"}">${e.texte}</span>` : "";
   };
 
+  // ---------- Photos des clients en haute qualité (gardées dans le navigateur jusqu'à l'envoi) ----------
+  function baseImages() {
+    return new Promise((ok, ko) => {
+      if (!("indexedDB" in window)) return ko(new Error("indisponible"));
+      const r = indexedDB.open("mtb-photos", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("photos");
+      r.onsuccess = () => ok(r.result);
+      r.onerror = () => ko(r.error);
+    });
+  }
+  async function photoStocker(cle, blob) {
+    try {
+      const b = await baseImages();
+      await new Promise((ok, ko) => {
+        const t = b.transaction("photos", "readwrite");
+        t.objectStore("photos").put(blob, cle);
+        t.oncomplete = ok;
+        t.onerror = () => ko(t.error);
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async function photoLire(cle) {
+    try {
+      const b = await baseImages();
+      return await new Promise((ok) => {
+        const r = b.transaction("photos").objectStore("photos").get(cle);
+        r.onsuccess = () => ok(r.result || null);
+        r.onerror = () => ok(null);
+      });
+    } catch {
+      return null;
+    }
+  }
+  async function photoSupprimer(cle) {
+    try {
+      const b = await baseImages();
+      b.transaction("photos", "readwrite").objectStore("photos").delete(cle);
+    } catch {}
+  }
+
+  // ---------- Serveur de commandes (Supabase), s'il est configuré dans l'admin ----------
+  const serveur = () => {
+    const c = S.commandes || {};
+    return c.supabaseUrl && c.supabaseCle ? { url: c.supabaseUrl.replace(/\/$/, ""), cle: c.supabaseCle } : null;
+  };
+  async function appelServeur(fonction, corps) {
+    const sv = serveur();
+    if (!sv) throw new Error("Commandes en ligne non configurées.");
+    let r;
+    try {
+      r = await fetch(`${sv.url}/functions/v1/${fonction}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: sv.cle, Authorization: `Bearer ${sv.cle}` },
+        body: JSON.stringify(corps),
+      });
+    } catch {
+      throw new Error("Connexion impossible : vérifiez votre accès à internet puis réessayez.");
+    }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.erreur || `Erreur ${r.status}`);
+    return d;
+  }
+  const modesPaiement = () => {
+    const p = S.commandes?.paiement || {};
+    return { en_ligne: !!serveur() && !!p.enLigne, apres_validation: p.apresValidation !== false, boutique: p.boutique !== false };
+  };
+  const STATUTS = {
+    nouvelle: "Commande reçue",
+    confirmee: "Maquette validée",
+    en_fabrication: "En fabrication",
+    prete: "Prête à retirer",
+    expediee: "Expédiée",
+    terminee: "Terminée",
+    annulee: "Annulée",
+  };
+
   // Mode aperçu : les formulaires de commande et de devis ne partent pas.
   if (S.apercu) {
     document.addEventListener(
@@ -445,5 +525,6 @@
     lirePanier, ecrirePanier, ajouterAuPanier, lireFavoris, estFavori, basculerFavori,
     imagesProduit, visuel, badges, prixHTML, boutonFavori, carteProduit, majCompteurs,
     avisCarte, resumeAvis, texteAvisCourt, boutonsLaisserAvis, etatOuverture, ouvertureHTML,
+    photoStocker, photoLire, photoSupprimer, serveur, appelServeur, modesPaiement, STATUTS,
   };
 })();
