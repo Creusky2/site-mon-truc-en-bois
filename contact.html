@@ -4,6 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Contact & devis — Mon Truc en Bois</title>
+  <!-- seo:debut (généré) -->
+  <link rel="canonical" href="https://creusky2.github.io/site-mon-truc-en-bois/contact.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Mon Truc en Bois">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="Contact & devis — Mon Truc en Bois">
+  <meta property="og:description" content="Contactez la boutique Mon Truc en Bois à Auchel : demande de devis pour gravure, sérigraphie, cadeaux personnalisés, commandes pour entreprises et associations.">
+  <meta property="og:url" content="https://creusky2.github.io/site-mon-truc-en-bois/contact.html">
+  <meta property="og:image" content="https://creusky2.github.io/site-mon-truc-en-bois/img/partage.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- seo:fin -->
   <meta name="description" content="Contactez la boutique Mon Truc en Bois à Auchel : demande de devis pour gravure, sérigraphie, cadeaux personnalisés, commandes pour entreprises et associations.">
   <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
@@ -59,6 +70,8 @@
           <div class="champ"><label for="d-qte">Quantité approximative</label><input type="number" id="d-qte" name="quantite" min="1" value="1"></div>
         </div>
         <div class="champ"><label for="d-msg">Votre projet *</label><textarea id="d-msg" name="message" required placeholder="Décrivez votre idée, le support, les dimensions, la date souhaitée…"></textarea></div>
+        <input type="text" name="site_web" tabindex="-1" autocomplete="off" class="piege" aria-hidden="true">
+        <label class="case" id="d-consentement-zone" hidden><input type="checkbox" id="d-consentement" name="consentement"> <span>J'accepte de recevoir les nouveautés et idées cadeaux par email (désinscription en un clic)</span></label>
         <button class="btn" type="submit">Envoyer ma demande</button>
         <div id="retour" aria-live="polite"></div>
       </form>
@@ -70,10 +83,31 @@
   <script src="data/donnees.js"></script>
   <script src="js/main.js"></script>
   <script>
+    if (MTB.serveur()) document.getElementById("d-consentement-zone").hidden = false;
     document.getElementById("devis").addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = e.target;
       const d = { nom: f.nom.value, email: f.email.value, telephone: f.telephone.value, type: f.type.value, quantite: f.quantite.value, message: f.message.value };
+      const retour = document.getElementById("retour");
+      // Serveur installé : la demande arrive dans l'admin (onglet Demandes) et par email, avec un accusé de réception au client
+      if (MTB.serveur()) {
+        const bouton = f.querySelector("button[type=submit]");
+        bouton.disabled = true;
+        try {
+          await MTB.appelServeur("contact", {
+            type: "devis", nom: d.nom.trim(), email: d.email.trim(), tel: d.telephone.trim(), sujet: d.type, quantite: Number(d.quantite) || null,
+            message: d.message.trim(), consentement_marketing: f.consentement.checked, site_web: f.site_web.value,
+          });
+          retour.innerHTML = `<p class="message">Merci ! Votre demande a bien été envoyée : vous allez recevoir un email de confirmation et nous revenons vers vous sous 48 h.</p>`;
+          f.reset();
+          MTB.mesurer("demande-devis");
+        } catch (err) {
+          retour.innerHTML = `<p class="message message-alerte">${MTB.echapper(err.message)} Vous pouvez aussi nous appeler au ${MTB.echapper(SITE.telephone)}.</p>`;
+        } finally {
+          bouton.disabled = false;
+        }
+        return;
+      }
       const corps = `Nom : ${d.nom}\nEmail : ${d.email}\nTéléphone : ${d.telephone}\nProjet : ${d.type}\nQuantité : ${d.quantite}\n\n${d.message}`;
       let envoye = false;
       if (SITE.formulaireCommande) {
@@ -87,7 +121,7 @@
         } catch {}
       }
       if (!envoye) location.href = `mailto:${SITE.email}?subject=${encodeURIComponent("Demande de devis — " + d.type)}&body=${encodeURIComponent(corps)}`;
-      document.getElementById("retour").innerHTML = `<p class="message">${envoye ? "Merci ! Votre demande a bien été envoyée, nous revenons vers vous rapidement." : "Votre messagerie s'est ouverte avec votre demande : il ne reste qu'à cliquer sur « Envoyer »."}</p>`;
+      retour.innerHTML = `<p class="message">${envoye ? "Merci ! Votre demande a bien été envoyée, nous revenons vers vous rapidement." : "Votre messagerie s'est ouverte avec votre demande : il ne reste qu'à cliquer sur « Envoyer »."}</p>`;
       if (envoye) f.reset();
     });
   </script>

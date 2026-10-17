@@ -335,12 +335,13 @@
 
       // 4. Le site connaît l'adresse du serveur
       const c = cmd();
-      const avant = JSON.stringify(c);
+      const avant = JSON.stringify(c) + ctx.D.site.url;
       c.supabaseUrl = url;
       c.supabaseCle = x.cle;
       c.paiement ||= {};
       c.paiement.enLigne = x.carte && !!(x.stripe || gh.secrets.STRIPE_SECRET_KEY);
-      if (JSON.stringify(c) !== avant || ctx.estModifie()) {
+      ctx.D.site.url = x.site;
+      if (JSON.stringify(c) + ctx.D.site.url !== avant || ctx.estModifie()) {
         ctx.marquerModifie();
         if (!(await ctx.publier("Installation du serveur : adresse Supabase (admin)"))) throw new Error("Publication du site impossible.");
       }

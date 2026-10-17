@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nouveautés et idées cadeaux — Mon Truc en Bois</title>
+  <!-- seo:debut (généré) -->
+  <link rel="canonical" href="https://creusky2.github.io/site-mon-truc-en-bois/newsletter.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Mon Truc en Bois">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="Nouveautés et idées cadeaux — Mon Truc en Bois">
+  <meta property="og:description" content="Recevez les nouveautés et les idées de cadeaux personnalisés de Mon Truc en Bois (Auchel) avant chaque fête : fête des mères, fête des pères, Noël…">
+  <meta property="og:url" content="https://creusky2.github.io/site-mon-truc-en-bois/newsletter.html">
+  <meta property="og:image" content="https://creusky2.github.io/site-mon-truc-en-bois/img/partage.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- seo:fin -->
+  <meta name="description" content="Recevez les nouveautés et les idées de cadeaux personnalisés de Mon Truc en Bois (Auchel) avant chaque fête : fête des mères, fête des pères, Noël…">
+  <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
+  <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="conteneur" style="padding-bottom:5rem;max-width:720px" id="contenu"></main>
+
+  <footer class="pied"></footer>
+
+  <script src="data/donnees.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { echapper, serveur, appelServeur } = MTB;
+    const zone = document.getElementById("contenu");
+    const params = new URLSearchParams(location.search);
+    const email = params.get("email") || "";
+
+    if (params.get("desinscription")) {
+      zone.innerHTML = `
+        <div class="page-tete"><span class="etiquette">Désinscription</span><h1>Ne plus recevoir nos emails</h1>
+          <p class="chapeau">Vous ne recevrez plus nos nouveautés ni nos promotions. Les emails liés à vos commandes (confirmation, suivi) continuent d'arriver.</p></div>
+        <form class="carte pile" id="desinscription">
+          <div class="champ"><label for="n-email">Votre email</label><input type="email" id="n-email" name="email" required value="${echapper(email)}" autocomplete="email"></div>
+          <button class="btn" type="submit">Me désinscrire</button>
+          <div id="retour" aria-live="polite"></div>
+        </form>`;
+      document.getElementById("desinscription").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const retour = document.getElementById("retour");
+        if (!serveur()) {
+          location.href = `mailto:${SITE.email}?subject=${encodeURIComponent("Désinscription")}&body=${encodeURIComponent("Merci de ne plus m'envoyer d'emails : " + e.target.email.value)}`;
+          return;
+        }
+        try {
+          await appelServeur("contact", { action: "desinscription", email: e.target.email.value.trim() });
+          retour.innerHTML = `<p class="message">C'est fait : vous êtes désinscrit(e). À bientôt peut-être à la boutique !</p>`;
+          e.target.querySelector("button").disabled = true;
+        } catch (err) {
+          retour.innerHTML = `<p class="message message-alerte">${echapper(err.message)}</p>`;
+        }
+      });
+    } else {
+      zone.innerHTML = `
+        <div class="page-tete"><span class="etiquette">Newsletter</span><h1>Les nouveautés et idées cadeaux, avant tout le monde</h1>
+          <p class="chapeau">Quelques emails par an, juste avant les grandes occasions (fête des mères, fête des pères, rentrée, Noël), avec nos nouvelles créations et parfois un code promo réservé aux abonnés.</p></div>
+        ${serveur() ? `
+        <form class="carte pile" data-newsletter>
+          <div class="deux-champs">
+            <div class="champ"><label for="n-prenom">Prénom</label><input type="text" id="n-prenom" name="nom" autocomplete="given-name"></div>
+            <div class="champ"><label for="n-email">Email *</label><input type="email" id="n-email" name="email" required autocomplete="email" value="${echapper(email)}"></div>
+          </div>
+          <input type="text" name="site_web" tabindex="-1" autocomplete="off" class="piege" aria-hidden="true">
+          <button class="btn" type="submit">Je m'inscris</button>
+          <span class="newsletter-etat message" aria-live="polite"></span>
+          <p class="aide">Votre email sert uniquement à vous envoyer nos nouveautés : il n'est jamais transmis à personne. Un lien de désinscription figure dans chaque email (voir les <a href="mentions-legales.html">mentions légales</a>).</p>
+        </form>` : `
+        <div class="carte pile">
+          <p>Pour suivre nos nouveautés, abonnez-vous à notre page Facebook : nous y publions chaque nouvelle création.</p>
+          <a class="btn" href="${echapper(SITE.facebook)}" target="_blank" rel="noopener">Suivre Mon Truc en Bois sur Facebook</a>
+        </div>`}`;
+    }
+  </script>
+</body>
+</html>

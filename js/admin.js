@@ -100,6 +100,7 @@
     d.site.commandes ||= { supabaseUrl: "", supabaseCle: "", paiement: { enLigne: false, apresValidation: true, boutique: true } };
     d.site.commandes.paiement ||= { enLigne: false, apresValidation: true, boutique: true };
     d.site.plateformesAvis ||= {};
+    d.site.mesure ||= { goatcounter: "" };
     d.site.plateformesAvis.facebook ||= { lien: "", taux: 100, nombre: 0 };
     d.site.plateformesAvis.google ||= { lien: "", lienAvis: "", note: 0, nombre: 0 };
     d.produits ||= [];
@@ -973,6 +974,14 @@
           ${champ("site.instagram", "Lien du compte Instagram (facultatif)", { type: "url", large: true })}
           ${champ("site.slogan", "Slogan (pied de page)", { large: true })}
           ${champ("site.avis", "Mention des avis (accueil)", { aide: "Ex. : Recommandé à 100 % · 16 avis" })}
+        </div>
+      </section>
+      <section class="bloc">
+        <div class="bloc-tete"><h2>Référencement Google et statistiques de visite</h2></div>
+        <p class="aide">Chaque produit a sa propre page optimisée pour Google et pour le partage sur Facebook/WhatsApp (photo, prix, description), recréée automatiquement à chaque publication. Pensez à déclarer le site dans <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Google Search Console</a> avec le plan du site <code>sitemap.xml</code>, et à mettre le lien du site sur votre fiche Google et votre page Facebook.</p>
+        <div class="grille-champs">
+          ${champ("site.url", "Adresse publique du site", { type: "url", large: true, placeholder: "https://creusky2.github.io/site-mon-truc-en-bois", aide: "À changer si vous prenez votre propre nom de domaine (ex. https://www.montrucenbois.fr)." })}
+          ${champ("site.mesure.goatcounter", "Statistiques de visite : code GoatCounter (facultatif)", { large: true, placeholder: "montrucenbois", aide: 'Gratuit et sans cookie (pas de bandeau à afficher) : créez un compte sur <a href="https://www.goatcounter.com/signup" target="_blank" rel="noopener">goatcounter.com</a>, puis indiquez ici le code choisi (la partie avant « .goatcounter.com »). Visites, pages vues, ajouts au panier, commandes et demandes de devis apparaissent ensuite sur votre tableau GoatCounter.' })}
         </div>
       </section>
       <section class="bloc">

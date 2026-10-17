@@ -110,6 +110,7 @@
     const panier = lirePanier();
     panier.push({ ...ligne, uid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) });
     ecrirePanier(panier);
+    mesurer("ajout-panier");
   };
 
   const CLE_FAVORIS = "favoris-mtb";
@@ -193,7 +194,7 @@
 
   // ---------- En-tête et pied de page ----------
   function entete() {
-    const page = location.pathname.split("/").pop() || "index.html";
+    const page = location.pathname.includes("/p/") ? "produit.html" : location.pathname.split("/").pop() || "index.html";
     const lien = (href, texte) => `<a href="${href}"${page === href ? ' aria-current="page"' : ""}>${texte}</a>`;
     return `
       <div class="conteneur entete-int">
@@ -233,6 +234,16 @@
             ${ouvertureHTML()}
             ${S.horaires.map((h) => `<span>${echapper(h)}</span>`).join("")}
           </div>
+          ${serveur() ? `<form class="pile newsletter-pied" data-newsletter>
+            <h4>Nouveautés et idées cadeaux</h4>
+            <span>Un email de temps en temps, avant les fêtes. Désinscription en un clic.</span>
+            <div class="newsletter-champ">
+              <input type="email" name="email" required placeholder="Votre email" aria-label="Votre email" autocomplete="email">
+              <button class="btn" type="submit">Je m'inscris</button>
+            </div>
+            <input type="text" name="site_web" tabindex="-1" autocomplete="off" class="piege" aria-hidden="true">
+            <span class="newsletter-etat" aria-live="polite"></span>
+          </form>` : ""}
           <div class="pile">
             <h4>Aide</h4>
             <a href="suivi.html">Suivre ma commande</a>
@@ -292,9 +303,9 @@
       description: S.slogan,
       telephone: S.telephone,
       email: S.email,
-      url: location.origin + location.pathname.replace(/[^/]*$/, ""),
-      image: new URL("img/boutique-auchel.jpg", location.href).href,
-      logo: new URL("img/logo.webp", location.href).href,
+      url: new URL(".", document.baseURI).href,
+      image: new URL("img/boutique-auchel.jpg", document.baseURI).href,
+      logo: new URL("img/logo.webp", document.baseURI).href,
       address: { "@type": "PostalAddress", streetAddress: rue.trim(), postalCode: cp, addressLocality: ville.join(",").replace(cp, "").trim(), addressCountry: "FR" },
       openingHoursSpecification: ouvertures,
       sameAs: [S.facebook, S.instagram].filter(Boolean),
@@ -461,7 +472,8 @@
     document.addEventListener(
       "submit",
       (e) => {
-        if (!["commande", "devis"].includes(e.target.id)) return;
+        // Les demandes de devis passent quand même si le serveur est installé (elles arrivent dans l'admin).
+        if (!(e.target.id === "commande" || (e.target.id === "devis" && !serveur()))) return;
         e.preventDefault();
         e.stopImmediatePropagation();
         let m = e.target.querySelector(".message-apercu");
@@ -474,6 +486,44 @@
       },
       true
     );
+  }
+
+  // Inscription aux nouveautés (pied de page et page newsletter)
+  document.addEventListener("submit", async (e) => {
+    const f = e.target.closest("[data-newsletter]");
+    if (!f) return;
+    e.preventDefault();
+    const etat = f.querySelector(".newsletter-etat");
+    const bouton = f.querySelector("button");
+    bouton.disabled = true;
+    try {
+      await appelServeur("contact", { type: "newsletter", email: f.email.value.trim(), nom: f.nom?.value.trim() || "", site_web: f.site_web?.value || "" });
+      etat.textContent = "Merci ! Vous êtes inscrit(e) : un email de confirmation vient de partir.";
+      f.reset();
+      mesurer("inscription-newsletter");
+    } catch (err) {
+      etat.textContent = err.message;
+    } finally {
+      bouton.disabled = false;
+    }
+  });
+
+  // ---------- Mesure d'audience (GoatCounter : gratuit, sans cookie, réglé dans l'admin) ----------
+  const goatcounter = String(S.mesure?.goatcounter || "").trim().toLowerCase();
+  const mesureActive = goatcounter && /^[a-z0-9-]+$/.test(goatcounter) && !enBrouillon && !/^(localhost|127\.)/.test(location.hostname) && !location.pathname.endsWith("admin.html");
+  if (mesureActive) {
+    const g = document.createElement("script");
+    g.async = true;
+    g.src = "https://gc.zgo.at/count.js";
+    g.dataset.goatcounter = `https://${goatcounter}.goatcounter.com/count`;
+    document.head.append(g);
+  }
+  /** Compte un événement (ajout au panier, commande…) dans les statistiques de visite. */
+  function mesurer(nom) {
+    if (!mesureActive) return;
+    const envoyer = () => window.goatcounter?.count?.({ path: `evenement-${nom}`, title: nom, event: true });
+    if (window.goatcounter?.count) envoyer();
+    else setTimeout(envoyer, 1500);
   }
 
   document.addEventListener("click", (e) => {
@@ -525,6 +575,6 @@
     lirePanier, ecrirePanier, ajouterAuPanier, lireFavoris, estFavori, basculerFavori,
     imagesProduit, visuel, badges, prixHTML, boutonFavori, carteProduit, majCompteurs,
     avisCarte, resumeAvis, texteAvisCourt, boutonsLaisserAvis, etatOuverture, ouvertureHTML,
-    photoStocker, photoLire, photoSupprimer, serveur, appelServeur, modesPaiement, STATUTS,
+    photoStocker, photoLire, photoSupprimer, serveur, appelServeur, modesPaiement, STATUTS, mesurer,
   };
 })();

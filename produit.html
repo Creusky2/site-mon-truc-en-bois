@@ -26,7 +26,9 @@
       { nom: "Moderne", css: "'Figtree', Arial, sans-serif" },
       { nom: "Machine à écrire", css: "'IBM Plex Mono', 'Courier New', monospace" },
     ];
-    const produit = trouverProduit(new URLSearchParams(location.search).get("id") || location.hash.slice(1));
+    // Page générée pour Google (p/<id>.html) ou page générique produit.html?id=<id>
+    const pageGeneree = !!document.body.dataset.produit;
+    const produit = trouverProduit(document.body.dataset.produit || new URLSearchParams(location.search).get("id") || location.hash.slice(1));
     const zone = document.getElementById("contenu");
     let photo = "";
     let photoNom = "";
@@ -48,10 +50,15 @@
       zone.innerHTML = `<div class="vide"><h1>Produit introuvable</h1><p class="chapeau">Il a peut-être été retiré du catalogue.</p><a class="btn" href="boutique.html">Retour à la boutique</a></div>`;
     } else {
       document.title = `${produit.nom} — ${SITE.nom}`;
-      const meta = document.createElement("meta");
-      meta.name = "description";
-      meta.content = produit.description;
-      document.head.append(meta);
+      if (!pageGeneree) {
+        const meta = document.createElement("meta");
+        meta.name = "description";
+        meta.content = produit.description;
+        const canonique = document.createElement("link");
+        canonique.rel = "canonical";
+        canonique.href = new URL(`p/${encodeURIComponent(produit.id)}.html`, document.baseURI).href;
+        document.head.append(meta, canonique);
+      }
 
       const cat = CATEGORIES[produit.categorie] || { nom: "" };
       const v = produit.variantes?.choix?.length ? produit.variantes : null;
@@ -150,7 +157,7 @@
           </section>` : ""}
         ${epuise ? "" : `<div class="barre-achat" id="barre-achat"><span class="pile" style="gap:0"><small class="aide">${echapper(produit.nom)}</small><strong id="prix-barre-achat"></strong></span><button class="btn" type="button" id="aller-achat">Personnaliser</button></div>`}`;
 
-      // Données structurées « Produit » pour Google
+      // Données structurées « Produit » pour Google (déjà présentes dans les pages générées)
       const ld = document.createElement("script");
       ld.type = "application/ld+json";
       ld.textContent = JSON.stringify({
@@ -158,7 +165,7 @@
         "@type": "Product",
         name: produit.nom,
         description: produit.description,
-        image: images.map((src) => new URL(src, location.href).href),
+        image: images.map((src) => new URL(src, document.baseURI).href),
         category: cat.nom,
         brand: { "@type": "Brand", name: SITE.nom },
         offers: {
@@ -169,7 +176,7 @@
           url: location.href,
         },
       });
-      document.head.append(ld);
+      if (!pageGeneree) document.head.append(ld);
 
       const $ = (id) => document.getElementById(id);
       const prixUnitaire = () => Number(produit.prix) + (v ? Number(v.choix[$("variante").value].prix || 0) : 0);

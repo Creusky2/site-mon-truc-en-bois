@@ -1,0 +1,39 @@
+# Régénère les pages produits (p/<id>.html) et le plan du site à chaque modification du catalogue depuis l'admin.
+# Rien à faire à la main : voir outils/generer-pages.mjs.
+name: "Site : pages produits pour Google"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [site-vitrine-boutique]
+    paths: ["data/donnees.js", "produit.html", "outils/generer-pages.mjs"]
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: pages-produits
+  cancel-in-progress: true
+
+jobs:
+  generer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Génération
+        run: node outils/generer-pages.mjs
+      - name: Publication
+        run: |
+          git add -A p sitemap.xml ./*.html
+          if git diff --cached --quiet; then echo "Pages déjà à jour."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Pages produits et plan du site mis à jour (automatique)"
+          for i in 1 2 3; do git pull --rebase -q origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done
+          # Les envois faits par GitHub Actions ne relancent pas toujours la mise en ligne : on la demande.
+          curl -sS -o /dev/null -X POST -H "Authorization: Bearer ${{ github.token }}" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" || true

@@ -488,3 +488,22 @@ a.preuve:hover { color: var(--encre); text-decoration: underline; }
 .frise li.en-cours { color: var(--encre); font-weight: 600; }
 .frise li.en-cours::after { border-color: var(--foret); color: var(--foret); }
 @media (max-width: 560px) { .frise { grid-template-columns: 1fr; gap: 0; } .frise li { text-align: left; padding: 0.55rem 0 0.55rem 2.3rem; } .frise li::before { display: none; } .frise li::after { left: 0.75rem; top: 0.5rem; } }
+
+/* ---------- Newsletter ---------- */
+.piege { position: absolute !important; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.pied-grille:has(.newsletter-pied) { grid-template-columns: 1.2fr 1fr 1fr 1.4fr 1fr; }
+@media (max-width: 1100px) { .pied-grille:has(.newsletter-pied) { grid-template-columns: 1fr 1fr 1fr; } }
+@media (max-width: 900px) { .pied-grille:has(.newsletter-pied) { grid-template-columns: 1fr 1fr; } .newsletter-pied { grid-column: 1 / -1; } }
+@media (max-width: 520px) { .pied-grille:has(.newsletter-pied) { grid-template-columns: 1fr; } }
+.newsletter-champ { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.3rem; }
+.newsletter-champ input { flex: 1 1 160px; min-width: 0; padding: 0.6em 0.8em; }
+.newsletter-champ .btn { flex: none; padding: 0.6em 1em; }
+.newsletter-etat:empty { display: none; }
+.newsletter-etat { font-weight: 500; }
+.code-promo { display: flex; gap: 0.4rem; }
+.code-promo input { flex: 1; min-width: 0; text-transform: uppercase; }
+.code-promo .btn { flex: none; }
+.recap-remise { color: var(--succes); font-weight: 600; }
+.pre-rendu { padding-block: 2rem; display: grid; gap: 1rem; max-width: 640px; }
+.pre-rendu img { width: 100%; height: auto; border-radius: var(--r); }
+.newsletter-pied .btn { background: var(--bois); border-color: var(--bois); color: #fff; }

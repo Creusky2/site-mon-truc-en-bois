@@ -1,0 +1,306 @@
+<!doctype html>
+<!-- Page générée automatiquement depuis data/donnees.js (outils/generer-pages.mjs) : ne pas modifier à la main. -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <base href="../">
+  <meta name="description" content="Accroche-porte recto/verso (« Libre / Occupé », prénom de chambre…) gravé avec humour. 12,90 €. Fabriqué à Auchel, retrait en boutique ou livraison.">
+  <link rel="canonical" href="https://creusky2.github.io/site-mon-truc-en-bois/p/accroche-porte.html">
+  <meta property="og:type" content="product">
+  <meta property="og:site_name" content="Mon Truc en Bois">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="Accroche-porte gravé — Mon Truc en Bois">
+  <meta property="og:description" content="Accroche-porte recto/verso (« Libre / Occupé », prénom de chambre…) gravé avec humour. 12,90 €. Fabriqué à Auchel, retrait en boutique ou livraison.">
+  <meta property="og:url" content="https://creusky2.github.io/site-mon-truc-en-bois/p/accroche-porte.html">
+  <meta property="og:image" content="https://creusky2.github.io/site-mon-truc-en-bois/img/accroche-porte.jpg">
+  <meta property="product:price:amount" content="12.90">
+  <meta property="product:price:currency" content="EUR">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"Accroche-porte gravé","description":"Accroche-porte recto/verso (« Libre / Occupé », prénom de chambre…) gravé avec humour.","image":["https://creusky2.github.io/site-mon-truc-en-bois/img/accroche-porte.jpg"],"sku":"accroche-porte","category":"Gravure bois","brand":{"@type":"Brand","name":"Mon Truc en Bois"},"offers":{"@type":"Offer","url":"https://creusky2.github.io/site-mon-truc-en-bois/p/accroche-porte.html","price":"12.90","priceCurrency":"EUR","availability":"https://schema.org/InStock","seller":{"@type":"Organization","name":"Mon Truc en Bois"}}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Accueil","item":"https://creusky2.github.io/site-mon-truc-en-bois/"},{"@type":"ListItem","position":2,"name":"Boutique","item":"https://creusky2.github.io/site-mon-truc-en-bois/boutique.html"},{"@type":"ListItem","position":3,"name":"Gravure bois","item":"https://creusky2.github.io/site-mon-truc-en-bois/boutique.html?categorie=gravure"},{"@type":"ListItem","position":4,"name":"Accroche-porte gravé","item":"https://creusky2.github.io/site-mon-truc-en-bois/p/accroche-porte.html"}]}</script>
+  <title>Accroche-porte gravé — Mon Truc en Bois, personnalisation à Auchel</title>
+  <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
+  <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-produit="accroche-porte">
+  <header class="entete"></header>
+
+  <main class="conteneur" id="contenu" style="padding-bottom:5rem">
+    <article class="pre-rendu">
+      <p><a href="boutique.html">Boutique</a> › <a href="boutique.html?categorie=gravure">Gravure bois</a></p>
+      <h1>Accroche-porte gravé</h1>
+      <img src="img/accroche-porte.jpg" alt="Accroche-porte gravé" width="600">
+      <p>Accroche-porte recto/verso (« Libre / Occupé », prénom de chambre…) gravé avec humour.</p>
+      <p><strong>12,90 €</strong></p>
+    </article>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="data/donnees.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { echapper, euros, icone, ajouterAuPanier, carteProduit, imagesProduit, badges, estFavori, lienWhatsapp, telLien } = MTB;
+    const POLICES = [
+      { nom: "Classique", css: "Georgia, 'Times New Roman', serif" },
+      { nom: "Manuscrite", css: "'Dancing Script', cursive" },
+      { nom: "Moderne", css: "'Figtree', Arial, sans-serif" },
+      { nom: "Machine à écrire", css: "'IBM Plex Mono', 'Courier New', monospace" },
+    ];
+    // Page générée pour Google (p/<id>.html) ou page générique produit.html?id=<id>
+    const pageGeneree = !!document.body.dataset.produit;
+    const produit = trouverProduit(document.body.dataset.produit || new URLSearchParams(location.search).get("id") || location.hash.slice(1));
+    const zone = document.getElementById("contenu");
+    let photo = "";
+    let photoNom = "";
+    let photoCle = "";
+    let averti = false;
+
+    // Date indicative : aujourd'hui + délai, sans compter les dimanches.
+    function dateEstimee(jours) {
+      const d = new Date();
+      let n = 0;
+      while (n < jours) {
+        d.setDate(d.getDate() + 1);
+        if (d.getDay() !== 0) n++;
+      }
+      return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    }
+
+    if (!produit) {
+      zone.innerHTML = `<div class="vide"><h1>Produit introuvable</h1><p class="chapeau">Il a peut-être été retiré du catalogue.</p><a class="btn" href="boutique.html">Retour à la boutique</a></div>`;
+    } else {
+      document.title = `${produit.nom} — ${SITE.nom}`;
+      if (!pageGeneree) {
+        const meta = document.createElement("meta");
+        meta.name = "description";
+        meta.content = produit.description;
+        const canonique = document.createElement("link");
+        canonique.rel = "canonical";
+        canonique.href = new URL(`p/${encodeURIComponent(produit.id)}.html`, document.baseURI).href;
+        document.head.append(meta, canonique);
+      }
+
+      const cat = CATEGORIES[produit.categorie] || { nom: "" };
+      const v = produit.variantes?.choix?.length ? produit.variantes : null;
+      const opt = produit.options || {};
+      const images = imagesProduit(produit);
+      const epuise = produit.dispo === "epuise";
+      const dispo = { disponible: ["", "Disponible"], commande: ["dispo-commande", "Fabriqué sur commande"], epuise: ["dispo-epuise", "Épuisé pour le moment"] }[produit.dispo || "disponible"];
+      const autres = PRODUITS.filter((p) => p.categorie === produit.categorie && p.id !== produit.id).slice(0, 4);
+      const wa = lienWhatsapp(`Bonjour, j'ai une question sur « ${produit.nom} » : ${location.href}`);
+
+      zone.innerHTML = `
+        <nav class="fil" aria-label="Fil d'Ariane" style="padding-block:1.5rem"><a href="boutique.html">Boutique</a><span>/</span><a href="boutique.html?categorie=${encodeURIComponent(produit.categorie)}">${echapper(cat.nom)}</a><span>/</span><span>${echapper(produit.nom)}</span></nav>
+        <div class="fiche">
+          <div class="fiche-visuel">
+            <div class="apercu" id="apercu">
+              ${images[0] ? `<img id="image-principale" src="${echapper(images[0])}" alt="${echapper(produit.nom)}">` : `<div class="vide-image">${icone("image", "")}</div>`}
+              <img class="apercu-photo" id="apercu-photo" alt="Votre photo" hidden>
+              <div class="apercu-texte" id="apercu-texte"></div>
+              ${badges(produit)}
+            </div>
+            ${images.length > 1 ? `<div class="vignettes" id="vignettes">${images.map((src, i) => `<button type="button" data-i="${i}" aria-current="${i === 0}" aria-label="Photo ${i + 1}"><img src="${echapper(src)}" alt=""></button>`).join("")}</div>` : ""}
+            <p class="aide">Aperçu indicatif : une maquette vous est envoyée avant fabrication si besoin.</p>
+          </div>
+          <form class="fiche-form" id="form">
+            <div class="pile" style="gap:.7rem">
+              <span class="etiquette">${echapper(cat.nom)}</span>
+              <h1 style="font-size:clamp(1.8rem,3.6vw,2.6rem)">${echapper(produit.nom)}</h1>
+              <div style="display:flex;gap:1rem;align-items:baseline;flex-wrap:wrap">
+                <span class="prix-grand" id="prix"></span>
+                ${produit.prixBarre > produit.prix ? `<s class="prix-barre" style="font-size:1.1rem">${euros(produit.prixBarre)}</s>` : ""}
+                <span class="dispo ${dispo[0]}">${dispo[1]}</span>
+              </div>
+              ${MTB.texteAvisCourt() ? `<a class="preuve" href="avis.html"><span class="etoiles" aria-hidden="true">★★★★★</span>${echapper(MTB.texteAvisCourt())}</a>` : ""}
+              <p class="chapeau" style="font-size:1rem">${echapper(produit.description)}</p>
+            </div>
+            ${produit.delai ? `<div class="encart">${icone("calendrier")}<span>Fabrication en <strong>${produit.delai} jour${produit.delai > 1 ? "s" : ""}</strong> environ : commandée aujourd'hui, prête vers le <strong>${dateEstimee(produit.delai)}</strong> (après validation de la maquette).</span></div>` : ""}
+            ${produit.instructions ? `<div class="encart">${icone("crayon")}<span>${echapper(produit.instructions)}</span></div>` : ""}
+            ${v ? `
+              <div class="champ">
+                <label for="variante">${echapper(v.nom || "Option")}</label>
+                <select id="variante">${v.choix.map((c, i) => `<option value="${i}">${echapper(c.nom)}${c.prix ? ` (+${euros(c.prix)})` : ""}</option>`).join("")}</select>
+              </div>` : ""}
+            ${opt.texte ? `
+              <div class="champ">
+                <label for="texte">Votre texte</label>
+                <textarea id="texte" maxlength="200" placeholder="Ex. : Marie & Paul — 14.06.2026"></textarea>
+                <small><span id="nb">0</span>/200 caractères — l'aperçu ci-contre se met à jour pendant que vous écrivez.</small>
+              </div>
+              <div class="champ">
+                <span class="label">Police d'écriture</span>
+                <div class="choix">
+                  ${POLICES.map((p, i) => `<label><input type="radio" name="police" value="${i}" ${i === 0 ? "checked" : ""}><span style="font-family:${p.css}">${p.nom}</span></label>`).join("")}
+                </div>
+              </div>` : ""}
+            ${opt.photo ? `
+              <div class="champ">
+                <label for="photo">Votre photo ou logo <small>(facultatif)</small></label>
+                <input type="file" id="photo" accept="image/*">
+                <small>Envoyez une image de bonne qualité. Vous pourrez aussi nous la transmettre après la commande.</small>
+              </div>` : ""}
+            <div class="champ">
+              <label for="remarque">Précisions <small>(facultatif)</small></label>
+              <textarea id="remarque" maxlength="500" placeholder="Couleur, emplacement, date souhaitée…" style="min-height:76px"></textarea>
+            </div>
+            ${epuise
+              ? `<div class="pile" style="gap:.6rem"><p class="message message-alerte">Ce produit est épuisé pour le moment. Contactez-nous : nous pouvons peut-être vous en préparer un sur commande.</p><a class="btn" href="contact.html">Nous contacter</a></div>`
+              : `<div class="achat" id="achat">
+                  <input type="number" id="qte" min="1" max="99" value="1" aria-label="Quantité">
+                  <button class="btn" type="submit">${icone("panier")} Ajouter au panier</button>
+                </div>`}
+            <div id="confirmation" aria-live="polite"></div>
+            <div class="actions-secondaires">
+              <button type="button" class="btn btn-ligne" data-favori="${echapper(produit.id)}" aria-pressed="${estFavori(produit.id)}">${icone("coeur")} Favori</button>
+              <button type="button" class="btn btn-ligne" id="partager">${icone("partage")} Partager</button>
+              ${wa ? `<a class="btn btn-ligne" href="${echapper(wa)}" target="_blank" rel="noopener">${icone("bulle")} Une question ?</a>` : `<a class="btn btn-ligne" href="${telLien(SITE.telephone)}">${icone("tel")} ${echapper(SITE.telephone)}</a>`}
+            </div>
+            <ul class="rassurance">
+              <li>${icone("crayon")} Maquette envoyée pour validation si besoin</li>
+              <li>${icone("boutique")} Retrait gratuit à la boutique d'Auchel</li>
+              <li>${icone("camion")} Livraison offerte dès ${euros(SITE.livraisonOfferteDes)}</li>
+            </ul>
+          </form>
+        </div>
+        ${(() => {
+          const lies = (DONNEES.avis || []).filter((a) => a.produit === produit.id && a.texte);
+          return lies.length ? `
+          <section style="padding-top:5rem">
+            <div class="titre-section"><div class="pile"><span class="etiquette">Avis clients</span><h2>Ils l'ont offert</h2></div><a class="lien-fleche" href="avis.html">Tous les avis →</a></div>
+            <div class="avis-grille">${lies.slice(0, 3).map(MTB.avisCarte).join("")}</div>
+          </section>` : "";
+        })()}
+        ${autres.length ? `
+          <section style="padding-top:5rem">
+            <div class="titre-section"><div class="pile"><span class="etiquette">Dans la même catégorie</span><h2>Vous aimerez aussi</h2></div></div>
+            <div class="produits">${autres.map(carteProduit).join("")}</div>
+          </section>` : ""}
+        ${epuise ? "" : `<div class="barre-achat" id="barre-achat"><span class="pile" style="gap:0"><small class="aide">${echapper(produit.nom)}</small><strong id="prix-barre-achat"></strong></span><button class="btn" type="button" id="aller-achat">Personnaliser</button></div>`}`;
+
+      // Données structurées « Produit » pour Google (déjà présentes dans les pages générées)
+      const ld = document.createElement("script");
+      ld.type = "application/ld+json";
+      ld.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: produit.nom,
+        description: produit.description,
+        image: images.map((src) => new URL(src, document.baseURI).href),
+        category: cat.nom,
+        brand: { "@type": "Brand", name: SITE.nom },
+        offers: {
+          "@type": "Offer",
+          price: Number(produit.prix).toFixed(2),
+          priceCurrency: "EUR",
+          availability: epuise ? "https://schema.org/OutOfStock" : produit.dispo === "commande" ? "https://schema.org/MadeToOrder" : "https://schema.org/InStock",
+          url: location.href,
+        },
+      });
+      if (!pageGeneree) document.head.append(ld);
+
+      const $ = (id) => document.getElementById(id);
+      const prixUnitaire = () => Number(produit.prix) + (v ? Number(v.choix[$("variante").value].prix || 0) : 0);
+      const police = () => POLICES[document.querySelector("[name=police]:checked")?.value ?? 0];
+
+      function maj() {
+        const total = euros(prixUnitaire() * Math.max(1, +($("qte")?.value || 1) || 1));
+        $("prix").textContent = total;
+        if ($("prix-barre-achat")) $("prix-barre-achat").textContent = total;
+        if (opt.texte) {
+          $("apercu-texte").textContent = $("texte").value;
+          $("apercu-texte").style.fontFamily = police().css;
+          $("nb").textContent = $("texte").value.length;
+        }
+      }
+      $("form").addEventListener("input", maj);
+      $("form").addEventListener("change", maj);
+      maj();
+
+      $("vignettes")?.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-i]");
+        if (!b) return;
+        $("image-principale").src = images[b.dataset.i];
+        $("vignettes").querySelectorAll("button").forEach((x) => x.setAttribute("aria-current", x === b));
+      });
+
+      $("partager").addEventListener("click", async () => {
+        const donnees = { title: produit.nom, text: `${produit.nom} — ${SITE.nom}`, url: location.href };
+        try {
+          if (navigator.share) return await navigator.share(donnees);
+          await navigator.clipboard.writeText(location.href);
+          $("confirmation").innerHTML = `<p class="message">Lien copié : vous pouvez le coller dans un message.</p>`;
+        } catch {}
+      });
+
+      // Barre d'achat collante sur mobile quand le bouton principal n'est plus visible
+      const barre = $("barre-achat");
+      if (barre && "IntersectionObserver" in window) {
+        document.body.classList.add("avec-barre");
+        new IntersectionObserver(([e]) => barre.classList.toggle("visible", !e.isIntersecting)).observe($("achat"));
+        $("aller-achat").addEventListener("click", () => ($("texte") || $("qte")).focus({ preventScroll: false }));
+      }
+
+      // Réduit la photo (max 900 px) pour l'aperçu et le panier.
+      $("photo")?.addEventListener("change", (e) => {
+        const fichier = e.target.files[0];
+        if (!fichier) return;
+        photo = "";
+        photoNom = fichier.name;
+        photoCle = "";
+        const img = new Image();
+        img.onload = () => {
+          // Version haute qualité (2400 px) pour la fabrication, envoyée avec la commande
+          const cle = "photo-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+          const rh = Math.min(1, 2400 / Math.max(img.width, img.height));
+          const ch = document.createElement("canvas");
+          ch.width = img.width * rh;
+          ch.height = img.height * rh;
+          ch.getContext("2d").drawImage(img, 0, 0, ch.width, ch.height);
+          ch.toBlob(async (blob) => {
+            if (blob && (await MTB.photoStocker(cle, blob))) photoCle = cle;
+          }, "image/jpeg", 0.9);
+          const r = Math.min(1, 900 / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = img.width * r;
+          c.height = img.height * r;
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          photo = c.toDataURL("image/jpeg", 0.8);
+          $("apercu-photo").src = photo;
+          $("apercu-photo").hidden = false;
+          URL.revokeObjectURL(img.src);
+        };
+        img.src = URL.createObjectURL(fichier);
+      });
+
+      $("form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (epuise) return;
+        if (opt.texte && !$("texte").value.trim() && !photo && !$("remarque").value.trim() && !averti) {
+          averti = true;
+          $("confirmation").innerHTML = `<p class="message message-alerte">Vous n'avez saisi aucun texte de personnalisation. Cliquez à nouveau sur « Ajouter au panier » pour continuer quand même.</p>`;
+          return;
+        }
+        ajouterAuPanier({
+          id: produit.id,
+          nom: produit.nom,
+          prix: prixUnitaire(),
+          quantite: Math.min(99, Math.max(1, parseInt($("qte").value, 10) || 1)),
+          variante: v ? `${v.nom || "Option"} : ${v.choix[$("variante").value].nom}` : "",
+          varianteIndex: v ? Number($("variante").value) : null,
+          texte: opt.texte ? $("texte").value.trim() : "",
+          police: opt.texte ? police().nom : "",
+          photo,
+          photoNom,
+          photoCle,
+          remarque: $("remarque").value.trim(),
+        });
+        $("confirmation").innerHTML = `<p class="message">✓ Ajouté au panier. <a href="panier.html">Voir le panier</a> ou <a href="boutique.html">continuer mes achats</a>.</p>`;
+      });
+    }
+  </script>
+</body>
+</html>

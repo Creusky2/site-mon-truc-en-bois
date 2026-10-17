@@ -45,11 +45,37 @@
     const emballageActif = SITE.emballage?.actif;
     const prixEmballage = Number(SITE.emballage?.prix || 0);
 
+    // Code promo et montants exacts : calculés par le serveur (les mêmes qu'au paiement)
+    let codePromo = "";
+    let simulation = null;
+    const lignesServeur = (panier) => panier.map((l) => ({ id: l.id, quantite: l.quantite, variante: indexVariante(l) }));
+    const signature = (panier) => JSON.stringify([lignesServeur(panier), modeLivraison, cadeau.emballage, codePromo]);
+    let minuteurSimulation;
+    function simuler() {
+      if (!serveur()) return;
+      clearTimeout(minuteurSimulation);
+      minuteurSimulation = setTimeout(async () => {
+        const panier = lirePanier();
+        if (!panier.length) return;
+        const sig = signature(panier);
+        try {
+          const r = await appelServeur("commande", { simulation: true, lignes: lignesServeur(panier), mode_reception: modeLivraison, cadeau: { emballage: cadeau.emballage }, code_promo: codePromo });
+          simulation = { ...r, sig };
+          if (r.erreur_code) codePromo = "";
+          afficher();
+        } catch {
+          simulation = null; // serveur injoignable : on garde le calcul du navigateur
+        }
+      }, 150);
+    }
+
     const totaux = (panier) => {
+      if (simulation && simulation.sig === signature(panier))
+        return { sousTotal: simulation.sous_total, port: simulation.port, emballage: simulation.emballage, remise: simulation.remise, total: simulation.total };
       const sousTotal = panier.reduce((t, l) => t + l.prix * l.quantite, 0);
       const port = modeLivraison === "retrait" || sousTotal >= SITE.livraisonOfferteDes ? 0 : Number(SITE.livraison);
       const emballage = emballageActif && cadeau.emballage ? prixEmballage : 0;
-      return { sousTotal, port, emballage, total: sousTotal + port + emballage };
+      return { sousTotal, port, emballage, remise: 0, total: sousTotal + port + emballage };
     };
 
     function resumeTexte(panier) {
@@ -138,7 +164,13 @@
               <div class="recap-ligne"><span>${modeLivraison === "retrait" ? "Retrait" : "Livraison"}</span><span>${t.port ? euros(t.port) : "Offert"}</span></div>
               ${modeLivraison === "livraison" && restant > 0 ? `<p class="aide">Plus que <strong>${euros(restant)}</strong> pour la livraison offerte.</p><div class="jauge" aria-hidden="true"><span style="width:${Math.min(100, (t.sousTotal / SITE.livraisonOfferteDes) * 100)}%"></span></div>` : ""}
               ${t.emballage ? `<div class="recap-ligne"><span>Emballage cadeau</span><span>${euros(t.emballage)}</span></div>` : ""}
+              ${t.remise ? `<div class="recap-ligne recap-remise"><span>Code ${echapper(simulation.code_promo)}${simulation.promo_description ? ` — ${echapper(simulation.promo_description)}` : ""} <button type="button" class="supprimer" id="retirer-code">Retirer</button></span><span>−${euros(t.remise)}</span></div>` : ""}
               <div class="recap-ligne recap-total"><span>Total</span><span>${euros(t.total)}</span></div>
+              ${serveur() && !t.remise ? `
+              <details class="champ" ${simulation?.erreur_code ? "open" : ""}><summary class="aide">Vous avez un code promo ?</summary>
+                <div class="code-promo" style="margin-top:.5rem"><input type="text" id="c-code" placeholder="Code promo" aria-label="Code promo" autocomplete="off" maxlength="30"><button type="button" class="btn btn-ligne" id="appliquer-code">Appliquer</button></div>
+                ${simulation?.erreur_code ? `<p class="message message-alerte" style="margin-top:.5rem">${echapper(simulation.erreur_code)}</p>` : ""}
+              </details>` : ""}
             </div>
 
             <form id="commande" class="pile" style="gap:1rem">
@@ -164,6 +196,7 @@
                   .map(([v, titre, aide]) => `<label class="case"><input type="radio" name="paiement" value="${v}" ${v === paiement ? "checked" : ""}> <span><strong>${titre}</strong><br><small class="aide">${aide}</small></span></label>`)
                   .join("")}</div>`;
               })()}
+              ${serveur() ? `<label class="case"><input type="checkbox" id="c-nouveautes"> <span>Je souhaite recevoir les nouveautés et idées cadeaux par email <small class="aide">(quelques emails par an, désinscription en un clic)</small></span></label>` : ""}
               <label class="case"><input type="checkbox" id="c-cgv" required> <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span></label>
               <button class="btn btn-plein" type="submit" data-canal="email">${serveur() && paiement === "en_ligne" ? `${MTB.icone("cadeau")} Payer ${euros(t.total)}` : "Envoyer ma commande"}</button>
               ${lienWhatsapp() ? `<div class="ou">ou</div><button class="btn btn-plein btn-whatsapp" type="submit" data-canal="whatsapp">${MTB.icone("bulle")} Commander par WhatsApp</button>` : ""}
@@ -184,10 +217,12 @@
       if (e.target.id === "c-emballage") {
         cadeau.emballage = e.target.checked;
         afficher();
+        simuler();
       }
       if (e.target.name === "mode") {
         modeLivraison = e.target.value;
         afficher();
+        simuler();
       }
       if (e.target.name === "paiement") {
         paiement = e.target.value;
@@ -198,14 +233,34 @@
         const q = Math.min(99, Math.max(1, parseInt(e.target.value, 10) || 1));
         ecrirePanier(lirePanier().map((l) => (l.uid === uid ? { ...l, quantite: q } : l)));
         afficher();
+        simuler();
+      }
+    });
+    zone.addEventListener("keydown", (e) => {
+      if (e.target.id === "c-code" && e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("appliquer-code").click();
       }
     });
     zone.addEventListener("click", (e) => {
+      if (e.target.id === "appliquer-code") {
+        codePromo = document.getElementById("c-code").value.trim().toUpperCase();
+        if (codePromo) simuler();
+        return;
+      }
+      if (e.target.id === "retirer-code") {
+        codePromo = "";
+        simulation = null;
+        afficher();
+        simuler();
+        return;
+      }
       if (!e.target.matches("[data-suppr]")) return;
       const uid = e.target.closest("[data-uid]").dataset.uid;
       lirePanier().filter((l) => l.uid === uid && l.photoCle).forEach((l) => photoSupprimer(l.photoCle));
       ecrirePanier(lirePanier().filter((l) => l.uid !== uid));
       afficher();
+      simuler();
     });
 
     zone.addEventListener("submit", async (e) => {
@@ -290,6 +345,8 @@
           cadeau: { emballage: cadeau.emballage, message: cadeau.message, date: cadeau.date },
           message: client.message,
           paiement_mode: paiement || "apres_validation",
+          code_promo: codePromo,
+          consentement_marketing: !!document.getElementById("c-nouveautes")?.checked,
           retour: new URL("suivi.html", location.href).href,
         });
         // Photos : la version haute qualité gardée dans le navigateur, sinon l'aperçu
@@ -308,6 +365,7 @@
         }
         panier.forEach((l) => l.photoCle && photoSupprimer(l.photoCle));
         ecrirePanier([]);
+        MTB.mesurer("commande");
         const suite = new URL("suivi.html", location.href);
         suite.searchParams.set("jeton", r.jeton);
         suite.searchParams.set("merci", "1");
@@ -320,6 +378,7 @@
     }
 
     afficher();
+    simuler();
   </script>
 </body>
 </html>
