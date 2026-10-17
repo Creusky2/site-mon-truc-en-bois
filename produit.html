@@ -83,6 +83,7 @@
                 ${produit.prixBarre > produit.prix ? `<s class="prix-barre" style="font-size:1.1rem">${euros(produit.prixBarre)}</s>` : ""}
                 <span class="dispo ${dispo[0]}">${dispo[1]}</span>
               </div>
+              ${MTB.texteAvisCourt() ? `<a class="preuve" href="avis.html"><span class="etoiles" aria-hidden="true">★★★★★</span>${echapper(MTB.texteAvisCourt())}</a>` : ""}
               <p class="chapeau" style="font-size:1rem">${echapper(produit.description)}</p>
             </div>
             ${produit.delai ? `<div class="encart">${icone("calendrier")}<span>Fabrication en <strong>${produit.delai} jour${produit.delai > 1 ? "s" : ""}</strong> environ : commandée aujourd'hui, prête vers le <strong>${dateEstimee(produit.delai)}</strong> (après validation de la maquette).</span></div>` : ""}
@@ -133,6 +134,14 @@
             </ul>
           </form>
         </div>
+        ${(() => {
+          const lies = (DONNEES.avis || []).filter((a) => a.produit === produit.id && a.texte);
+          return lies.length ? `
+          <section style="padding-top:5rem">
+            <div class="titre-section"><div class="pile"><span class="etiquette">Avis clients</span><h2>Ils l'ont offert</h2></div><a class="lien-fleche" href="avis.html">Tous les avis →</a></div>
+            <div class="avis-grille">${lies.slice(0, 3).map(MTB.avisCarte).join("")}</div>
+          </section>` : "";
+        })()}
         ${autres.length ? `
           <section style="padding-top:5rem">
             <div class="titre-section"><div class="pile"><span class="etiquette">Dans la même catégorie</span><h2>Vous aimerez aussi</h2></div></div>

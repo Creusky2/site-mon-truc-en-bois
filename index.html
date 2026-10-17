@@ -30,7 +30,7 @@
             <a class="btn" href="boutique.html">Découvrir la boutique <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
             <a class="btn btn-ligne" href="contact.html">Demander un devis</a>
           </div>
-          <p class="preuve"><span class="etoiles" aria-hidden="true">★★★★★</span><span data-site="avis"></span></p>
+          <a class="preuve" href="avis.html"><span class="etoiles" aria-hidden="true">★★★★★</span><span data-avis-court></span></a>
         </div>
         <div class="mosaique" id="mosaique"></div>
       </div>
@@ -91,9 +91,11 @@
             <span class="etiquette">Avis clients</span>
             <h2>Ils nous ont fait confiance</h2>
           </div>
-          <a class="lien-fleche" data-facebook target="_blank" rel="noopener">Tous les avis sur Facebook <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="lien-fleche" href="avis.html">Tous les avis <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
+        <div class="scores" id="scores"></div>
         <div class="avis-grille" id="avis"></div>
+        <div class="actions-secondaires" id="laisser-avis" style="margin-top:1.5rem"></div>
       </div>
     </section>
 
@@ -124,6 +126,7 @@
             <span data-icone="lieu"><span data-site="adresse"></span></span>
             <a data-tel data-icone="tel"></a>
           </div>
+          <div data-ouverture></div>
           <div data-horaires></div>
           <div><a class="btn btn-ligne" href="contact.html">Plan d'accès et contact</a></div>
         </div>
@@ -178,16 +181,12 @@
       .join("");
 
     const avis = (D.avis || []).filter((a) => a.texte).slice(0, 3);
-    if (avis.length) {
+    const scores = MTB.resumeAvis();
+    if (avis.length || scores) {
       document.getElementById("bloc-avis").hidden = false;
-      document.getElementById("avis").innerHTML = avis
-        .map((a) => `
-          <figure class="avis-carte">
-            <span class="note" aria-label="${Number(a.note) || 5} sur 5">${"★".repeat(Number(a.note) || 5)}</span>
-            <blockquote>« ${echapper(a.texte)} »</blockquote>
-            <figcaption><strong>${echapper(a.nom)}</strong>${a.date ? ` · ${echapper(a.date)}` : ""}${a.source ? ` · ${echapper(a.source)}` : ""}</figcaption>
-          </figure>`)
-        .join("");
+      document.getElementById("scores").innerHTML = scores;
+      document.getElementById("avis").innerHTML = avis.map(MTB.avisCarte).join("");
+      document.getElementById("laisser-avis").innerHTML = MTB.boutonsLaisserAvis();
     }
 
     document.getElementById("vedettes").innerHTML = (vedettes.length ? vedettes : PRODUITS).slice(0, 8).map(carteProduit).join("");

@@ -455,3 +455,25 @@ input[type="file"] { font: inherit; font-size: 0.9rem; }
 @media (min-width: 861px) { .entete .logo .logo-image { width: 64px; } }
 .heros-logo { width: 120px; height: auto; margin-bottom: -0.4rem; }
 @media (max-width: 860px) { .heros-logo { display: none; } }
+
+/* Avis : scores par plateforme, source, état d'ouverture */
+.scores { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 1.5rem; }
+.scores:empty { display: none; }
+.score { display: grid; grid-template-columns: auto auto; gap: 0.15rem 0.7rem; align-items: baseline; padding: 1rem 1.3rem; border: 1px solid var(--trait); border-radius: var(--r); background: #fff; color: var(--encre); text-decoration: none; min-width: 210px; }
+a.score[href]:hover { border-color: var(--foret); }
+.score .source { grid-column: 1 / -1; justify-self: start; }
+.score strong { font: 600 1.7rem/1.1 var(--f-titre); }
+.score small { grid-column: 1 / -1; color: var(--encre-douce); }
+.source { font: 600 0.72rem/1 var(--f-texte); padding: 0.35em 0.6em; border-radius: 999px; background: var(--fond-alt); color: var(--encre); }
+.source-facebook { background: #e7effd; color: #1b4fa8; }
+.source-google { background: #fdeceb; color: #a5281b; }
+.avis-tete { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.recommande { display: inline-flex; align-items: center; gap: 0.35em; color: var(--succes); font-weight: 600; font-size: 0.88rem; }
+a.preuve { color: var(--encre-douce); text-decoration: none; }
+a.preuve:hover { color: var(--encre); text-decoration: underline; }
+.ouverture { display: inline-flex; align-items: center; gap: 0.45em; font-weight: 600; font-size: 0.92rem; }
+.ouverture::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.ouverture.ouvert { color: var(--succes); }
+.ouverture.ferme { color: #9b2c2c; }
+.pied .ouverture.ouvert { color: #7fd1a3; }
+.pied .ouverture.ferme { color: #f0a39b; }

@@ -96,6 +96,9 @@
     d.site ||= {};
     d.site.horaires ||= [];
     d.site.emballage ||= { actif: false, prix: 0 };
+    d.site.plateformesAvis ||= {};
+    d.site.plateformesAvis.facebook ||= { lien: "", taux: 100, nombre: 0 };
+    d.site.plateformesAvis.google ||= { lien: "", lienAvis: "", note: 0, nombre: 0 };
     d.produits ||= [];
     d.categories ||= [];
     d.occasions ||= [];
@@ -414,6 +417,7 @@
           ${etape(D.site.prixVerifies ? "ok" : "afaire", "Prix vérifiés", "Les prix de départ sont des exemples.", `<label class="case"><input type="checkbox" data-chemin="site.prixVerifies" data-type="case" data-rendre ${D.site.prixVerifies ? "checked" : ""}> Vérifiés</label>`)}
           ${etape(sansPhoto.length ? "afaire" : "ok", "Photos des produits", sansPhoto.length ? `${sansPhoto.length} produit(s) sans photo : ${sansPhoto.slice(0, 3).map((p) => echapper(p.nom)).join(", ")}${sansPhoto.length > 3 ? "…" : ""}` : "Tous les produits ont une photo.", sansPhoto.length ? aller("produits", "Voir") : "")}
           ${etape(D.avis.length >= 3 ? "ok" : "afaire", "Avis clients", D.avis.length >= 3 ? `${D.avis.length} avis affichés sur l'accueil.` : "Recopiez 3 avis de votre page Facebook : ils rassurent les nouveaux clients.", aller("avis", D.avis.length ? "Gérer" : "Ajouter"))}
+          ${etape(D.site.plateformesAvis.google.lienAvis || D.site.plateformesAvis.google.lien ? "ok" : "option", "Avis Google reliés au site", D.site.plateformesAvis.google.lienAvis || D.site.plateformesAvis.google.lien ? "Les boutons « Laisser un avis Google » et la carte QR sont actifs." : "Ajoutez le lien de votre fiche Google : bouton « Laisser un avis » et carte QR à imprimer.", aller("avis", "Régler"))}
           ${etape(D.site.formulaireCommande ? "ok" : "option", "Réception des commandes par email (Formspree)", D.site.formulaireCommande ? "Activée." : "Recommandé : sans cela, le client doit envoyer lui-même l'email depuis sa messagerie.", D.site.formulaireCommande ? "" : aller("boutique", "Régler"))}
           ${etape(D.site.whatsapp ? "ok" : "option", "Commandes et questions par WhatsApp", D.site.whatsapp ? `Numéro : ${echapper(D.site.whatsapp)}` : "Facultatif : ajoute un bouton « Commander par WhatsApp » et un bouton de contact.", D.site.whatsapp ? "" : aller("boutique", "Ajouter"))}
           ${etape("option", "Pages légales (CGV, mentions légales)", "À compléter une fois : SIRET, forme juridique, médiateur…", `<a class="mini" style="display:inline-grid;place-items:center;text-decoration:none" href="${lienGithub(`edit/${cfg.branche}/cgv.html`)}" target="_blank" rel="noopener">Modifier sur GitHub</a>`)}
@@ -755,34 +759,125 @@
 
   // ---------- Vue : Avis clients ----------
   function vueAvis() {
+    const pg = D.site.plateformesAvis;
+    const produits = [["", "— Aucun produit précis —"], ...D.produits.map((p) => [p.id, p.nom])];
     return `
       <section class="bloc">
+        <div class="bloc-tete"><h2>Vos pages d'avis</h2></div>
+        <p class="aide">Ces liens et chiffres s'affichent sur le site (accueil, fiches produit, page « Avis ») avec des boutons « Laisser un avis ». Mettez les chiffres à jour de temps en temps.</p>
+        <div class="grille-champs">
+          ${champ("site.plateformesAvis.facebook.lien", "Page des avis Facebook", { type: "url", large: true })}
+          ${champ("site.plateformesAvis.facebook.taux", "Facebook : % de recommandation", { type: "nombre" })}
+          ${champ("site.plateformesAvis.facebook.nombre", "Facebook : nombre d'avis", { type: "nombre" })}
+          ${champ("site.plateformesAvis.google.lien", "Fiche Google (lien vers vos avis)", { type: "url", large: true, placeholder: "https://maps.app.goo.gl/…", aide: "Sur Google Maps, ouvrez votre fiche → Partager → copier le lien." })}
+          ${champ("site.plateformesAvis.google.lienAvis", "Lien « Laisser un avis » Google", { type: "url", large: true, placeholder: "https://g.page/r/…/review", aide: "Dans votre fiche d'établissement Google (Google Business Profile) → « Demander des avis » → copier le lien. C'est ce lien que le QR code ci-dessous utilisera." })}
+          ${champ("site.plateformesAvis.google.note", "Google : note moyenne (sur 5)", { type: "nombre", placeholder: "4.9" })}
+          ${champ("site.plateformesAvis.google.nombre", "Google : nombre d'avis", { type: "nombre" })}
+        </div>
+      </section>
+
+      <section class="bloc">
         <div class="bloc-tete">
-          <h2>Avis clients <span class="aide">(${D.avis.length})</span></h2>
+          <h2>Carte « Laissez-nous un avis » à imprimer</h2>
+          <button class="btn" data-action="carte-qr" ${pg.google.lienAvis || pg.google.lien || pg.facebook.lien ? "" : "disabled"}>Créer la carte</button>
+        </div>
+        <p class="aide">Une carte avec un QR code à poser sur le comptoir ou à glisser dans les paquets : les clients scannent et arrivent directement sur votre page d'avis${pg.google.lienAvis || pg.google.lien ? " Google" : pg.facebook.lien ? " Facebook" : ""}. Format A6 (10,5 × 14,8 cm), à imprimer en couleur.</p>
+        <div id="carte-qr"></div>
+      </section>
+
+      <section class="bloc">
+        <div class="bloc-tete">
+          <h2>Avis affichés <span class="aide">(${D.avis.length})</span></h2>
           <button class="btn" data-action="nouvel-avis">+ Ajouter un avis</button>
         </div>
-        <p class="aide">Recopiez de vrais avis (par exemple ceux de votre page Facebook, avec l'accord des clients). Les 3 premiers s'affichent sur la page d'accueil ; la section reste cachée tant qu'il n'y a aucun avis.</p>
+        <p class="aide">Recopiez de vrais avis (Facebook, Google…). Les 3 premiers s'affichent sur l'accueil, tous sur la page « Avis ». Liez un avis à un produit pour l'afficher aussi sur sa fiche.</p>
         <div>
           ${D.avis
             .map(
               (a, i) => `
             <div class="ligne-edit">
               <div class="grille-avis">
-                <div class="champ"><label>Prénom / nom</label><input type="text" value="${echapper(a.nom)}" data-liste="avis" data-i="${i}" data-champ="nom" placeholder="Sophie L."></div>
-                <div class="champ"><label>Note</label><select data-liste="avis" data-i="${i}" data-champ="note" data-type="nombre">${[5, 4, 3, 2, 1].map((n) => `<option value="${n}" ${Number(a.note || 5) === n ? "selected" : ""}>${"★".repeat(n)}</option>`).join("")}</select></div>
+                <div class="champ"><label>Prénom et initiale</label><input type="text" value="${echapper(a.nom)}" data-liste="avis" data-i="${i}" data-champ="nom" placeholder="Sophie L."></div>
+                <div class="champ"><label>Source</label><select data-liste="avis" data-i="${i}" data-champ="source">${[["facebook", "Facebook"], ["google", "Google"], ["autre", "Autre"]].map(([k, v]) => `<option value="${k}" ${a.source === k ? "selected" : ""}>${v}</option>`).join("")}</select></div>
+                <div class="champ"><label>Note${a.source === "facebook" ? " (non affichée)" : ""}</label><select data-liste="avis" data-i="${i}" data-champ="note" data-type="nombre">${[5, 4, 3, 2, 1].map((n) => `<option value="${n}" ${Number(a.note || 5) === n ? "selected" : ""}>${"★".repeat(n)}</option>`).join("")}</select></div>
                 <div class="champ"><label>Date</label><input type="text" value="${echapper(a.date)}" data-liste="avis" data-i="${i}" data-champ="date" placeholder="Septembre 2026"></div>
-                <div class="champ"><label>Source</label><input type="text" value="${echapper(a.source)}" data-liste="avis" data-i="${i}" data-champ="source" placeholder="Facebook"></div>
               </div>
               <div class="champ"><label>Texte de l'avis</label><textarea rows="2" data-liste="avis" data-i="${i}" data-champ="texte">${echapper(a.texte)}</textarea></div>
-              <div class="ligne-boutons" style="justify-content:flex-end">
-                <button class="mini" data-action="avis-monter" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Monter">↑</button>
-                <button class="mini danger" data-action="supprimer-avis" data-i="${i}">Supprimer</button>
+              <div class="ligne-edit-tete">
+                <div class="champ" style="flex:1 1 260px"><label>Produit concerné (facultatif)</label><select data-liste="avis" data-i="${i}" data-champ="produit">${produits.map(([k, v]) => `<option value="${echapper(k)}" ${(a.produit || "") === k ? "selected" : ""}>${echapper(v)}</option>`).join("")}</select></div>
+                <div class="ligne-boutons">
+                  <button class="mini" data-action="avis-monter" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Monter">↑</button>
+                  <button class="mini danger" data-action="supprimer-avis" data-i="${i}">Supprimer</button>
+                </div>
               </div>
             </div>`
             )
             .join("") || `<p class="aide" style="padding:1rem 0">Aucun avis pour l'instant.</p>`}
         </div>
+      </section>
+
+      <section class="bloc">
+        <div class="bloc-tete"><h2>Avis Google et Facebook automatiques (facultatif)</h2></div>
+        <p class="aide">Pour que les nouveaux avis apparaissent tout seuls, créez un widget sur un service spécialisé (par exemple Trustindex ou Elfsight, qui ont des formules gratuites limitées : vérifiez leurs conditions), connectez-y votre fiche Google et votre page Facebook, puis collez ici le code qu'il vous donne. Il s'affichera en haut de la page « Avis ».</p>
+        ${champ("widgetAvis", "Code du widget", { type: "zone", lignes: 4, placeholder: "<script src=…></script>" })}
       </section>`;
+  }
+
+  // Carte A6 avec QR code vers la page d'avis (dessinée sur un canvas, téléchargeable en PNG)
+  async function creerCarteQR() {
+    const pg = D.site.plateformesAvis;
+    const google = pg.google.lienAvis || pg.google.lien;
+    const lien = google || pg.facebook.lien;
+    if (!lien || !window.qrcode) return toast("Ajoutez d'abord le lien de votre page d'avis.", true);
+    const qr = qrcode(0, "M");
+    qr.addData(lien);
+    qr.make();
+    const W = 1240, H = 1748; // A6 à 300 dpi
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fbf6ef";
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = "#a8693a";
+    g.lineWidth = 6;
+    g.strokeRect(40, 40, W - 80, H - 80);
+    const logo = await new Promise((ok) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => ok(null);
+      i.src = "img/logo.webp";
+    });
+    if (logo) g.drawImage(logo, (W - 460) / 2, 90, 460, (460 * logo.height) / logo.width);
+    g.fillStyle = "#1b1a17";
+    g.textAlign = "center";
+    g.font = "600 92px 'Bricolage Grotesque', sans-serif";
+    g.fillText("Votre avis compte !", W / 2, 640);
+    g.font = "400 46px Figtree, sans-serif";
+    g.fillStyle = "#5f5a52";
+    g.fillText(`Scannez pour laisser un avis ${google ? "sur Google" : "sur Facebook"}`, W / 2, 720);
+    const n = qr.getModuleCount();
+    const taille = 640;
+    const pas = Math.floor(taille / (n + 8));
+    const x0 = (W - pas * (n + 8)) / 2;
+    const y0 = 780;
+    g.fillStyle = "#fff";
+    g.fillRect(x0, y0, pas * (n + 8), pas * (n + 8));
+    g.fillStyle = "#1b1a17";
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) g.fillRect(x0 + (k + 4) * pas, y0 + (r + 4) * pas, pas, pas);
+    g.fillStyle = "#24453a";
+    g.font = "600 48px Figtree, sans-serif";
+    g.fillText("Merci pour votre confiance ♥", W / 2, y0 + pas * (n + 8) + 110);
+    g.fillStyle = "#5f5a52";
+    g.font = "400 38px Figtree, sans-serif";
+    g.fillText(`${D.site.adresse} · ${D.site.telephone}`, W / 2, H - 110);
+    const url = c.toDataURL("image/png");
+    $("#carte-qr").innerHTML = `
+      <div class="pile" style="gap:.8rem;justify-items:start">
+        <img src="${url}" alt="Aperçu de la carte" style="width:min(280px,100%);border-radius:8px;box-shadow:var(--ombre)">
+        <a class="btn" href="${url}" download="carte-avis-mon-truc-en-bois.png">Télécharger la carte (PNG)</a>
+        <small class="aide">Le QR code mène à : ${echapper(lien)}</small>
+      </div>`;
   }
 
   // ---------- Vue : FAQ ----------
@@ -828,6 +923,7 @@
           ${champ("site.whatsapp", "Numéro WhatsApp (facultatif)", { type: "tel", placeholder: "07 83 39 40 28", aide: "Ajoute « Commander par WhatsApp » au panier et un bouton de contact sur le site." })}
           ${champ("site.adresse", "Adresse", { large: true })}
           ${champ("site.facebook", "Lien de la page Facebook", { type: "url", large: true })}
+          ${champ("site.instagram", "Lien du compte Instagram (facultatif)", { type: "url", large: true })}
           ${champ("site.slogan", "Slogan (pied de page)", { large: true })}
           ${champ("site.avis", "Mention des avis (accueil)", { aide: "Ex. : Recommandé à 100 % · 16 avis" })}
         </div>
@@ -921,6 +1017,7 @@
     if (a === "nouvelle-categorie") return editerCategorie(-1);
     if (a === "modifier-categorie") return editerCategorie(i);
     if (a === "telecharger") return telechargerSauvegarde();
+    if (a === "carte-qr") return creerCarteQR();
     if (a === "ouvrir-commandes") {
       if (!confirm("Ouvrir les commandes ? Le bandeau « site en construction » disparaîtra et les clients pourront envoyer leurs commandes.")) return;
       D.site.apercu = false;

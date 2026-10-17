@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Avis clients — Mon Truc en Bois</title>
+  <meta name="description" content="Les avis de nos clients sur Facebook et Google : cadeaux personnalisés, gravure, commandes pour associations et événements à Auchel.">
+  <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
+  <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="conteneur" style="padding-bottom:5rem">
+    <div class="page-tete">
+      <span class="etiquette">Avis clients</span>
+      <h1>Ce que disent nos clients</h1>
+      <p class="chapeau">Des avis laissés sur nos pages Facebook et Google. Vous êtes venu chez nous ? Votre avis aide beaucoup une petite boutique comme la nôtre.</p>
+    </div>
+
+    <div class="scores" id="scores"></div>
+    <div class="actions-secondaires" id="laisser-avis" style="margin:1.5rem 0 2.5rem"></div>
+
+    <div id="widget"></div>
+    <div class="avis-grille" id="avis"></div>
+    <p class="aucun" id="aucun" hidden>Les avis arrivent bientôt.</p>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="data/donnees.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { D } = MTB;
+    const avis = (D.avis || []).filter((a) => a.texte);
+    document.getElementById("scores").innerHTML = MTB.resumeAvis();
+    document.getElementById("laisser-avis").innerHTML = MTB.boutonsLaisserAvis();
+    document.getElementById("avis").innerHTML = avis.map(MTB.avisCarte).join("");
+    document.getElementById("aucun").hidden = avis.length > 0 || !!D.widgetAvis;
+
+    // Widget d'avis automatique (Trustindex, Elfsight…) collé dans l'admin : ses scripts doivent être recréés pour s'exécuter.
+    if (D.widgetAvis) {
+      const zone = document.getElementById("widget");
+      zone.innerHTML = D.widgetAvis;
+      zone.style.marginBottom = "2.5rem";
+      zone.querySelectorAll("script").forEach((ancien) => {
+        const s = document.createElement("script");
+        [...ancien.attributes].forEach((a) => s.setAttribute(a.name, a.value));
+        s.textContent = ancien.textContent;
+        ancien.replaceWith(s);
+      });
+    }
+
+    // Note globale pour Google (étoiles dans les résultats de recherche quand c'est possible)
+    const p = SITE.plateformesAvis || {};
+    if (p.google?.nombre) {
+      const ld = document.createElement("script");
+      ld.type = "application/ld+json";
+      ld.textContent = JSON.stringify({ "@context": "https://schema.org", "@type": "Store", name: SITE.nom, aggregateRating: { "@type": "AggregateRating", ratingValue: p.google.note, reviewCount: p.google.nombre, bestRating: 5 } });
+      document.head.append(ld);
+    }
+  </script>
+</body>
+</html>

@@ -226,13 +226,16 @@
             <a href="${telLien(S.telephone)}">${echapper(S.telephone)}</a>
             <a href="mailto:${echapper(S.email)}">${echapper(S.email)}</a>
             <a href="${echapper(S.facebook)}" target="_blank" rel="noopener">Facebook</a>
+            ${S.instagram ? `<a href="${echapper(S.instagram)}" target="_blank" rel="noopener">Instagram</a>` : ""}
           </div>
           <div class="pile">
             <h4>Horaires</h4>
+            ${ouvertureHTML()}
             ${S.horaires.map((h) => `<span>${echapper(h)}</span>`).join("")}
           </div>
           <div class="pile">
             <h4>Aide</h4>
+            <a href="avis.html">Avis clients</a>
             <a href="faq.html">Questions fréquentes</a>
             <a href="contact.html">Demande de devis</a>
             <a href="cgv.html">Conditions générales de vente</a>
@@ -293,13 +296,85 @@
       logo: new URL("img/logo.webp", location.href).href,
       address: { "@type": "PostalAddress", streetAddress: rue.trim(), postalCode: cp, addressLocality: ville.join(",").replace(cp, "").trim(), addressCountry: "FR" },
       openingHoursSpecification: ouvertures,
-      sameAs: [S.facebook],
+      sameAs: [S.facebook, S.instagram].filter(Boolean),
     };
     const s = document.createElement("script");
     s.type = "application/ld+json";
     s.textContent = JSON.stringify(json);
     document.head.append(s);
   }
+
+  // ---------- Avis clients (Facebook, Google…) ----------
+  const PLATEFORMES = { facebook: "Facebook", google: "Google", autre: "" };
+  const plateformes = () => S.plateformesAvis || {};
+  function avisCarte(a) {
+    const source = PLATEFORMES[a.source] ?? a.source ?? "";
+    const etoiles = a.source === "facebook" ? `<span class="recommande">${icone("coche")} Recommande</span>` : `<span class="note" aria-label="${Number(a.note) || 5} sur 5">${"★".repeat(Number(a.note) || 5)}</span>`;
+    return `
+      <figure class="avis-carte">
+        <div class="avis-tete">${etoiles}${source ? `<span class="source source-${echapper(a.source)}">${echapper(source)}</span>` : ""}</div>
+        <blockquote>« ${echapper(a.texte)} »</blockquote>
+        <figcaption><strong>${echapper(a.nom)}</strong>${a.date ? ` · ${echapper(a.date)}` : ""}</figcaption>
+      </figure>`;
+  }
+  // Résumé « 100 % recommandé sur Facebook · 4,9/5 sur Google »
+  function resumeAvis({ liens = true } = {}) {
+    const p = plateformes();
+    const blocs = [];
+    if (p.google?.nombre)
+      blocs.push(`<a class="score" ${p.google.lien && liens ? `href="${echapper(p.google.lien)}" target="_blank" rel="noopener"` : ""}><span class="source source-google">Google</span><strong>${String(p.google.note).replace(".", ",")}/5</strong><span class="etoiles">★★★★★</span><small>${p.google.nombre} avis</small></a>`);
+    if (p.facebook?.nombre)
+      blocs.push(`<a class="score" ${p.facebook.lien && liens ? `href="${echapper(p.facebook.lien)}" target="_blank" rel="noopener"` : ""}><span class="source source-facebook">Facebook</span><strong>${p.facebook.taux} %</strong><span>recommandent</span><small>${p.facebook.nombre} avis</small></a>`);
+    return blocs.join("");
+  }
+  const texteAvisCourt = () => {
+    const p = plateformes();
+    const t = [];
+    if (p.google?.nombre) t.push(`${String(p.google.note).replace(".", ",")}/5 sur Google (${p.google.nombre} avis)`);
+    if (p.facebook?.nombre) t.push(`Recommandé à ${p.facebook.taux} % sur Facebook (${p.facebook.nombre} avis)`);
+    return t.join(" · ") || S.avis || "";
+  };
+  function boutonsLaisserAvis() {
+    const p = plateformes();
+    const b = [];
+    if (p.google?.lienAvis || p.google?.lien) b.push(`<a class="btn btn-ligne" href="${echapper(p.google.lienAvis || p.google.lien)}" target="_blank" rel="noopener">Laisser un avis Google</a>`);
+    if (p.facebook?.lien) b.push(`<a class="btn btn-ligne" href="${echapper(p.facebook.lien)}" target="_blank" rel="noopener">Laisser un avis Facebook</a>`);
+    return b.join("");
+  }
+
+  // ---------- Ouvert / fermé maintenant, calculé à partir des horaires ----------
+  const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+  function creneaux() {
+    const semaine = JOURS.map(() => []);
+    S.horaires.forEach((h) => {
+      const i = h.indexOf(":");
+      if (i < 0) return;
+      const j = JOURS.indexOf(h.slice(0, i).trim().toLowerCase());
+      if (j < 0) return;
+      for (const [, a, am, b, bm] of h.slice(i + 1).matchAll(/(\d{1,2})h(\d{2})?\s*[–-]\s*(\d{1,2})h(\d{2})?/g))
+        semaine[j].push([a * 60 + Number(am || 0), b * 60 + Number(bm || 0)]);
+    });
+    return semaine;
+  }
+  const heure = (m) => `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}`;
+  function etatOuverture(maintenant = new Date()) {
+    const semaine = creneaux();
+    if (!semaine.some((c) => c.length)) return null;
+    const j = maintenant.getDay();
+    const m = maintenant.getHours() * 60 + maintenant.getMinutes();
+    const enCours = semaine[j].find(([a, b]) => m >= a && m < b);
+    if (enCours) return { ouvert: true, texte: `Ouvert maintenant · jusqu'à ${heure(enCours[1])}` };
+    for (let d = 0; d < 7; d++) {
+      const jour = (j + d) % 7;
+      const prochain = semaine[jour].find(([a]) => d > 0 || a > m);
+      if (prochain) return { ouvert: false, texte: `Fermé · ouvre ${d === 0 ? "aujourd'hui" : d === 1 ? "demain" : JOURS[jour]} à ${heure(prochain[0])}` };
+    }
+    return null;
+  }
+  const ouvertureHTML = () => {
+    const e = etatOuverture();
+    return e ? `<span class="ouverture ${e.ouvert ? "ouvert" : "ferme"}">${e.texte}</span>` : "";
+  };
 
   // Mode aperçu : les formulaires de commande et de devis ne partent pas.
   if (S.apercu) {
@@ -340,6 +415,9 @@
     document.querySelectorAll("[data-texte]").forEach((el) => (el.textContent = D.textes?.[el.dataset.texte] ?? ""));
     document.querySelectorAll("[data-icone]").forEach((el) => el.insertAdjacentHTML("afterbegin", icone(el.dataset.icone)));
     document.querySelectorAll("[data-horaires]").forEach((el) => (el.innerHTML = horairesHTML()));
+    document.querySelectorAll("[data-ouverture]").forEach((el) => (el.innerHTML = ouvertureHTML()));
+    document.querySelectorAll("[data-avis-court]").forEach((el) => (el.textContent = texteAvisCourt()));
+    document.querySelectorAll("[data-instagram]").forEach((el) => (S.instagram ? (el.href = S.instagram) : (el.hidden = true)));
     document.querySelectorAll("[data-tel]").forEach((el) => {
       el.href = telLien(S.telephone);
       el.insertAdjacentText("beforeend", S.telephone);
@@ -366,5 +444,6 @@
     D, euros, echapper, icone, telLien, lienWhatsapp,
     lirePanier, ecrirePanier, ajouterAuPanier, lireFavoris, estFavori, basculerFavori,
     imagesProduit, visuel, badges, prixHTML, boutonFavori, carteProduit, majCompteurs,
+    avisCarte, resumeAvis, texteAvisCourt, boutonsLaisserAvis, etatOuverture, ouvertureHTML,
   };
 })();

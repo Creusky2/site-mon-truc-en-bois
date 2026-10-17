@@ -28,6 +28,20 @@ window.DONNEES = {
     "emballage": {
       "actif": false,
       "prix": 2.5
+    },
+    "instagram": "",
+    "plateformesAvis": {
+      "facebook": {
+        "lien": "https://www.facebook.com/profile.php?id=100094575102607&sk=reviews",
+        "taux": 100,
+        "nombre": 16
+      },
+      "google": {
+        "lien": "",
+        "lienAvis": "",
+        "note": 0,
+        "nombre": 0
+      }
     }
   },
   "annonce": {
@@ -910,7 +924,88 @@ window.DONNEES = {
       "nom": "Entreprises & associations"
     }
   ],
-  "avis": [],
+  "avis": [
+    {
+      "nom": "Adeline L.",
+      "date": "Novembre 2025",
+      "texte": "Je tenais à vous remercier chaleureusement pour les magnifiques cadeaux que vous avez réalisés à l’occasion du baptême. Le résultat était superbe et a fait beaucoup d’effet auprès des invités ! J’ai particulièrement apprécié votre professionnalisme, votre écoute et la qualité de votre travail. Et aussi votre convivialité, vous êtes super. Merci encore pour votre belle contribution à cette journée si spéciale.",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Marielle D.",
+      "date": "Mai 2025",
+      "texte": "Superbe boutique !! Des idées cadeaux sympa et de qualité pour tous les goûts. De bon conseil, chaleureux et surtout des prix attractifs. Allez-y sans hésiter !!",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Ohh R.",
+      "date": "Juillet 2024",
+      "texte": "Plusieurs commandes passées chez Mon truc en bois, dont une de 200 pièces pour l'association de parents d'élèves. La qualité est top, le rendu correspond totalement à mes attentes, de très bons conseils... bref, je recommande à 100 %. Merci beaucoup Christophe !",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Delphine G.",
+      "date": "Décembre 2024",
+      "texte": "Superbe boutique, merci à Laetitia et Christophe pour leur accueil. N’hésitez pas à y faire un tour, il y en a pour tous les goûts (alimentaire, planches en bois diverses, bijoux, produits de beauté et décoration…) pour tous les budgets.",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Adeline A.",
+      "date": "Juillet 2024",
+      "texte": "Très beau travail, qualité et soin sont au rendez-vous. On peut laisser vagabonder nos idées, on aura toujours une oreille attentive pour nous aiguiller. Je recommande +++",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Christelle L.",
+      "date": "Août 2025",
+      "texte": "Superbe travail, personne à l'écoute, je recommande en toute confiance.",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Emilie M.",
+      "date": "Juillet 2024",
+      "texte": "Travail pro, à l'écoute de l'attente du client, s'adapte aux situations, très beau travail, je recommande.",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Kelly G.",
+      "date": "Juillet 2024",
+      "texte": "Travail soigné, imaginé et personne très agréable, et les créations font vraiment fureur en cadeaux. N'hésitez pas à y aller !",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Perrine F.",
+      "date": "Juillet 2024",
+      "texte": "J'ai fait deux commandes, je suis contente, beau travail, qualité prix super. Je recommande.",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    },
+    {
+      "nom": "Cassandra K.",
+      "date": "Juillet 2024",
+      "texte": "Travail soigné et personne très agréable, je reviens bientôt.",
+      "source": "facebook",
+      "note": 5,
+      "produit": ""
+    }
+  ],
   "faq": [
     {
       "q": "Comment se passe une commande personnalisée ?",
@@ -940,5 +1035,6 @@ window.DONNEES = {
       "q": "Puis-je retourner un article personnalisé ?",
       "r": "Les articles personnalisés sont fabriqués spécialement pour vous : ils ne peuvent pas être échangés ni remboursés, sauf défaut. C'est pour cela que nous validons le rendu avec vous avant fabrication."
     }
-  ]
+  ],
+  "widgetAvis": ""
 };

@@ -18,7 +18,9 @@ Ouvrir **`/admin.html`** (ex. `https://creusky2.github.io/site-mon-truc-en-bois/
   fiche complète : plusieurs photos, prix barré, badge (Nouveau, Promo…), délai de fabrication,
   consigne de personnalisation, disponibilité, occasions, choix avec supplément.
 - **Catégories & occasions** : catégories (photo, ordre) et occasions de la page « Idées cadeaux ».
-- **Avis clients** et **FAQ**.
+- **Avis clients** : liens et scores Google / Facebook, avis affichés (source, produit lié),
+  carte QR « Laissez-nous un avis » à imprimer, emplacement pour un widget d'avis automatique.
+- **FAQ**.
 - **Infos boutique** : coordonnées, WhatsApp, horaires, livraison, emballage cadeau, mode « site en construction ».
 - **Textes & annonce** : textes d'accueil et de présentation, bandeau d'annonce avec lien.
 - **Galerie** : photos des réalisations.
@@ -42,6 +44,7 @@ La clé reste enregistrée uniquement dans le navigateur de l'appareil utilisé.
 | `favoris.html` | Produits mis de côté par le client |
 | `panier.html` | Panier, livraison ou retrait, options cadeau, commande par email ou WhatsApp |
 | `atelier.html` | Qui sommes-nous ? (présentation, savoir-faire, galerie) |
+| `avis.html` | Avis clients Google et Facebook, boutons « Laisser un avis » |
 | `faq.html` | Questions fréquentes |
 | `contact.html` | Coordonnées, horaires, itinéraire, demande de devis |
 | `cgv.html`, `mentions-legales.html` | Pages légales (modèles à compléter) |
