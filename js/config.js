@@ -2,6 +2,10 @@
 //  CONFIGURATION DU SITE — à modifier en priorité
 // ============================================================
 window.SITE = {
+  // Mode aperçu : bandeau « site en construction » et envoi des commandes/devis bloqué.
+  // ⚠️ Passer à false une fois les prix et l'email vérifiés, pour ouvrir les commandes.
+  apercu: true,
+
   nom: "Mon Truc en Bois",
   slogan: "Personnalisation, sérigraphie, gravure texte & photo, bijoux",
   telephone: "07 83 39 40 28",

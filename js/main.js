@@ -109,5 +109,31 @@
     majCompteur();
   });
 
+  // ---------- Mode aperçu (voir SITE.apercu dans config.js) ----------
+  if (S.apercu) {
+    document.addEventListener("DOMContentLoaded", () => {
+      const b = document.createElement("div");
+      b.className = "bandeau-apercu";
+      b.textContent = "Site en construction — les prix sont provisoires et les commandes en ligne ne sont pas encore ouvertes. Contactez-nous au " + S.telephone + ".";
+      document.body.prepend(b);
+    });
+    document.addEventListener(
+      "submit",
+      (e) => {
+        if (!["commande", "devis"].includes(e.target.id)) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        let m = e.target.querySelector(".message-apercu");
+        if (!m) {
+          m = document.createElement("p");
+          m.className = "message message-apercu";
+          e.target.append(m);
+        }
+        m.textContent = "Le site est encore en construction : l'envoi en ligne n'est pas encore ouvert. Appelez-nous au " + S.telephone + " ou écrivez-nous sur Facebook.";
+      },
+      true
+    );
+  }
+
   window.MTB = { euros, echapper, lirePanier, ecrirePanier, ajouterAuPanier, visuel, majCompteur };
 })();

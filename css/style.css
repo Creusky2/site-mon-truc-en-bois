@@ -182,3 +182,6 @@ textarea { min-height: 110px; resize: vertical; }
 .pied strong { color: var(--blanc); font-size: 1.05rem; }
 .pied-grille { display: grid; gap: 32px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .copyright { text-align: center; font-size: 0.85rem; opacity: 0.75; margin: 32px 0 0; }
+
+/* ---------- Mode aperçu ---------- */
+.bandeau-apercu { background: #fff4d6; color: var(--bois-fonce); text-align: center; font-size: 0.85rem; font-weight: 600; padding: 0.5em 16px; }
