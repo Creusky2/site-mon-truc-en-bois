@@ -27,10 +27,11 @@
       { nom: "Moderne", css: "'Nunito', Arial, sans-serif" },
       { nom: "Machine à écrire", css: "'Courier New', monospace" },
     ];
-    const produit = trouverProduit(new URLSearchParams(location.search).get("id"));
+    const produit = trouverProduit(new URLSearchParams(location.search).get("id") || location.hash.slice(1));
     const zone = document.getElementById("contenu");
     let photo = "";
     let photoNom = "";
+    let averti = false;
 
     if (!produit) {
       zone.innerHTML = `<div class="vide"><h1>Produit introuvable</h1><p><a class="btn" href="boutique.html">Retour à la boutique</a></p></div>`;
@@ -127,8 +128,10 @@
 
       $("form").addEventListener("submit", (e) => {
         e.preventDefault();
-        if (produit.options.texte && !$("texte").value.trim() && !photo && !$("remarque").value.trim()) {
-          if (!confirm("Vous n'avez saisi aucun texte de personnalisation. Ajouter quand même au panier ?")) return;
+        if (produit.options.texte && !$("texte").value.trim() && !photo && !$("remarque").value.trim() && !averti) {
+          averti = true;
+          $("confirmation").innerHTML = `<p class="message">Vous n'avez saisi aucun texte de personnalisation. Cliquez à nouveau sur « Ajouter au panier » pour continuer quand même.</p>`;
+          return;
         }
         ajouterAuPanier({
           id: produit.id,

@@ -28,7 +28,8 @@
   <script>
     const { echapper, euros, visuel } = MTB;
     const params = new URLSearchParams(location.search);
-    let actif = CATEGORIES[params.get("categorie")] ? params.get("categorie") : "tout";
+    const demande = params.get("categorie") || location.hash.slice(1);
+    let actif = CATEGORIES[demande] ? demande : "tout";
 
     function afficher() {
       const boutons = [["tout", "Tout"], ...Object.entries(CATEGORIES).map(([id, c]) => [id, `${c.icone} ${c.nom}`])];
