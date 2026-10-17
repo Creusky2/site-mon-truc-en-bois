@@ -39,7 +39,7 @@
   }
 
   // ---------- Visuel produit (photo ou illustration générée) ----------
-  const TEINTES = { gravure: ["#8b5a2b", "#c89b6d"], serigraphie: ["#2f5d62", "#5e8b7e"], photo: ["#6d4c41", "#d7a86e"], bijoux: ["#7b5e7b", "#c9a7c9"] };
+  const TEINTES = { gravure: ["#8b5a2b", "#c89b6d"], serigraphie: ["#2f5d62", "#5e8b7e"], evenements: ["#6d4c41", "#d7a86e"], bijoux: ["#7b5e7b", "#c9a7c9"] };
   function visuel(produit) {
     if (produit.image) return `<img src="${echapper(produit.image)}" alt="${echapper(produit.nom)}" loading="lazy">`;
     const [a, b] = TEINTES[produit.categorie] || ["#8b5a2b", "#c89b6d"];
@@ -58,7 +58,7 @@
         <nav class="nav">
           ${lien("index.html", "Accueil")}
           ${lien("boutique.html", "Boutique")}
-          ${lien("atelier.html", "L'atelier")}
+          ${lien("atelier.html", "Qui sommes-nous ?")}
           ${lien("contact.html", "Contact & devis")}
           <a class="lien-panier" href="panier.html" aria-label="Panier">🛒 Panier <span class="compteur" data-compteur hidden>0</span></a>
         </nav>
@@ -77,7 +77,10 @@
           <p>${echapper(S.adresse)}<br>
           <a href="tel:${S.telephone.replace(/\s/g, "")}">${echapper(S.telephone)}</a><br>
           <a href="mailto:${echapper(S.email)}">${echapper(S.email)}</a></p>
-          <p>${echapper(S.horaires)}</p>
+        </div>
+        <div>
+          <strong>Horaires de la boutique</strong>
+          <p class="horaires">${S.horaires.map(echapper).join("<br>")}</p>
         </div>
         <div>
           <strong>Informations</strong>
@@ -93,7 +96,11 @@
     const f = document.querySelector("footer.pied");
     if (h) h.innerHTML = entete();
     if (f) f.innerHTML = pied();
-    document.querySelectorAll("[data-site]").forEach((el) => (el.textContent = S[el.dataset.site]));
+    document.querySelectorAll("[data-site]").forEach((el) => {
+      const v = S[el.dataset.site];
+      if (Array.isArray(v)) el.innerHTML = v.map(echapper).join("<br>");
+      else el.textContent = v;
+    });
     const burger = document.querySelector(".burger");
     burger?.addEventListener("click", () => {
       const ouvert = document.querySelector(".nav").classList.toggle("ouvert");

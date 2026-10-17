@@ -47,7 +47,7 @@
         ...lignes,
         "",
         `Sous-total : ${euros(t.sousTotal)}`,
-        `${modeLivraison === "retrait" ? "Retrait à l'atelier" : "Livraison"} : ${t.port ? euros(t.port) : "offerte"}`,
+        `${modeLivraison === "retrait" ? "Retrait à la boutique d'Auchel" : "Livraison"} : ${t.port ? euros(t.port) : "offerte"}`,
         `TOTAL : ${euros(t.total)}`,
       ].join("\n");
     }
@@ -93,7 +93,7 @@
             <div class="champ">
               <span class="label">Mode de réception</span>
               <label style="font-weight:400"><input type="radio" name="mode" value="livraison" ${modeLivraison === "livraison" ? "checked" : ""}> Livraison à domicile</label>
-              <label style="font-weight:400"><input type="radio" name="mode" value="retrait" ${modeLivraison === "retrait" ? "checked" : ""}> Retrait à l'atelier (gratuit)</label>
+              <label style="font-weight:400"><input type="radio" name="mode" value="retrait" ${modeLivraison === "retrait" ? "checked" : ""}> Retrait à la boutique d'Auchel (gratuit)</label>
             </div>
             <div class="recap-ligne"><span>Sous-total</span><span>${euros(t.sousTotal)}</span></div>
             <div class="recap-ligne"><span>${modeLivraison === "retrait" ? "Retrait" : "Livraison"}</span><span>${t.port ? euros(t.port) : "Offert"}</span></div>
@@ -144,7 +144,7 @@
         nom: f.nom.value.trim(),
         email: f.email.value.trim(),
         telephone: f.telephone.value.trim(),
-        adresse: f.adresse ? f.adresse.value.trim() : "Retrait à l'atelier",
+        adresse: f.adresse ? f.adresse.value.trim() : "Retrait à la boutique d'Auchel",
         message: f.message.value.trim(),
       };
       const corps = [

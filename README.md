@@ -1,6 +1,10 @@
 # Mon Truc en Bois — site vitrine & boutique
 
-Site de l'atelier de personnalisation (gravure, sérigraphie, photo, bijoux).
+Site de la boutique de personnalisation **Mon Truc en Bois** — 3 rue Salengro, 62260 Auchel
+(gravure texte & photo, sérigraphie, bijoux). Coordonnées, horaires et photos repris de la
+[page Facebook](https://www.facebook.com/profile.php?id=100094575102607).
+
+⚠️ Avant la mise en ligne : vérifier les **prix** (`js/produits.js`, ce sont des exemples) et l'**email** (`js/config.js`).
 Site **statique** (HTML / CSS / JavaScript) : aucun serveur ni base de données à gérer, hébergement gratuit possible (GitHub Pages, Netlify…).
 
 ## Pages
@@ -11,8 +15,8 @@ Site **statique** (HTML / CSS / JavaScript) : aucun serveur ni base de données 
 | `boutique.html` | Catalogue avec filtres par catégorie |
 | `produit.html?id=…` | Fiche produit : variante, texte, police, photo, **aperçu en direct** |
 | `panier.html` | Panier, choix livraison / retrait, formulaire de commande |
-| `atelier.html` | Présentation de l'atelier |
-| `contact.html` | Coordonnées et demande de devis |
+| `atelier.html` | Qui sommes-nous ? (présentation, galerie de réalisations) |
+| `contact.html` | Coordonnées, horaires, plan Google Maps, demande de devis |
 | `cgv.html`, `mentions-legales.html` | Pages légales (modèles à compléter) |
 
 ## Modifier le site

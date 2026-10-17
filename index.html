@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mon Truc en Bois — Gravure, sérigraphie, photo & bijoux personnalisés</title>
-  <meta name="description" content="Atelier de personnalisation : gravure laser sur bois, verre et ardoise, sérigraphie textile, impression photo et bijoux gravés. Cadeaux uniques faits main.">
+  <meta name="description" content="Mon Truc en Bois, boutique de personnalisation à Auchel (62) : gravure texte et photo sur bois, sérigraphie, mugs, verres, plaques de naissance, bijoux gravés. Cadeaux uniques.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -14,8 +14,9 @@
   <main>
     <section class="heros">
       <div class="conteneur">
-        <h1>Des créations uniques, personnalisées rien que pour vous</h1>
-        <p>Gravure, sérigraphie, photo et bijoux : nous donnons vie à vos idées, vos mots et vos souvenirs. Tout est réalisé à la main dans notre atelier.</p>
+        <span class="avis">⭐ <span data-site="avis"></span></span>
+        <h1>Offrez un cadeau unique, qui restera gravé dans les mémoires</h1>
+        <p>Gravure texte et photo, sérigraphie, bijoux : nous personnalisons vos idées cadeaux dans notre boutique d'Auchel, pour toutes les occasions.</p>
         <div class="heros-actions">
           <a class="btn btn-clair" href="boutique.html">Découvrir la boutique</a>
           <a class="btn btn-contour" style="color:#fff;box-shadow:inset 0 0 0 2px #fff" href="contact.html">Demander un devis</a>
@@ -39,7 +40,7 @@
           <div class="etape"><h3>Choisissez</h3><p>Sélectionnez un produit dans la boutique ou décrivez-nous votre projet sur mesure.</p></div>
           <div class="etape"><h3>Personnalisez</h3><p>Ajoutez votre texte, choisissez la police et envoyez votre photo. L'aperçu s'affiche en direct.</p></div>
           <div class="etape"><h3>Validez</h3><p>Nous vous recontactons pour confirmer le rendu (avec maquette si besoin) et le paiement.</p></div>
-          <div class="etape"><h3>Recevez</h3><p>Votre création est fabriquée avec soin puis expédiée, ou à retirer à l'atelier.</p></div>
+          <div class="etape"><h3>Recevez</h3><p>Votre création est fabriquée avec soin puis expédiée, ou à retirer à la boutique d'Auchel.</p></div>
         </div>
       </div>
     </section>
@@ -50,6 +51,19 @@
         <p class="sous-titre">Quelques idées de cadeaux qui font toujours plaisir.</p>
         <div class="grille" id="vedettes"></div>
         <p style="margin-top:2rem"><a class="btn" href="boutique.html">Voir tous les produits</a></p>
+      </div>
+    </section>
+
+    <section class="section section-claire">
+      <div class="conteneur deux-colonnes" style="align-items:center">
+        <img class="photo-ronde" src="img/boutique-auchel.jpg" alt="La boutique Mon Truc en Bois à Auchel" loading="lazy">
+        <div>
+          <h2>Venez nous voir à la boutique</h2>
+          <p>📍 <strong data-site="adresse"></strong></p>
+          <p data-site="horaires"></p>
+          <p>📞 <a id="tel-accueil"></a></p>
+          <a class="btn" href="contact.html">Plan d'accès & contact</a>
+        </div>
       </div>
     </section>
 
@@ -78,12 +92,16 @@
         </a>`)
       .join("");
 
-    const vedettes = ["planche-decouper", "photo-bois", "pendentif-grave", "tshirt-perso"].map(trouverProduit).filter(Boolean);
+    const vedettes = ["planche-aperitif", "photo-gravee-bois", "plaque-naissance-bois", "mug-personnalise", "plaque-voiture", "bracelet-jonc", "verres-graves", "tableau-scrabble"].map(trouverProduit).filter(Boolean);
+    const tel = document.getElementById("tel-accueil");
+    tel.href = "tel:" + SITE.telephone.replace(/\s/g, "");
+    tel.textContent = SITE.telephone;
+
     document.getElementById("vedettes").innerHTML = vedettes
       .map((p) => `
         <a class="carte" href="produit.html?id=${p.id}" style="text-align:left">
           <div class="carte-visuel">${visuel(p)}</div>
-          <div class="carte-corps"><h3>${echapper(p.nom)}</h3><span class="prix">dès ${euros(p.prix)}</span></div>
+          <div class="carte-corps"><h3>${echapper(p.nom)}</h3><span class="prix">${p.variantes?.choix.some((c) => c.prix) ? "dès " : ""}${euros(p.prix)}</span></div>
         </a>`)
       .join("");
   </script>

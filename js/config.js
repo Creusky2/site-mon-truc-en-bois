@@ -3,12 +3,22 @@
 // ============================================================
 window.SITE = {
   nom: "Mon Truc en Bois",
-  slogan: "Gravure, sérigraphie, photo & bijoux personnalisés",
-  telephone: "06 00 00 00 00",
+  slogan: "Personnalisation, sérigraphie, gravure texte & photo, bijoux",
+  telephone: "07 83 39 40 28",
+  // ⚠️ À REMPLACER par la vraie adresse email (elle reçoit les commandes et devis).
   email: "contact@montrucenbois.fr",
-  adresse: "Adresse de l'atelier, 00000 Ville",
-  horaires: "Du mardi au samedi, 10h – 18h (sur rendez-vous)",
+  adresse: "3 rue Salengro, 62260 Auchel",
+  horaires: [
+    "Lundi : fermé",
+    "Mardi : 9h – 11h30 / 13h30 – 18h",
+    "Mercredi : fermé",
+    "Jeudi : 9h – 11h30 / 13h30 – 19h",
+    "Vendredi : 9h – 11h30 / 13h30 – 19h",
+    "Samedi : 10h – 19h",
+    "Dimanche : 10h – 13h",
+  ],
   facebook: "https://www.facebook.com/profile.php?id=100094575102607",
+  avis: "Recommandé à 100 % (16 avis Facebook)",
 
   // Adresse d'envoi des commandes.
   // Laisser vide pour envoyer les commandes par email (mailto).
