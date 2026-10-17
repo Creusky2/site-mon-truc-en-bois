@@ -6,14 +6,22 @@ Site de la boutique de personnalisation **Mon Truc en Bois** — 3 rue Salengro,
 
 ⚠️ Avant d'ouvrir les commandes : vérifier les **prix** (ce sont des exemples) et l'**email**, depuis la page admin.
 
-Site **statique** (HTML / CSS / JavaScript) : aucun serveur ni base de données à gérer, hébergement gratuit possible (GitHub Pages, Netlify…).
+Site **statique** (HTML / CSS / JavaScript) hébergé gratuitement sur GitHub Pages, avec un serveur gratuit facultatif
+(Supabase + Stripe + Resend) pour les commandes en ligne, le paiement par carte, le fichier clients, la caisse
+et le marketing. Installation et utilisation : [`docs/mise-en-ligne.md`](docs/mise-en-ligne.md).
 
 ## Gérer le site : la page admin
 
 Ouvrir **`/admin.html`** (ex. `https://creusky2.github.io/site-mon-truc-en-bois/admin.html`).
 
-- **Tableau de bord** : chiffres clés, liste de vérification avant d'ouvrir les commandes, raccourcis,
-  sauvegarde / restauration du contenu, historique des publications.
+- **Tableau de bord** : chiffre d'affaires, panier moyen, 12 derniers mois, répartition par canal, demandes à traiter,
+  liste de vérification avant d'ouvrir les commandes, raccourcis, sauvegarde / restauration, historique des publications.
+- **Commandes** : commandes du site et des autres canaux, statuts avec email au client, liens de paiement, photos,
+  bons de commande, factures, export.
+- **Caisse** : ventes en boutique, par téléphone ou sur un salon (remise, moyen de paiement, facture).
+- **Clients** : fichier clients (historique, notes, étiquettes, segments, consentement, export).
+- **Demandes** : devis et messages du site, réponse par email, transformation en commande.
+- **Marketing** : codes promo, emails aux abonnés.
 - **Produits** : prix modifiables directement dans la liste, coup de cœur et visibilité en un clic ;
   fiche complète : plusieurs photos, prix barré, badge (Nouveau, Promo…), délai de fabrication,
   consigne de personnalisation, disponibilité, occasions, choix avec supplément.
@@ -24,13 +32,15 @@ Ouvrir **`/admin.html`** (ex. `https://creusky2.github.io/site-mon-truc-en-bois/
 - **Infos boutique** : coordonnées, WhatsApp, horaires, livraison, emballage cadeau, mode « site en construction ».
 - **Textes & annonce** : textes d'accueil et de présentation, bandeau d'annonce avec lien.
 - **Galerie** : photos des réalisations.
+- **Installation** : assistant d'installation du serveur, état des services, changement des clés.
 
 **Prévisualiser** affiche le site avec les modifications non publiées (sur cet appareil uniquement).
 **Publier les modifications** enregistre `data/donnees.js` sur GitHub ; le site est à jour quelques minutes plus tard.
 Les modifications en cours sont gardées automatiquement sur l'appareil en cas de fermeture de la page.
 
 **Connexion** : la page demande une clé d'accès GitHub (*fine-grained personal access token*), limitée à ce dépôt
-avec la permission **Contents : Read and write**. La marche à suivre est rappelée sur l'écran de connexion.
+avec les permissions **Contents**, **Secrets** et **Variables** en *Read and write* et **Actions** en *Read-only*.
+Les onglets Commandes, Caisse, Clients, Demandes et Marketing demandent en plus le compte administrateur du serveur. La marche à suivre est rappelée sur l'écran de connexion.
 La clé reste enregistrée uniquement dans le navigateur de l'appareil utilisé.
 
 ## Pages
@@ -41,8 +51,10 @@ La clé reste enregistrée uniquement dans le navigateur de l'appareil utilisé.
 | `boutique.html` | Catalogue : catégories, occasion, budget, recherche, tri |
 | `idees-cadeaux.html` | Idées cadeaux par occasion et par budget |
 | `produit.html?id=…` | Fiche produit : galerie, choix, texte, police, photo, **aperçu en direct**, délai, favori, partage |
+| `p/<id>.html` | Même fiche, générée pour Google et le partage (titre, description, photo, prix, données Produit) |
 | `favoris.html` | Produits mis de côté par le client |
-| `panier.html` | Panier, livraison ou retrait, options cadeau, commande par email ou WhatsApp |
+| `panier.html` | Panier, livraison ou retrait, options cadeau, code promo, paiement, commande par email ou WhatsApp |
+| `newsletter.html` | Inscription aux nouveautés, désinscription |
 | `atelier.html` | Qui sommes-nous ? (présentation, savoir-faire, galerie) |
 | `avis.html` | Avis clients Google et Facebook, boutons « Laisser un avis » |
 | `faq.html` | Questions fréquentes |
@@ -57,7 +69,10 @@ Le benchmark qui a guidé ces choix est dans [`docs/benchmark.md`](docs/benchmar
 
 - `data/donnees.js` : tout le contenu (infos, textes, catégories, produits, galerie) — modifié par l'admin
 - `css/style.css` : design du site (couleurs et polices en haut du fichier) · `css/admin.css` : page admin
-- `js/main.js` : en-tête, pied de page, panier · `js/admin.js` : page admin
+- `js/main.js` : en-tête, pied de page, panier, newsletter, mesure d'audience
+- `js/admin.js` (contenu), `admin-commandes.js`, `admin-crm.js` (caisse, clients, demandes, marketing, statistiques),
+  `admin-installation.js` (assistant), `admin-serveur.js` (connexion au serveur)
+- `outils/generer-pages.mjs` : pages produits, adresses de référence et plan du site (lancé automatiquement)
 - `img/` : photos
 
 ## Fonctionnement des commandes
@@ -72,18 +87,22 @@ Le benchmark qui a guidé ces choix est dans [`docs/benchmark.md`](docs/benchmar
    lien de paiement, paiement en boutique, photos, notes internes, bon de commande, facture numérotée, export tableur.
 4. Le client suit sa commande sur `suivi.html` (lien reçu par email, ou numéro + email).
 
-**Sans activation** : la commande part par email (Formspree si configuré, sinon messagerie du client) ou WhatsApp.
+Le panier affiche les montants calculés par le serveur et accepte les **codes promo**. Les devis du formulaire de contact
+arrivent dans l'onglet **Demandes**. Chaque commande, devis ou inscription alimente le **fichier clients**.
 
-Tant que le **mode « site en construction »** est actif, l'envoi des commandes et devis est bloqué (côté site et côté serveur).
+**Sans serveur** : la commande part par email (Formspree si configuré, sinon messagerie du client) ou WhatsApp.
+
+Tant que le **mode « site en construction »** est actif, les commandes sont bloquées (côté site et côté serveur) ;
+les demandes de devis restent possibles si le serveur est installé.
 
 ### Partie serveur
 
 | Dossier | Contenu |
 |---|---|
-| `supabase/migrations/` | Tables, sécurité (RLS), numéros de commande et de facture, stockage des photos |
-| `supabase/functions/` | Fonctions Deno : `commande`, `stripe-webhook`, `suivi`, `admin` |
+| `supabase/migrations/` | Tables (commandes, clients, demandes, codes promo, campagnes), sécurité (RLS), numéros de commande et de facture, statistiques, stockage des photos |
+| `supabase/functions/` | Fonctions Deno : `commande`, `stripe-webhook`, `suivi`, `contact`, `admin` |
 | `supabase/tests/` | Tests des fonctions (`deno test --allow-env --allow-read supabase/tests/`) |
-| `.github/workflows/` | Déploiement des fonctions sur Supabase, maintien du projet actif |
+| `.github/workflows/` | Installation et mise à jour du serveur, pages produits pour Google, maintien du projet actif |
 
 ## Voir le site en local
 
