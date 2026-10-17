@@ -12,6 +12,8 @@
   };
   const PAIEMENTS = { en_attente: "À payer", paye: "Payée", rembourse: "Remboursée" };
   const MODES = { en_ligne: "En ligne", apres_validation: "Après validation", boutique: "En boutique" };
+  const CANAUX = { boutique: "Vente en boutique", telephone: "Par téléphone", salon: "Salon / marché" };
+  const MOYENS = { carte: "carte bancaire", especes: "espèces", cheque: "chèque", virement: "virement", paypal: "PayPal", autre: "autre moyen" };
   const FILTRES = {
     a_traiter: ["À traiter", (c) => ["nouvelle", "confirmee", "en_fabrication"].includes(c.statut)],
     pretes: ["Prêtes / expédiées", (c) => ["prete", "expediee"].includes(c.statut)],
@@ -73,6 +75,7 @@
         <div class="bloc-tete">
           <h2>Commandes</h2>
           <div class="raccourcis">
+            <button class="btn" data-aller="caisse">+ Nouvelle vente</button>
             <button class="btn btn-ligne" data-cmd="actualiser">Actualiser</button>
             <button class="btn btn-ligne" data-cmd="export">Exporter (tableur)</button>
             <button class="btn btn-ligne" data-cmd="deconnexion">Se déconnecter</button>
@@ -91,7 +94,7 @@
                 <strong>${e(c.numero)} · ${e(c.client_nom)}</strong>
                 <span>${date(c.cree_le, true)} · ${c.lignes.length} article${c.lignes.length > 1 ? "s" : ""} · ${c.mode_reception === "retrait" ? "Retrait" : "Livraison"}${c.cadeau?.date ? ` · pour le ${new Date(c.cadeau.date).toLocaleDateString("fr-FR")}` : ""}</span>
               </span>
-              <span class="pastilles"><span class="pastille statut-${c.statut}">${STATUTS[c.statut]}</span><span class="pastille paiement-${c.paiement_statut}">${PAIEMENTS[c.paiement_statut]}</span></span>
+              <span class="pastilles">${CANAUX[c.canal] ? `<span class="pastille">${CANAUX[c.canal]}</span>` : ""}<span class="pastille statut-${c.statut}">${STATUTS[c.statut]}</span><span class="pastille paiement-${c.paiement_statut}">${PAIEMENTS[c.paiement_statut]}</span></span>
               <strong class="prix">${ctx.euros(c.total)}</strong>
             </button>`
             )
@@ -111,12 +114,12 @@
           <h2 style="font-size:1.35rem">${e(c.numero)}</h2>
           <span class="pastilles"><span class="pastille statut-${c.statut}">${STATUTS[c.statut]}</span><span class="pastille paiement-${c.paiement_statut}">${PAIEMENTS[c.paiement_statut]}</span></span>
         </div>
-        <p class="aide">Reçue le ${date(c.cree_le, true)} · ${MODES[c.paiement_mode]}${c.facture_numero ? ` · facture ${e(c.facture_numero)}` : ""}</p>
+        <p class="aide">${CANAUX[c.canal] ? `${CANAUX[c.canal]} le` : "Reçue le"} ${date(c.cree_le, true)} · ${MODES[c.paiement_mode]}${c.paiement_moyen ? ` (${MOYENS[c.paiement_moyen] || e(c.paiement_moyen)})` : ""}${c.code_promo ? ` · code ${e(c.code_promo)}` : ""}${c.facture_numero ? ` · facture ${e(c.facture_numero)}` : ""}</p>
 
         <div class="grille-champs">
           <div class="pile" style="gap:.3rem">
             <strong>${e(c.client_nom)}</strong>
-            <a href="mailto:${e(c.client_email)}?subject=${encodeURIComponent("Votre commande " + c.numero)}">${e(c.client_email)}</a>
+            ${c.client_email.endsWith(".invalid") ? `<span class="aide">Pas d'email</span>` : `<a href="mailto:${e(c.client_email)}?subject=${encodeURIComponent("Votre commande " + c.numero)}">${e(c.client_email)}</a>`}
             ${c.client_tel ? `<span><a href="tel:${e(tel)}">${e(c.client_tel)}</a>${wa ? ` · <a href="${e(wa)}" target="_blank" rel="noopener">WhatsApp</a>` : ""}</span>` : ""}
           </div>
           <div class="pile" style="gap:.3rem">
@@ -164,7 +167,7 @@
           <h3>Paiement : ${PAIEMENTS[c.paiement_statut]}${c.paye_le ? ` le ${date(c.paye_le)}` : ""}</h3>
           <div class="raccourcis">
             ${c.paiement_statut !== "paye" ? `<button type="button" class="btn btn-ligne" data-action-cmd="lien">Envoyer un lien de paiement par carte</button>
-            <button type="button" class="btn btn-ligne" data-action-cmd="paye">Marquer comme payée (espèces, virement…)</button>` : ""}
+            <span class="raccourcis"><select id="cmd-moyen" aria-label="Moyen de paiement" style="width:auto">${Object.entries(MOYENS).filter(([k]) => k !== "paypal").map(([k, v]) => `<option value="${k}">${v[0].toUpperCase() + v.slice(1)}</option>`).join("")}</select><button type="button" class="btn btn-ligne" data-action-cmd="paye">Marquer comme payée</button></span>` : ""}
             ${c.paiement_statut === "paye" ? `<button type="button" class="btn btn-ligne" data-action-cmd="rembourse">Marquer comme remboursée</button>` : ""}
           </div>
           <div id="cmd-lien"></div>
@@ -238,7 +241,7 @@
         if (!confirm(a === "paye" ? "Confirmer que cette commande a été réglée ?" : "Confirmer le remboursement de cette commande ?")) return;
         const { data, error } = await client
           .from("commandes")
-          .update(a === "paye" ? { paiement_statut: "paye", paye_le: new Date().toISOString() } : { paiement_statut: "rembourse" })
+          .update(a === "paye" ? { paiement_statut: "paye", paye_le: new Date().toISOString(), paiement_moyen: f.querySelector("#cmd-moyen")?.value || "" } : { paiement_statut: "rembourse" })
           .eq("id", c.id)
           .select()
           .single();
@@ -266,12 +269,13 @@
         <div><img src="${new URL("img/logo-email.png", location.href).href}" alt="" width="90"><br><strong>${e(S.nom)}</strong><br>${e(S.adresse)}<br>${e(S.telephone)} · ${e(S.email)}${S.siret ? `<br>SIRET : ${e(S.siret)}` : ""}</div>
         <div style="text-align:right"><h1>${facture ? "Facture" : "Bon de commande"}</h1><strong>${facture ? e(c.facture_numero) : e(c.numero)}</strong><br>${facture ? `Date : ${date(c.paye_le)}<br>Commande ${e(c.numero)}` : `Date : ${date(c.cree_le)}`}</div>
       </div>
-      <p style="margin-top:24px"><strong>Client :</strong><br>${e(c.client_nom)}<br>${e(c.client_email)} · ${e(c.client_tel)}${c.adresse ? `<br><span style="white-space:pre-line">${e(c.adresse)}</span>` : "<br>Retrait à la boutique"}</p>
+      <p style="margin-top:24px"><strong>Client :</strong><br>${e(c.client_nom)}<br>${[c.client_email.endsWith(".invalid") ? "" : c.client_email, c.client_tel].filter(Boolean).map(e).join(" · ")}${c.adresse ? `<br><span style="white-space:pre-line">${e(c.adresse)}</span>` : "<br>Retrait à la boutique"}</p>
       <table><thead><tr><th>Désignation</th><th class="n">Qté</th><th class="n">Prix unitaire</th><th class="n">Total</th></tr></thead><tbody>${lignes}
         ${Number(c.port) ? `<tr><td>Livraison</td><td class="n">1</td><td class="n">${ctx.euros(c.port)}</td><td class="n">${ctx.euros(c.port)}</td></tr>` : ""}
         ${Number(c.emballage) ? `<tr><td>Emballage cadeau</td><td class="n">1</td><td class="n">${ctx.euros(c.emballage)}</td><td class="n">${ctx.euros(c.emballage)}</td></tr>` : ""}
+        ${Number(c.remise) ? `<tr><td>Remise${c.code_promo ? ` (code ${e(c.code_promo)})` : ""}</td><td class="n"></td><td class="n"></td><td class="n">−${ctx.euros(c.remise)}</td></tr>` : ""}
       </tbody><tfoot><tr class="total"><td colspan="3" class="n">Total${S.mentionTva ? "" : " TTC"}</td><td class="n">${ctx.euros(c.total)}</td></tr></tfoot></table>
-      ${facture ? `<p>Réglée le ${date(c.paye_le)}${c.paiement_mode === "en_ligne" || c.stripe_session_id ? " par carte bancaire (paiement en ligne)" : ""}.</p>` : `<p>${c.cadeau?.date ? `Date souhaitée : ${new Date(c.cadeau.date).toLocaleDateString("fr-FR")}<br>` : ""}${c.cadeau?.message ? `Message carte : « ${e(c.cadeau.message)} »<br>` : ""}${c.message ? `Message client : ${e(c.message)}` : ""}</p>`}
+      ${facture ? `<p>Réglée le ${date(c.paye_le)}${c.paiement_moyen ? ` par ${MOYENS[c.paiement_moyen] || e(c.paiement_moyen)}` : c.paiement_mode === "en_ligne" || c.stripe_session_id ? " par carte bancaire (paiement en ligne)" : ""}.</p>` : `<p>${c.cadeau?.date ? `Date souhaitée : ${new Date(c.cadeau.date).toLocaleDateString("fr-FR")}<br>` : ""}${c.cadeau?.message ? `Message carte : « ${e(c.cadeau.message)} »<br>` : ""}${c.message ? `Message client : ${e(c.message)}` : ""}</p>`}
       <p class="mention">${e(S.mentionTva || "")}</p>
       <button onclick="print()">Imprimer</button>
       <script>setTimeout(() => print(), 400)<\/script></body></html>`);
@@ -344,5 +348,12 @@
     return { connecte: true, nouvelles: data.filter((c) => c.statut === "nouvelle").length, aTraiter: data.length };
   }
 
-  window.AdminCommandes = { monter, resume };
+  window.AdminCommandes = {
+    monter,
+    resume,
+    imprimer: (c, type, contexte) => {
+      ctx ||= contexte;
+      imprimer(c, type);
+    },
+  };
 })();

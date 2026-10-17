@@ -26,6 +26,33 @@ export async function envoyerEmail({ a, sujet, html, repondreA }: { a: string; s
   return { envoye: true };
 }
 
+/** Envoi groupé (newsletter) : 100 emails maximum par appel Resend. */
+export async function envoyerLot(messages: { a: string; sujet: string; html: string; desinscription?: string }[], repondreA?: string) {
+  const cle = env("RESEND_API_KEY");
+  if (!cle) return { envoyes: 0, raison: "non configuré" };
+  let envoyes = 0;
+  for (let i = 0; i < messages.length; i += 100) {
+    const r = await fetch("https://api.resend.com/emails/batch", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${cle}`, "Content-Type": "application/json" },
+      body: JSON.stringify(messages.slice(i, i + 100).map((m) => ({
+        from: env("EMAIL_EXPEDITEUR", "Mon Truc en Bois <onboarding@resend.dev>"),
+        to: [m.a],
+        subject: m.sujet,
+        html: m.html,
+        ...(repondreA ? { reply_to: repondreA } : {}),
+        ...(m.desinscription ? { headers: { "List-Unsubscribe": `<${m.desinscription}>` } } : {}),
+      }))),
+    });
+    if (!r.ok) {
+      console.error("Envoi groupé interrompu", r.status, await r.text());
+      return { envoyes, raison: `Resend ${r.status}` };
+    }
+    envoyes += Math.min(100, messages.length - i);
+  }
+  return { envoyes };
+}
+
 // ---------- Mise en page commune ----------
 const site = () => env("SITE_URL").replace(/\/$/, "");
 function gabarit(titre: string, corps: string) {
@@ -182,5 +209,21 @@ export function emailLibre(nom: string, sujet: string, message: string) {
     html: gabarit(sujet, `<p>Bonjour ${echapper(String(nom || "").split(" ")[0])},</p>
       <p style="white-space:pre-line">${echapper(message)}</p>
       <p>À bientôt,<br>L'équipe Mon Truc en Bois</p>`),
+  };
+}
+
+// ---------- Newsletter / promotion envoyée aux clients abonnés ----------
+export const lienDesinscription = (email: string) => `${site()}/newsletter.html?desinscription=1&email=${encodeURIComponent(email)}`;
+export function emailCampagne(c: { nom?: string; email: string; sujet: string; message: string; lien?: string; texte_lien?: string }) {
+  return {
+    a: c.email,
+    sujet: c.sujet,
+    desinscription: lienDesinscription(c.email),
+    html: gabarit(c.sujet, `${c.nom ? `<p>Bonjour ${echapper(String(c.nom).split(" ")[0])},</p>` : ""}
+      <p style="white-space:pre-line">${echapper(c.message)}</p>
+      ${c.lien ? bouton(c.lien, c.texte_lien || "Découvrir") : ""}
+      <p>À bientôt,<br>L'équipe Mon Truc en Bois</p>
+      <p style="font-size:12px;color:#5f5a52;margin-top:24px">Vous recevez cet email car vous êtes inscrit(e) aux nouveautés de Mon Truc en Bois.
+      <a href="${lienDesinscription(c.email)}" style="color:#5f5a52">Se désinscrire</a></p>`),
   };
 }

@@ -68,6 +68,16 @@ create table if not exists public.codes_promo (
   actif boolean not null default true
 );
 
+-- ---------- Emails envoyés aux abonnés (historique) ----------
+create table if not exists public.campagnes (
+  id uuid primary key default gen_random_uuid(),
+  cree_le timestamptz not null default now(),
+  sujet text not null,
+  message text not null default '',
+  lien text not null default '',
+  destinataires integer not null default 0
+);
+
 -- ---------- Mises à jour automatiques ----------
 create or replace function public.maj_le_automatique()
 returns trigger language plpgsql as $$
@@ -83,16 +93,21 @@ create trigger clients_maj_le before update on public.clients for each row execu
 alter table public.clients enable row level security;
 alter table public.demandes enable row level security;
 alter table public.codes_promo enable row level security;
+alter table public.campagnes enable row level security;
 
 drop policy if exists "clients : admin" on public.clients;
 create policy "clients : admin" on public.clients for all to authenticated using (public.est_admin()) with check (public.est_admin());
 drop policy if exists "demandes : admin" on public.demandes;
 create policy "demandes : admin" on public.demandes for all to authenticated using (public.est_admin()) with check (public.est_admin());
+drop policy if exists "campagnes : admin lecture" on public.campagnes;
+create policy "campagnes : admin lecture" on public.campagnes for select to authenticated using (public.est_admin());
 drop policy if exists "codes promo : admin" on public.codes_promo;
 create policy "codes promo : admin" on public.codes_promo for all to authenticated using (public.est_admin()) with check (public.est_admin());
 
 grant select, insert, update, delete on public.clients, public.demandes, public.codes_promo to authenticated;
 revoke all on public.clients, public.demandes, public.codes_promo from anon;
+grant select on public.campagnes to authenticated;
+revoke all on public.campagnes from anon;
 
 -- ---------- Statistiques (respectent les droits de la personne connectée) ----------
 create or replace view public.stats_ventes with (security_invoker = true) as
@@ -112,10 +127,10 @@ revoke all on public.stats_ventes from anon;
 insert into public.clients (nom, email, tel, adresse, source, cree_le)
 select distinct on (lower(client_email)) client_nom, lower(client_email), client_tel, adresse, 'site', cree_le
 from public.commandes
-where client_email <> ''
+where client_email <> '' and client_email not like '%.invalid'
 order by lower(client_email), cree_le desc
 on conflict (email) do nothing;
 
 update public.commandes c set client_id = cl.id
 from public.clients cl
-where c.client_id is null and cl.email = lower(c.client_email);
+where c.client_id is null and c.client_email not like '%.invalid' and cl.email = lower(c.client_email);

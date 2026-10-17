@@ -312,6 +312,10 @@
     accueil: () => vueAccueil(),
     commandes: () => `<div id="zone-commandes"></div>`,
     installation: () => `<div id="zone-installation"></div>`,
+    caisse: () => `<div id="zone-crm"></div>`,
+    clients: () => `<div id="zone-crm"></div>`,
+    demandes: () => `<div id="zone-crm"></div>`,
+    marketing: () => `<div id="zone-crm"></div>`,
     produits: () => vueProduits(),
     categories: () => vueCategories() + vueOccasions(),
     avis: () => vueAvis(),
@@ -329,7 +333,11 @@
     $("#contenu").innerHTML = VUES[onglet]();
     if (onglet === "commandes") window.AdminCommandes?.monter($("#zone-commandes"), contexte());
     if (onglet === "installation") window.AdminInstallation?.monter($("#zone-installation"), contexte());
-    if (onglet === "accueil") resumeCommandes();
+    if (["caisse", "clients", "demandes", "marketing"].includes(onglet)) window.AdminCRM?.monter(onglet, $("#zone-crm"), contexte());
+    if (onglet === "accueil") {
+      resumeCommandes();
+      window.AdminCRM?.statistiques($("#stats-ventes"), contexte()).catch(() => {});
+    }
   }
   // Encadré « commandes à traiter » du tableau de bord
   async function resumeCommandes() {
@@ -441,6 +449,7 @@
         <div class="chiffre"><strong>${D.avis.length}</strong><span>avis clients affichés</span></div>
       </div>
 
+      <section class="bloc" id="stats-ventes" hidden></section>
       <section class="bloc" id="resume-commandes" hidden></section>
 
       <section class="bloc">
@@ -464,7 +473,8 @@
       <section class="bloc">
         <div class="bloc-tete"><h2>Raccourcis</h2></div>
         <div class="raccourcis">
-          <button class="btn" data-action="nouveau-produit">+ Ajouter un produit</button>
+          ${D.site.commandes?.supabaseUrl ? `<button class="btn" data-aller="caisse">+ Nouvelle vente (caisse)</button><button class="btn btn-ligne" data-aller="marketing">Créer un code promo</button>` : ""}
+          <button class="btn ${D.site.commandes?.supabaseUrl ? "btn-ligne" : ""}" data-action="nouveau-produit">+ Ajouter un produit</button>
           <button class="btn btn-ligne" data-aller="textes">Écrire une annonce (fermeture, salon…)</button>
           <a class="btn btn-ligne" href="index.html" target="_blank" rel="noopener">Voir le site en ligne</a>
         </div>

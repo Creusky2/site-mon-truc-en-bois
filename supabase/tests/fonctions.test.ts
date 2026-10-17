@@ -73,7 +73,7 @@ globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}
     return reponse(trouvees);
   }
   if (url.href.startsWith(`${SUPA}/rest/v1/admins`)) return reponse(url.searchParams.get("user_id") === `eq.${ADMIN}` ? [{ user_id: ADMIN }] : []);
-  const t = url.pathname.match(/^\/rest\/v1\/(clients|demandes|codes_promo)$/)?.[1];
+  const t = url.pathname.match(/^\/rest\/v1\/(clients|demandes|codes_promo|campagnes)$/)?.[1];
   if (t) {
     tables[t] ??= [];
     if (methode === "POST") {
@@ -95,6 +95,7 @@ globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}
   if (url.href === "https://api.stripe.com/v1/checkout/sessions") return reponse({ id: "cs_test_1", url: "https://checkout.stripe.test/cs_test_1" });
   if (url.href === "https://api.stripe.com/v1/coupons") return reponse({ id: "coupon_1" });
   if (url.href === "https://api.resend.com/emails") return reponse({ id: "email_1" });
+  if (url.href === "https://api.resend.com/emails/batch") return reponse({ data: corps.map((_: unknown, i: number) => ({ id: `lot_${i}` })) });
   return reponse({ erreur: `non simulé : ${url.href}` }, 500);
 };
 function reinitialiser() {
@@ -361,4 +362,24 @@ Deno.test("admin : état du serveur, vente en boutique payée, message libre au 
   const m = await (await post(admin, { action: "email_client", email: "marie@test.fr", nom: "Marie", sujet: "Votre maquette", message: "Voici la maquette." }, auth)).json();
   assertEquals(m.email_envoye, true);
   assertEquals(emails()[0].subject, "Votre maquette");
+});
+
+Deno.test("admin : email aux abonnés (essai, puis envoi avec lien de désinscription personnel)", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  const corps = { action: "campagne", sujet: "Nouveautés de Noël", message: "Découvrez nos idées cadeaux.", lien: "https://boutique.test/idees-cadeaux.html", texte_lien: "Voir les idées" };
+  assertEquals((await post(admin, corps, auth)).status, 400); // aucun abonné
+  tables.clients.push({ id: "c1", nom: "Marie Durand", email: "marie@test.fr", consentement_marketing: true }, { id: "c2", nom: "Paul", email: "paul@test.fr", consentement_marketing: false });
+  const essai = await (await post(admin, { ...corps, essai: true }, auth)).json();
+  assertEquals(essai.a, "boutique@test.fr");
+  assertEquals(emails()[0].to, ["boutique@test.fr"]);
+  const r = await (await post(admin, corps, auth)).json();
+  assertEquals(r.envoyes, 1);
+  const lot = appels.find((a) => a.url.endsWith("/emails/batch"))!.corps;
+  assertEquals(lot.length, 1);
+  assertEquals(lot[0].to, ["marie@test.fr"]);
+  assertMatch(lot[0].html, /Bonjour Marie/);
+  assertMatch(lot[0].html, /newsletter\.html\?desinscription=1&email=marie%40test\.fr/);
+  assertMatch(lot[0].headers["List-Unsubscribe"], /desinscription/);
+  assertEquals(tables.campagnes[0].destinataires, 1);
 });

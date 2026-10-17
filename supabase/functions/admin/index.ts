@@ -5,12 +5,16 @@
 //   photos         : liens temporaires pour télécharger les photos envoyées par le client
 //   creer_commande : vente en boutique, commande par téléphone ou sur un salon
 //   email_client   : message libre à un client (CRM)
+//   campagne       : email (nouveautés, promotion) aux clients abonnés, ou essai à la boutique
 import { catalogue, creerPaiementStripe, db, enregistrerClient, env, ErreurClient, json, lireJson, servir, urlLecturePhoto } from "../_shared/outils.ts";
-import { emailLibre, emailLienPaiement, emailStatut, envoyerEmail } from "../_shared/emails.ts";
+import { emailCampagne, emailLibre, emailLienPaiement, emailStatut, envoyerEmail, envoyerLot } from "../_shared/emails.ts";
 
 type LigneSaisie = { id?: string; nom?: string; prix_unitaire?: number; quantite?: number; texte?: string; remarque?: string; variante?: string };
 type Demande = {
-  action: "etat" | "lien_paiement" | "notifier" | "photos" | "creer_commande" | "email_client";
+  action: "etat" | "lien_paiement" | "notifier" | "photos" | "creer_commande" | "email_client" | "campagne";
+  lien?: string;
+  texte_lien?: string;
+  essai?: boolean;
   commande_id?: string;
   envoyer?: boolean;
   message?: string;
@@ -126,6 +130,26 @@ export const traiter = servir(async (req) => {
     const r = await envoyerEmail({ a: email, ...emailLibre(texte(d.nom, 120), texte(d.sujet, 160), texte(d.message, 10_000)), repondreA: env("BOUTIQUE_EMAIL") || undefined });
     if (!r.envoye) throw new ErreurClient(`Email non envoyé (${r.raison}).`);
     return json(req, { email_envoye: true });
+  }
+
+  if (d.action === "campagne") {
+    const sujet = texte(d.sujet, 160);
+    const message = texte(d.message, 10_000);
+    if (sujet.length < 2 || message.length < 2) throw new ErreurClient("Indiquez un sujet et un message.");
+    const lien = /^https:\/\/\S+$/.test(texte(d.lien, 500)) ? texte(d.lien, 500) : "";
+    const contenu = { sujet, message, lien, texte_lien: texte(d.texte_lien, 60) };
+    const boutique = env("BOUTIQUE_EMAIL") || (await catalogue()).site?.email;
+    if (d.essai) {
+      const r = await envoyerEmail({ ...emailCampagne({ ...contenu, email: boutique, nom: "" }), a: boutique });
+      if (!r.envoye) throw new ErreurClient(`Email d'essai non envoyé (${r.raison}).`);
+      return json(req, { essai: true, a: boutique });
+    }
+    const abonnes = await db<any[]>("clients?consentement_marketing=eq.true&email=not.is.null&select=nom,email&limit=5000");
+    if (!abonnes.length) throw new ErreurClient("Aucun client abonné pour l'instant.");
+    const r = await envoyerLot(abonnes.map((c) => emailCampagne({ ...contenu, email: c.email, nom: c.nom })), boutique);
+    await db("campagnes", { method: "POST", body: JSON.stringify({ sujet, message, lien, destinataires: r.envoyes }) });
+    if (r.raison && !r.envoyes) throw new ErreurClient(`Envoi impossible (${r.raison}).`);
+    return json(req, { envoyes: r.envoyes, total: abonnes.length, raison: r.raison ?? "" });
   }
 
   if (!/^[0-9a-f-]{36}$/i.test(d.commande_id ?? "")) throw new ErreurClient("Commande invalide.");
