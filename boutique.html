@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boutique — Mon Truc en Bois</title>
+  <meta name="description" content="Boutique en ligne : objets gravés, textiles personnalisés, photos sur bois et verre, bijoux gravés.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="section">
+    <div class="conteneur">
+      <h1 class="centre">La boutique</h1>
+      <p class="sous-titre centre">Tous nos produits sont personnalisables. Vous ne trouvez pas votre bonheur ? <a href="contact.html">Demandez-nous un devis sur mesure</a>.</p>
+      <div class="filtres" id="filtres" role="group" aria-label="Filtrer par catégorie"></div>
+      <div class="grille" id="produits"></div>
+    </div>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/produits.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { echapper, euros, visuel } = MTB;
+    const params = new URLSearchParams(location.search);
+    let actif = CATEGORIES[params.get("categorie")] ? params.get("categorie") : "tout";
+
+    function afficher() {
+      const boutons = [["tout", "Tout"], ...Object.entries(CATEGORIES).map(([id, c]) => [id, `${c.icone} ${c.nom}`])];
+      document.getElementById("filtres").innerHTML = boutons
+        .map(([id, nom]) => `<button class="filtre" data-cat="${id}" aria-pressed="${id === actif}">${echapper(nom)}</button>`)
+        .join("");
+
+      const liste = PRODUITS.filter((p) => actif === "tout" || p.categorie === actif);
+      document.getElementById("produits").innerHTML = liste
+        .map((p) => `
+          <a class="carte" href="produit.html?id=${p.id}">
+            <div class="carte-visuel">${visuel(p)}</div>
+            <div class="carte-corps">
+              <h3>${echapper(p.nom)}</h3>
+              <p>${echapper(p.description)}</p>
+              <span class="prix">${p.variantes?.choix.some((c) => c.prix) ? "dès " : ""}${euros(p.prix)}</span>
+            </div>
+          </a>`)
+        .join("");
+    }
+
+    document.getElementById("filtres").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-cat]");
+      if (!b) return;
+      actif = b.dataset.cat;
+      history.replaceState(null, "", actif === "tout" ? "boutique.html" : `boutique.html?categorie=${actif}`);
+      afficher();
+    });
+    afficher();
+  </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact & devis — Mon Truc en Bois</title>
+  <meta name="description" content="Contactez l'atelier pour une demande de devis : gravure, sérigraphie, impression photo, bijoux personnalisés, commandes pour entreprises et associations.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="section">
+    <div class="conteneur">
+      <h1 class="centre">Contact & devis</h1>
+      <p class="sous-titre centre">Une question, un projet sur mesure, une commande en quantité (entreprises, associations, clubs, mariages) ? Écrivez-nous, le devis est gratuit.</p>
+      <div class="deux-colonnes">
+        <div class="encadre">
+          <h2 style="font-size:1.4rem">Nous trouver</h2>
+          <p>📍 <span data-site="adresse"></span></p>
+          <p>📞 <a id="tel"></a></p>
+          <p>✉️ <a id="mail"></a></p>
+          <p>🕒 <span data-site="horaires"></span></p>
+          <p>💬 <a id="fb" target="_blank" rel="noopener">Écrivez-nous sur Facebook / Messenger</a></p>
+        </div>
+        <form class="encadre" id="devis">
+          <h2 style="font-size:1.4rem">Demande de devis</h2>
+          <div class="champ"><label for="d-nom">Nom *</label><input type="text" id="d-nom" name="nom" required autocomplete="name"></div>
+          <div class="champ"><label for="d-email">Email *</label><input type="email" id="d-email" name="email" required autocomplete="email"></div>
+          <div class="champ"><label for="d-tel">Téléphone</label><input type="tel" id="d-tel" name="telephone" autocomplete="tel"></div>
+          <div class="champ">
+            <label for="d-type">Type de projet</label>
+            <select id="d-type" name="type">
+              <option>Gravure</option><option>Sérigraphie / textile</option><option>Photo personnalisée</option><option>Bijoux</option><option>Autre / plusieurs</option>
+            </select>
+          </div>
+          <div class="champ"><label for="d-qte">Quantité approximative</label><input type="number" id="d-qte" name="quantite" min="1" value="1"></div>
+          <div class="champ"><label for="d-msg">Votre projet *</label><textarea id="d-msg" name="message" required placeholder="Décrivez votre idée, le support, les dimensions, la date souhaitée…"></textarea></div>
+          <button class="btn" type="submit">Envoyer ma demande</button>
+          <div id="retour"></div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/produits.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const tel = document.getElementById("tel");
+    tel.href = "tel:" + SITE.telephone.replace(/\s/g, "");
+    tel.textContent = SITE.telephone;
+    const mail = document.getElementById("mail");
+    mail.href = "mailto:" + SITE.email;
+    mail.textContent = SITE.email;
+    document.getElementById("fb").href = SITE.facebook;
+
+    document.getElementById("devis").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const d = { nom: f.nom.value, email: f.email.value, telephone: f.telephone.value, type: f.type.value, quantite: f.quantite.value, message: f.message.value };
+      const corps = `Nom : ${d.nom}\nEmail : ${d.email}\nTéléphone : ${d.telephone}\nProjet : ${d.type}\nQuantité : ${d.quantite}\n\n${d.message}`;
+      let envoye = false;
+      if (SITE.formulaireCommande) {
+        try {
+          const r = await fetch(SITE.formulaireCommande, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ _subject: `Demande de devis — ${d.type}`, _replyto: d.email, ...d }),
+          });
+          envoye = r.ok;
+        } catch {}
+      }
+      if (!envoye) location.href = `mailto:${SITE.email}?subject=${encodeURIComponent("Demande de devis — " + d.type)}&body=${encodeURIComponent(corps)}`;
+      document.getElementById("retour").innerHTML = `<p class="message">${envoye ? "Merci ! Votre demande a bien été envoyée, nous revenons vers vous rapidement." : "Votre messagerie s'est ouverte avec votre demande : il ne reste qu'à cliquer sur « Envoyer »."}</p>`;
+      if (envoye) f.reset();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>L'atelier — Mon Truc en Bois</title>
+  <meta name="description" content="Découvrez l'atelier et nos savoir-faire : gravure laser, sérigraphie, impression photo et bijoux personnalisés.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main>
+    <section class="section">
+      <div class="conteneur deux-colonnes">
+        <div>
+          <h1>L'atelier</h1>
+          <p class="a-remplacer">[À personnaliser : présentez-vous ici en quelques lignes — votre parcours, comment est née l'idée de l'atelier, ce qui vous passionne.]</p>
+          <p>Chez <strong data-site="nom"></strong>, chaque pièce est unique. Nous travaillons à la main, dans notre atelier, pour transformer vos idées en objets qui ont du sens : un prénom gravé, une photo souvenir, un logo d'association, un bijou à offrir…</p>
+          <p>Particuliers, entreprises, associations, commerces : nous réalisons aussi bien une pièce unique que des séries.</p>
+          <a class="btn" href="contact.html">Parlons de votre projet</a>
+        </div>
+        <div class="carte-visuel" style="border-radius:var(--rayon);box-shadow:var(--ombre)">
+          <!-- Remplacer par une photo de l'atelier : <img src="img/atelier.jpg" alt="L'atelier"> -->
+          <div class="visuel-auto" style="--a:#5c3a1a;--b:#c89b6d"><span>🪚</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-claire">
+      <div class="conteneur">
+        <h2 class="centre">Nos savoir-faire</h2>
+        <div class="grille" style="margin-top:2rem">
+          <div class="etape" style="padding-top:28px"><h3>✒️ Gravure</h3><p>Gravure laser précise sur bois, verre, ardoise, cuir et métal. Textes, dessins, logos et même photos.</p></div>
+          <div class="etape" style="padding-top:28px"><h3>👕 Sérigraphie</h3><p>Impression sur textiles (t-shirts, sweats, tote bags) et objets, à l'unité ou en série pour vos événements.</p></div>
+          <div class="etape" style="padding-top:28px"><h3>🖼️ Photo</h3><p>Vos photos imprimées ou gravées sur bois, verre ou toile pour des souvenirs qui durent.</p></div>
+          <div class="etape" style="padding-top:28px"><h3>💍 Bijoux</h3><p>Pendentifs, bracelets, porte-clés gravés : des bijoux personnels à offrir ou à s'offrir.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bandeau">
+      <div class="conteneur">
+        <h2>Suivez nos dernières créations</h2>
+        <p>Nouveautés, coulisses de l'atelier et idées cadeaux sont publiées régulièrement sur notre page.</p>
+        <a class="btn btn-clair" id="fb" target="_blank" rel="noopener">Voir notre page Facebook</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/produits.js"></script>
+  <script src="js/main.js"></script>
+  <script>document.getElementById("fb").href = SITE.facebook;</script>
+</body>
+</html>

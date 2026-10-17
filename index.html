@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mon Truc en Bois — Gravure, sérigraphie, photo & bijoux personnalisés</title>
+  <meta name="description" content="Atelier de personnalisation : gravure laser sur bois, verre et ardoise, sérigraphie textile, impression photo et bijoux gravés. Cadeaux uniques faits main.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main>
+    <section class="heros">
+      <div class="conteneur">
+        <h1>Des créations uniques, personnalisées rien que pour vous</h1>
+        <p>Gravure, sérigraphie, photo et bijoux : nous donnons vie à vos idées, vos mots et vos souvenirs. Tout est réalisé à la main dans notre atelier.</p>
+        <div class="heros-actions">
+          <a class="btn btn-clair" href="boutique.html">Découvrir la boutique</a>
+          <a class="btn btn-contour" style="color:#fff;box-shadow:inset 0 0 0 2px #fff" href="contact.html">Demander un devis</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="conteneur centre">
+        <h2>Nos savoir-faire</h2>
+        <p class="sous-titre">Un objet, une envie, un message : choisissez votre univers.</p>
+        <div class="grille" id="categories"></div>
+      </div>
+    </section>
+
+    <section class="section section-claire">
+      <div class="conteneur">
+        <h2 class="centre">Comment ça marche ?</h2>
+        <p class="sous-titre centre">Commander une création personnalisée, c'est simple.</p>
+        <div class="etapes">
+          <div class="etape"><h3>Choisissez</h3><p>Sélectionnez un produit dans la boutique ou décrivez-nous votre projet sur mesure.</p></div>
+          <div class="etape"><h3>Personnalisez</h3><p>Ajoutez votre texte, choisissez la police et envoyez votre photo. L'aperçu s'affiche en direct.</p></div>
+          <div class="etape"><h3>Validez</h3><p>Nous vous recontactons pour confirmer le rendu (avec maquette si besoin) et le paiement.</p></div>
+          <div class="etape"><h3>Recevez</h3><p>Votre création est fabriquée avec soin puis expédiée, ou à retirer à l'atelier.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="conteneur centre">
+        <h2>Coups de cœur</h2>
+        <p class="sous-titre">Quelques idées de cadeaux qui font toujours plaisir.</p>
+        <div class="grille" id="vedettes"></div>
+        <p style="margin-top:2rem"><a class="btn" href="boutique.html">Voir tous les produits</a></p>
+      </div>
+    </section>
+
+    <section class="bandeau">
+      <div class="conteneur">
+        <h2>Un projet sur mesure ? Une commande pour votre entreprise ou association ?</h2>
+        <p>Mariages, anniversaires, cadeaux d'entreprise, textiles de club… Parlons-en !</p>
+        <a class="btn btn-clair" href="contact.html">Demander un devis gratuit</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/produits.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { echapper, euros, visuel } = MTB;
+    document.getElementById("categories").innerHTML = Object.entries(CATEGORIES)
+      .map(([id, c]) => `
+        <a class="carte categorie-carte" href="boutique.html?categorie=${id}">
+          <div class="icone">${c.icone}</div>
+          <h3>${echapper(c.nom)}</h3>
+          <p>${echapper(c.description)}</p>
+        </a>`)
+      .join("");
+
+    const vedettes = ["planche-decouper", "photo-bois", "pendentif-grave", "tshirt-perso"].map(trouverProduit).filter(Boolean);
+    document.getElementById("vedettes").innerHTML = vedettes
+      .map((p) => `
+        <a class="carte" href="produit.html?id=${p.id}" style="text-align:left">
+          <div class="carte-visuel">${visuel(p)}</div>
+          <div class="carte-corps"><h3>${echapper(p.nom)}</h3><span class="prix">dès ${euros(p.prix)}</span></div>
+        </a>`)
+      .join("");
+  </script>
+</body>
+</html>

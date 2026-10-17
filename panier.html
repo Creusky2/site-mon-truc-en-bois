@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panier — Mon Truc en Bois</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="section">
+    <div class="conteneur" id="contenu"></div>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/produits.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { echapper, euros, visuel, lirePanier, ecrirePanier } = MTB;
+    const zone = document.getElementById("contenu");
+    let modeLivraison = "livraison";
+
+    const totaux = (panier) => {
+      const sousTotal = panier.reduce((t, l) => t + l.prix * l.quantite, 0);
+      const port = modeLivraison === "retrait" || sousTotal >= SITE.livraisonOfferteDes ? 0 : SITE.livraison;
+      return { sousTotal, port, total: sousTotal + port };
+    };
+
+    function resumeTexte(panier) {
+      const t = totaux(panier);
+      const lignes = panier.map((l, i) => {
+        const d = [
+          `${i + 1}. ${l.nom} × ${l.quantite} — ${euros(l.prix * l.quantite)}`,
+          l.variante && `   ${l.variante}`,
+          l.texte && `   Texte : « ${l.texte} » (police ${l.police})`,
+          l.photoNom && `   Photo : ${l.photoNom} (à joindre / envoyer)`,
+          l.remarque && `   Précisions : ${l.remarque}`,
+        ];
+        return d.filter(Boolean).join("\n");
+      });
+      return [
+        ...lignes,
+        "",
+        `Sous-total : ${euros(t.sousTotal)}`,
+        `${modeLivraison === "retrait" ? "Retrait à l'atelier" : "Livraison"} : ${t.port ? euros(t.port) : "offerte"}`,
+        `TOTAL : ${euros(t.total)}`,
+      ].join("\n");
+    }
+
+    function afficher() {
+      const panier = lirePanier();
+      if (!panier.length) {
+        zone.innerHTML = `<div class="vide"><h1>Votre panier est vide</h1><p>Découvrez nos créations personnalisables.</p><a class="btn" href="boutique.html">Aller à la boutique</a></div>`;
+        return;
+      }
+      const t = totaux(panier);
+      const restant = SITE.livraisonOfferteDes - t.sousTotal;
+      zone.innerHTML = `
+        <h1>Mon panier</h1>
+        <div class="panier-grille">
+          <div>
+            ${panier.map((l) => {
+              const p = trouverProduit(l.id) || { categorie: "gravure", nom: l.nom, image: "" };
+              return `
+              <div class="ligne-panier" data-uid="${l.uid}">
+                <div class="vignette">${l.photo ? `<img src="${l.photo}" alt="Votre photo">` : visuel(p)}</div>
+                <div>
+                  <h3><a href="produit.html?id=${encodeURIComponent(l.id)}" style="color:inherit;text-decoration:none">${echapper(l.nom)}</a></h3>
+                  <ul>
+                    ${l.variante ? `<li>${echapper(l.variante)}</li>` : ""}
+                    ${l.texte ? `<li>Texte : « ${echapper(l.texte)} » — ${echapper(l.police)}</li>` : ""}
+                    ${l.photoNom ? `<li>Photo : ${echapper(l.photoNom)}</li>` : ""}
+                    ${l.remarque ? `<li>Précisions : ${echapper(l.remarque)}</li>` : ""}
+                  </ul>
+                </div>
+                <div class="ligne-actions">
+                  <strong>${euros(l.prix * l.quantite)}</strong>
+                  <input type="number" min="1" max="99" value="${l.quantite}" data-qte aria-label="Quantité">
+                  <button class="supprimer" data-suppr>Retirer</button>
+                </div>
+              </div>`;
+            }).join("")}
+            <p><a href="boutique.html">← Continuer mes achats</a></p>
+          </div>
+
+          <div class="recap">
+            <h2 style="font-size:1.4rem">Récapitulatif</h2>
+            <div class="champ">
+              <span class="label">Mode de réception</span>
+              <label style="font-weight:400"><input type="radio" name="mode" value="livraison" ${modeLivraison === "livraison" ? "checked" : ""}> Livraison à domicile</label>
+              <label style="font-weight:400"><input type="radio" name="mode" value="retrait" ${modeLivraison === "retrait" ? "checked" : ""}> Retrait à l'atelier (gratuit)</label>
+            </div>
+            <div class="recap-ligne"><span>Sous-total</span><span>${euros(t.sousTotal)}</span></div>
+            <div class="recap-ligne"><span>${modeLivraison === "retrait" ? "Retrait" : "Livraison"}</span><span>${t.port ? euros(t.port) : "Offert"}</span></div>
+            ${modeLivraison === "livraison" && restant > 0 ? `<p style="font-size:.9rem;color:var(--texte-doux);margin:.3rem 0">Plus que ${euros(restant)} pour la livraison offerte !</p>` : ""}
+            <div class="recap-ligne recap-total"><span>Total</span><span>${euros(t.total)}</span></div>
+
+            <form id="commande" style="margin-top:1.5rem">
+              <h3>Vos coordonnées</h3>
+              <div class="champ"><label for="c-nom">Nom et prénom *</label><input type="text" id="c-nom" name="nom" required autocomplete="name"></div>
+              <div class="champ"><label for="c-email">Email *</label><input type="email" id="c-email" name="email" required autocomplete="email"></div>
+              <div class="champ"><label for="c-tel">Téléphone *</label><input type="tel" id="c-tel" name="telephone" required autocomplete="tel"></div>
+              ${modeLivraison === "livraison" ? `<div class="champ"><label for="c-adr">Adresse de livraison *</label><textarea id="c-adr" name="adresse" required autocomplete="street-address" style="min-height:80px"></textarea></div>` : ""}
+              <div class="champ"><label for="c-msg">Message <small>(date souhaitée, occasion…)</small></label><textarea id="c-msg" name="message" style="min-height:70px"></textarea></div>
+              <div class="champ"><label style="font-weight:400"><input type="checkbox" required> J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</label></div>
+              <button class="btn" type="submit" style="width:100%">Envoyer ma commande</button>
+              <p style="font-size:.85rem;color:var(--texte-doux)">Nous vous recontactons sous 48 h pour valider la personnalisation (maquette si besoin) et vous indiquer les modalités de paiement. Aucun paiement n'est demandé à cette étape.</p>
+            </form>
+          </div>
+        </div>`;
+    }
+
+    zone.addEventListener("change", (e) => {
+      if (e.target.name === "mode") {
+        modeLivraison = e.target.value;
+        afficher();
+      }
+      if (e.target.matches("[data-qte]")) {
+        const uid = e.target.closest("[data-uid]").dataset.uid;
+        const q = Math.min(99, Math.max(1, parseInt(e.target.value, 10) || 1));
+        ecrirePanier(lirePanier().map((l) => (l.uid === uid ? { ...l, quantite: q } : l)));
+        afficher();
+      }
+    });
+    zone.addEventListener("click", (e) => {
+      if (!e.target.matches("[data-suppr]")) return;
+      const uid = e.target.closest("[data-uid]").dataset.uid;
+      ecrirePanier(lirePanier().filter((l) => l.uid !== uid));
+      afficher();
+    });
+
+    zone.addEventListener("submit", async (e) => {
+      if (e.target.id !== "commande") return;
+      e.preventDefault();
+      const f = e.target;
+      const panier = lirePanier();
+      const numero = "CMD-" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+      const client = {
+        nom: f.nom.value.trim(),
+        email: f.email.value.trim(),
+        telephone: f.telephone.value.trim(),
+        adresse: f.adresse ? f.adresse.value.trim() : "Retrait à l'atelier",
+        message: f.message.value.trim(),
+      };
+      const corps = [
+        `Commande ${numero}`,
+        "",
+        `Client : ${client.nom}`,
+        `Email : ${client.email}`,
+        `Téléphone : ${client.telephone}`,
+        `Adresse : ${client.adresse}`,
+        client.message && `Message : ${client.message}`,
+        "",
+        "--- Détail ---",
+        resumeTexte(panier),
+      ].filter((x) => x !== "").join("\n");
+      const aDesPhotos = panier.some((l) => l.photoNom);
+      const bouton = f.querySelector("button");
+      bouton.disabled = true;
+
+      let envoye = false;
+      if (SITE.formulaireCommande) {
+        try {
+          const r = await fetch(SITE.formulaireCommande, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ _subject: `Nouvelle commande ${numero}`, _replyto: client.email, numero, ...client, commande: corps }),
+          });
+          envoye = r.ok;
+        } catch {}
+      }
+      if (!envoye) {
+        // Repli : ouverture de la messagerie du client avec la commande pré-remplie.
+        location.href = `mailto:${SITE.email}?subject=${encodeURIComponent("Commande " + numero)}&body=${encodeURIComponent(corps)}`;
+      }
+
+      ecrirePanier([]);
+      zone.innerHTML = `
+        <div class="vide">
+          <h1>Merci ${echapper(client.nom.split(" ")[0])} ! 🎉</h1>
+          <p>Votre commande <strong>${numero}</strong> ${envoye ? "a bien été envoyée" : "est prête dans votre messagerie : pensez à cliquer sur « Envoyer »"}.</p>
+          <p>Nous vous recontactons très vite pour valider votre personnalisation et le paiement.</p>
+          ${aDesPhotos ? `<p class="message" style="display:inline-block">📷 N'oubliez pas de nous envoyer vos photos en haute qualité à <a href="mailto:${echapper(SITE.email)}?subject=${encodeURIComponent("Photos commande " + numero)}">${echapper(SITE.email)}</a> en indiquant le numéro de commande.</p>` : ""}
+          <p style="margin-top:1.5rem"><a class="btn" href="index.html">Retour à l'accueil</a></p>
+        </div>`;
+      scrollTo(0, 0);
+    });
+
+    afficher();
+  </script>
+</body>
+</html>

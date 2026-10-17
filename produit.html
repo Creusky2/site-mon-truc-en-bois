@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Produit — Mon Truc en Bois</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="section">
+    <div class="conteneur" id="contenu"></div>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/produits.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { echapper, euros, visuel, ajouterAuPanier } = MTB;
+    const POLICES = [
+      { nom: "Classique", css: "'Playfair Display', Georgia, serif" },
+      { nom: "Manuscrite", css: "'Dancing Script', cursive" },
+      { nom: "Moderne", css: "'Nunito', Arial, sans-serif" },
+      { nom: "Machine à écrire", css: "'Courier New', monospace" },
+    ];
+    const produit = trouverProduit(new URLSearchParams(location.search).get("id"));
+    const zone = document.getElementById("contenu");
+    let photo = "";
+    let photoNom = "";
+
+    if (!produit) {
+      zone.innerHTML = `<div class="vide"><h1>Produit introuvable</h1><p><a class="btn" href="boutique.html">Retour à la boutique</a></p></div>`;
+    } else {
+      document.title = `${produit.nom} — ${SITE.nom}`;
+      const cat = CATEGORIES[produit.categorie];
+      const v = produit.variantes;
+      zone.innerHTML = `
+        <p class="fil-ariane"><a href="boutique.html">Boutique</a> › <a href="boutique.html?categorie=${produit.categorie}">${echapper(cat.nom)}</a> › ${echapper(produit.nom)}</p>
+        <div class="fiche">
+          <div>
+            <div class="apercu" id="apercu">
+              ${visuel(produit)}
+              <img class="apercu-photo" id="apercu-photo" alt="Votre photo" hidden>
+              <div class="apercu-texte" id="apercu-texte"></div>
+            </div>
+            <p class="centre" style="color:var(--texte-doux);font-size:.9rem">Aperçu indicatif — une maquette vous est envoyée avant fabrication si besoin.</p>
+          </div>
+          <form id="form">
+            <h1>${echapper(produit.nom)}</h1>
+            <p>${echapper(produit.description)}</p>
+            ${v ? `
+              <div class="champ">
+                <label for="variante">${echapper(v.nom)}</label>
+                <select id="variante">${v.choix.map((c, i) => `<option value="${i}">${echapper(c.nom)}${c.prix ? ` (+${euros(c.prix)})` : ""}</option>`).join("")}</select>
+              </div>` : ""}
+            ${produit.options.texte ? `
+              <div class="champ">
+                <label for="texte">Votre texte</label>
+                <textarea id="texte" maxlength="200" placeholder="Ex. : Marie & Paul — 14.06.2026"></textarea>
+                <small><span id="nb">0</span>/200 caractères</small>
+              </div>
+              <div class="champ">
+                <span class="label">Police d'écriture</span>
+                <div class="choix-police">
+                  ${POLICES.map((p, i) => `<label><input type="radio" name="police" value="${i}" ${i === 0 ? "checked" : ""}><span style="font-family:${p.css}">${p.nom}</span></label>`).join("")}
+                </div>
+              </div>` : ""}
+            ${produit.options.photo ? `
+              <div class="champ">
+                <label for="photo">Votre photo / logo <small>(facultatif)</small></label>
+                <input type="file" id="photo" accept="image/*">
+                <small>Pour un rendu optimal, envoyez une image de bonne qualité. Vous pourrez aussi nous la transmettre après la commande.</small>
+              </div>` : ""}
+            <div class="champ">
+              <label for="remarque">Précisions <small>(facultatif)</small></label>
+              <textarea id="remarque" maxlength="500" placeholder="Couleur, emplacement, date souhaitée…" style="min-height:70px"></textarea>
+            </div>
+            <div class="ligne-achat">
+              <span class="prix-grand" id="prix"></span>
+              <input type="number" id="qte" min="1" max="99" value="1" aria-label="Quantité">
+              <button class="btn" type="submit">Ajouter au panier</button>
+            </div>
+            <div id="confirmation"></div>
+          </form>
+        </div>`;
+
+      const $ = (id) => document.getElementById(id);
+      const prixUnitaire = () => produit.prix + (v ? v.choix[$("variante").value].prix : 0);
+      const police = () => POLICES[document.querySelector("[name=police]:checked")?.value ?? 0];
+
+      function maj() {
+        $("prix").textContent = euros(prixUnitaire() * Math.max(1, +$("qte").value || 1));
+        if (produit.options.texte) {
+          $("apercu-texte").textContent = $("texte").value;
+          $("apercu-texte").style.fontFamily = police().css;
+          $("nb").textContent = $("texte").value.length;
+        }
+      }
+      $("form").addEventListener("input", maj);
+      $("form").addEventListener("change", maj);
+      maj();
+
+      // Réduit la photo (max 900 px) pour l'aperçu et le panier.
+      $("photo")?.addEventListener("change", (e) => {
+        const fichier = e.target.files[0];
+        if (!fichier) return;
+        const img = new Image();
+        img.onload = () => {
+          const r = Math.min(1, 900 / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = img.width * r;
+          c.height = img.height * r;
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          photo = c.toDataURL("image/jpeg", 0.8);
+          $("apercu-photo").src = photo;
+          $("apercu-photo").hidden = false;
+          URL.revokeObjectURL(img.src);
+        };
+        img.src = URL.createObjectURL(fichier);
+        photo = "";
+        photoNom = fichier.name;
+      });
+
+      $("form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (produit.options.texte && !$("texte").value.trim() && !photo && !$("remarque").value.trim()) {
+          if (!confirm("Vous n'avez saisi aucun texte de personnalisation. Ajouter quand même au panier ?")) return;
+        }
+        ajouterAuPanier({
+          id: produit.id,
+          nom: produit.nom,
+          prix: prixUnitaire(),
+          quantite: Math.min(99, Math.max(1, parseInt($("qte").value, 10) || 1)),
+          variante: v ? `${v.nom} : ${v.choix[$("variante").value].nom}` : "",
+          texte: produit.options.texte ? $("texte").value.trim() : "",
+          police: produit.options.texte ? police().nom : "",
+          photo,
+          photoNom,
+          remarque: $("remarque").value.trim(),
+        });
+        $("confirmation").innerHTML = `<p class="message">✓ Ajouté au panier ! <a href="panier.html">Voir le panier</a> ou <a href="boutique.html">continuer mes achats</a>.</p>`;
+      });
+    }
+  </script>
+</body>
+</html>
