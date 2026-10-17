@@ -61,6 +61,7 @@ function recapitulatif(c: any) {
     `<tr><td style="padding:4px 0;${gras ? "font-weight:bold" : ""}">${libelle}</td><td style="padding:4px 0;text-align:right;${gras ? "font-weight:bold" : ""}">${euros(montant)}</td></tr>`;
   return `<table style="width:100%;border-collapse:collapse;font-size:15px">${lignes}
     ${ligne("Sous-total", c.sous_total)}
+    ${Number(c.remise) ? ligne(`Remise${c.code_promo ? ` (${echapper(c.code_promo)})` : ""}`, -Number(c.remise)) : ""}
     ${Number(c.port) ? ligne("Livraison", c.port) : ""}
     ${Number(c.emballage) ? ligne("Emballage cadeau", c.emballage) : ""}
     ${ligne("Total", c.total, true)}
@@ -148,5 +149,38 @@ export function emailLienPaiement(c: any, url: string, message = "") {
       ${message ? `<p style="background:#f4f2ee;border-radius:10px;padding:12px 14px">${echapper(message).replace(/\n/g, "<br>")}</p>` : ""}
       ${bouton(url, `Payer ${euros(c.total)}`)}
       ${recapitulatif(c)}`),
+  };
+}
+
+// ---------- Demandes (devis, contact, newsletter) et messages libres ----------
+const TYPES: Record<string, string> = { devis: "Demande de devis", contact: "Message", newsletter: "Inscription à la newsletter" };
+export function emailDemandeBoutique(d: any) {
+  return {
+    sujet: `${TYPES[d.type] ?? "Demande"} — ${d.nom}${d.sujet ? ` (${d.sujet})` : ""}`,
+    html: gabarit(TYPES[d.type] ?? "Nouvelle demande", `
+      <p><strong>${echapper(d.nom)}</strong><br>${echapper(d.email)}${d.tel ? ` · ${echapper(d.tel)}` : ""}</p>
+      ${d.sujet ? `<p>Sujet : <strong>${echapper(d.sujet)}</strong>${d.quantite ? ` · quantité : ${d.quantite}` : ""}</p>` : ""}
+      ${d.message ? `<p style="background:#f4f2ee;border-radius:10px;padding:12px 14px">${echapper(d.message).replace(/\n/g, "<br>")}</p>` : ""}
+      ${bouton(`${site()}/admin.html#demandes`, "Ouvrir dans l'admin")}`),
+  };
+}
+export function emailAccuseDemande(d: any) {
+  const texte =
+    d.type === "newsletter"
+      ? "Merci, vous êtes bien inscrit(e) : vous recevrez nos nouveautés et idées cadeaux. Vous pouvez vous désinscrire à tout moment depuis notre site."
+      : "Nous avons bien reçu votre demande et nous vous répondons très vite (en général sous 48 h).";
+  return {
+    sujet: d.type === "newsletter" ? "Inscription confirmée — Mon Truc en Bois" : "Votre demande a bien été reçue — Mon Truc en Bois",
+    html: gabarit(d.type === "newsletter" ? "Bienvenue !" : "Merci pour votre message", `
+      <p>Bonjour ${echapper(String(d.nom || "").split(" ")[0])},</p><p>${texte}</p>
+      ${d.type === "newsletter" ? `<p style="font-size:13px;color:#5f5a52"><a href="${site()}/newsletter.html?desinscription=1" style="color:#5f5a52">Se désinscrire</a></p>` : ""}`),
+  };
+}
+export function emailLibre(nom: string, sujet: string, message: string) {
+  return {
+    sujet,
+    html: gabarit(sujet, `<p>Bonjour ${echapper(String(nom || "").split(" ")[0])},</p>
+      <p style="white-space:pre-line">${echapper(message)}</p>
+      <p>À bientôt,<br>L'équipe Mon Truc en Bois</p>`),
   };
 }

@@ -5,6 +5,7 @@ import { traiter as commande } from "../functions/commande/index.ts";
 import { traiter as webhook } from "../functions/stripe-webhook/index.ts";
 import { traiter as suivi } from "../functions/suivi/index.ts";
 import { traiter as admin } from "../functions/admin/index.ts";
+import { traiter as contact } from "../functions/contact/index.ts";
 import { viderCacheCatalogue } from "../functions/_shared/outils.ts";
 
 const SITE = "https://boutique.test";
@@ -34,6 +35,7 @@ function catalogueOuvert(modif: (d: any) => void = () => {}) {
 
 // ---------- Services simulés ----------
 let commandes: any[] = [];
+let tables: Record<string, any[]> = {};
 let appels: { url: string; methode: string; corps: any }[] = [];
 let numero = 0;
 const ADMIN = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
@@ -56,7 +58,8 @@ globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}
   if (url.href.startsWith(`${SUPA}/rest/v1/commandes`)) {
     if (methode === "POST") {
       numero++;
-      const c = { ...corps, numero: `MTB-2026-${String(numero).padStart(4, "0")}`, jeton_suivi: crypto.randomUUID(), statut: "nouvelle", paiement_statut: "en_attente", notes: "note interne", historique: [{ statut: "nouvelle" }], suivi_colis: "", stripe_url: null };
+      const c = { statut: "nouvelle", paiement_statut: "en_attente", notes: "note interne", ...corps, numero: `MTB-2026-${String(numero).padStart(4, "0")}`, jeton_suivi: crypto.randomUUID(), historique: [{ statut: corps.statut ?? "nouvelle" }], suivi_colis: "", stripe_url: null };
+      if (c.paiement_statut === "paye") c.facture_numero = "F-2026-0001";
       commandes.push(c);
       return reponse([c], 201);
     }
@@ -70,6 +73,19 @@ globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}
     return reponse(trouvees);
   }
   if (url.href.startsWith(`${SUPA}/rest/v1/admins`)) return reponse(url.searchParams.get("user_id") === `eq.${ADMIN}` ? [{ user_id: ADMIN }] : []);
+  const t = url.pathname.match(/^\/rest\/v1\/(clients|demandes|codes_promo)$/)?.[1];
+  if (t) {
+    tables[t] ??= [];
+    if (methode === "POST") {
+      const ligne = { id: crypto.randomUUID(), consentement_marketing: false, ...corps };
+      if (t === "clients" && ligne.email && tables[t].some((c) => c.email === ligne.email)) return reponse({ message: "duplicate" }, 409);
+      tables[t].push(ligne);
+      return reponse([ligne], 201);
+    }
+    const trouvees = [...url.searchParams].some(([k]) => k !== "select") ? tables[t].filter(filtre(url)) : tables[t];
+    if (methode === "PATCH") trouvees.forEach((x) => Object.assign(x, corps));
+    return reponse(trouvees);
+  }
   if (url.href.startsWith(`${SUPA}/auth/v1/user`)) {
     const id = JETONS[(new Headers(init.headers).get("Authorization") ?? "").replace("Bearer ", "")];
     return id ? reponse({ id }) : reponse({ msg: "invalid" }, 401);
@@ -77,11 +93,13 @@ globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}
   if (url.href.startsWith(`${SUPA}/storage/v1/object/upload/sign/`)) return reponse({ url: url.pathname.replace("/storage/v1", "") + "?token=envoi" });
   if (url.href.startsWith(`${SUPA}/storage/v1/object/sign/`)) return reponse({ signedURL: url.pathname.replace("/storage/v1", "") + "?token=lecture" });
   if (url.href === "https://api.stripe.com/v1/checkout/sessions") return reponse({ id: "cs_test_1", url: "https://checkout.stripe.test/cs_test_1" });
+  if (url.href === "https://api.stripe.com/v1/coupons") return reponse({ id: "coupon_1" });
   if (url.href === "https://api.resend.com/emails") return reponse({ id: "email_1" });
   return reponse({ erreur: `non simulé : ${url.href}` }, 500);
 };
 function reinitialiser() {
   commandes = [];
+  tables = { clients: [], demandes: [], codes_promo: [{ code: "NOEL10", type: "pourcentage", valeur: 10, minimum: 20, actif: true, utilisations: 0, utilisations_max: 2, description: "10 % pour Noël" }, { code: "VIEUX", type: "montant", valeur: 5, minimum: 0, actif: true, utilisations: 0, fin: "2020-01-01" }] };
   appels = [];
   numero = 0;
   catalogueOuvert();
@@ -239,4 +257,108 @@ Deno.test("CORS : réponse au pré-contrôle du navigateur", async () => {
   const r = await commande(new Request("https://fonction.test", { method: "OPTIONS", headers: { Origin: SITE } }));
   assertEquals(r.status, 200);
   assertEquals(r.headers.get("Access-Control-Allow-Origin"), "*");
+});
+
+// ---------- Version 2 : promo, clients, demandes, ventes boutique ----------
+Deno.test("simulation : totaux exacts du serveur, code promo valide ou refusé, rien n'est enregistré", async () => {
+  reinitialiser();
+  const ok = await (await post(commande, { ...demande({ code_promo: "noel10" }), simulation: true })).json();
+  assertEquals(ok.sous_total, 80.7);
+  assertEquals(ok.remise, 8.07);
+  assertEquals(ok.total, 75.13); // 80,70 − 8,07 + emballage 2,50 (livraison offerte)
+  assertEquals(ok.erreur_code, "");
+  const expire = await (await post(commande, { ...demande({ code_promo: "VIEUX" }), simulation: true })).json();
+  assertEquals(expire.remise, 0);
+  assertMatch(expire.erreur_code, /pas valable/);
+  const minimum = await (await post(commande, { ...demande({ code_promo: "NOEL10", lignes: [{ id: "porte-cles-grave", quantite: 1 }] }), simulation: true })).json();
+  assertMatch(minimum.erreur_code, /dès 20,00/);
+  assertEquals(commandes.length, 0);
+});
+
+Deno.test("commande avec code promo : remise enregistrée, utilisation comptée, coupon Stripe, fiche client", async () => {
+  reinitialiser();
+  await post(commande, demande({ code_promo: "NOEL10", paiement_mode: "en_ligne", consentement_marketing: true }));
+  const c = commandes[0];
+  assertEquals(c.remise, 8.07);
+  assertEquals(c.code_promo, "NOEL10");
+  assertEquals(c.total, 75.13);
+  assertEquals(tables.codes_promo[0].utilisations, 1);
+  const s = appels.find((a) => a.url.endsWith("/checkout/sessions"))!.corps;
+  assertEquals(s["discounts[0][coupon]"], "coupon_1");
+  assertEquals(appels.find((a) => a.url.endsWith("/coupons"))!.corps.amount_off, "807");
+  assertEquals(tables.clients.length, 1);
+  assertEquals(tables.clients[0].email, "marie@test.fr");
+  assertEquals(tables.clients[0].consentement_marketing, true);
+  assertEquals(c.client_id, tables.clients[0].id);
+  assertEquals(c.canal, "site");
+  // Deuxième commande du même client, sans consentement : même fiche, consentement conservé
+  await post(commande, demande());
+  assertEquals(tables.clients.length, 1);
+  assertEquals(tables.clients[0].consentement_marketing, true);
+  assertEquals(commandes[1].client_id, tables.clients[0].id);
+  // Code refusé à la vraie commande
+  assertEquals((await post(commande, demande({ code_promo: "VIEUX" }))).status, 400);
+});
+
+Deno.test("contact : devis, newsletter, désinscription, robot ignoré", async () => {
+  reinitialiser();
+  const r = await post(contact, { type: "devis", nom: "Club de foot", email: "Club@Test.fr", tel: "0600000000", sujet: "Gravure", message: "40 médailles gravées", quantite: 40 });
+  assertEquals(r.status, 201);
+  assertEquals(tables.demandes[0].type, "devis");
+  assertEquals(tables.demandes[0].quantite, 40);
+  assertEquals(tables.demandes[0].statut, "nouvelle");
+  assertEquals(tables.clients[0].email, "club@test.fr");
+  assertEquals(tables.clients[0].consentement_marketing, false);
+  assertEquals(emails().length, 2);
+  appels = [];
+  await post(contact, { type: "newsletter", email: "fan@test.fr" });
+  const fan = tables.clients.find((c) => c.email === "fan@test.fr");
+  assertEquals(fan.consentement_marketing, true);
+  assertEquals(fan.source, "newsletter");
+  assertEquals(emails().length, 1); // seulement la confirmation au client
+  await post(contact, { action: "desinscription", email: "fan@test.fr" });
+  assertEquals(fan.consentement_marketing, false);
+  const avant = tables.demandes.length;
+  await post(contact, { type: "contact", nom: "Robot", email: "r@r.fr", message: "spam spam", site_web: "http://spam" });
+  assertEquals(tables.demandes.length, avant);
+  assertEquals((await post(contact, { type: "contact", nom: "A", email: "pas-un-email", message: "bonjour" })).status, 400);
+});
+
+Deno.test("admin : état du serveur, vente en boutique payée, message libre au client", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  const etat = await (await post(admin, { action: "etat" }, auth)).json();
+  assertEquals(etat.stripe, true);
+  assertEquals(etat.stripe_mode, "test");
+  assertEquals(etat.emails, true);
+  assertEquals((await post(admin, { action: "etat" })).status, 401);
+
+  const r = await post(admin, {
+    action: "creer_commande",
+    vente: {
+      client: { nom: "Mme Dupont", tel: "0611111111" },
+      lignes: [{ id: "mug-personnalise", quantite: 2 }, { nom: "Gravure sur mesure (plaque de porte)", prix_unitaire: 18, quantite: 1 }],
+      canal: "boutique",
+      paiement_statut: "paye",
+      paiement_moyen: "carte",
+      remise: 3,
+    },
+  }, auth);
+  assertEquals(r.status, 201);
+  const v = commandes[0];
+  assertEquals(v.canal, "boutique");
+  assertEquals(v.sous_total, 47.8); // 2 × 14,90 + 18
+  assertEquals(v.total, 44.8);
+  assertEquals(v.paiement_statut, "paye");
+  assertEquals(v.statut, "terminee");
+  assertEquals(v.paiement_moyen, "carte");
+  assertEquals(tables.clients[0].nom, "Mme Dupont");
+  assertEquals(tables.clients[0].email, undefined);
+  assertEquals(v.client_id, tables.clients[0].id);
+  assertEquals((await post(admin, { action: "creer_commande", vente: { lignes: [{ nom: "Sans prix", quantite: 1 }] } }, auth)).status, 400);
+
+  appels = [];
+  const m = await (await post(admin, { action: "email_client", email: "marie@test.fr", nom: "Marie", sujet: "Votre maquette", message: "Voici la maquette." }, auth)).json();
+  assertEquals(m.email_envoye, true);
+  assertEquals(emails()[0].subject, "Votre maquette");
 });

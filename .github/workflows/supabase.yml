@@ -1,14 +1,28 @@
-# Installe (ou met à jour) les fonctions serveur sur Supabase, avec leurs réglages secrets.
-# À lancer depuis GitHub : onglet « Actions » → « Supabase : fonctions serveur » → « Run workflow ».
-# Se relance aussi tout seul quand les fichiers de supabase/functions changent.
-# Secrets à créer dans Settings → Secrets and variables → Actions (voir docs/mise-en-ligne.md, étape 4).
-name: "Supabase : fonctions serveur"
+# Installe et met à jour le serveur de la boutique sur Supabase.
+# Lancé par l'assistant de la page admin (onglet « Installation ») : rien à faire ici à la main.
+# L'assistant enregistre supabase/installation.json avec « [installation] » dans le message du commit :
+#   - installation complète : compte administrateur et webhook Stripe en plus du reste ;
+#   - à chaque modification de supabase/ : base de données (rejouable), réglages et fonctions serveur.
+# Les clés secrètes viennent des « secrets » GitHub du dépôt et ne sont jamais affichées dans le journal.
+name: "Supabase : installation et fonctions serveur"
 
 on:
   workflow_dispatch:
+    inputs:
+      installation:
+        description: "Installation complète (base de données, compte admin, webhook Stripe)"
+        type: boolean
+        default: false
   push:
     branches: [site-vitrine-boutique, main]
-    paths: ["supabase/functions/**", "supabase/config.toml"]
+    paths: ["supabase/functions/**", "supabase/migrations/**", "supabase/config.toml", "supabase/installation.json"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase
+  cancel-in-progress: false
 
 jobs:
   deployer:
@@ -17,6 +31,10 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJET: ${{ vars.SUPABASE_PROJECT_REF }}
+      SITE_URL: ${{ vars.SITE_URL }}
+      API: https://api.supabase.com/v1/projects/${{ vars.SUPABASE_PROJECT_REF }}
+      PROJET_URL: https://${{ vars.SUPABASE_PROJECT_REF }}.supabase.co
+      INSTALLATION: ${{ (github.event_name == 'workflow_dispatch' && inputs.installation) || contains(github.event.head_commit.message, '[installation]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -25,24 +43,126 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+
+      - name: Accès au projet Supabase
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::Le jeton d'accès Supabase n'est pas enregistré (assistant d'installation, étape 2)."; exit 1
+          fi
+          code=$(curl -sS -o projet.json -w '%{http_code}' -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "$API")
+          if [ "$code" != 200 ]; then
+            echo "::error::Supabase refuse l'accès au projet $PROJET (code $code) : vérifiez l'adresse du projet et le jeton d'accès."; exit 1
+          fi
+          echo "Projet : $(jq -r '.name + " (" + .region + ", " + .status + ")"' projet.json)"
+          rm projet.json
+
       - name: Tests des fonctions
         run: deno test --allow-env --allow-read supabase/tests/
+
+      - name: Base de données (tables, droits, stockage des photos)
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "→ $f"
+            jq -Rs '{query: .}' "$f" > requete.json
+            code=$(curl -sS -o reponse.json -w '%{http_code}' -X POST "$API/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @requete.json)
+            if [ "$code" -ge 300 ]; then echo "::error::$f : $(cat reponse.json)"; exit 1; fi
+          done
+          rm -f requete.json reponse.json
+
+      - name: Réglages de connexion (adresse du site, inscriptions fermées)
+        run: |
+          [ -n "$SITE_URL" ] || { echo "::error::Variable SITE_URL manquante."; exit 1; }
+          jq -n --arg site "$SITE_URL" '{site_url: $site, uri_allow_list: ($site + "/**"), disable_signup: true}' > auth.json
+          code=$(curl -sS -o reponse.json -w '%{http_code}' -X PATCH "$API/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @auth.json)
+          if [ "$code" -ge 300 ]; then echo "::error::Réglages de connexion : $(cat reponse.json)"; exit 1; fi
+          rm -f auth.json reponse.json
+
+      - name: Compte administrateur
+        if: ${{ env.INSTALLATION == 'true' && vars.ADMIN_EMAIL != '' }}
+        env:
+          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
+          ADMIN_MOT_DE_PASSE: ${{ secrets.ADMIN_MOT_DE_PASSE }}
+        run: |
+          if ! [[ "$ADMIN_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+            echo "::error::Adresse email administrateur invalide."; exit 1
+          fi
+          sql() { jq -n --arg q "$1" '{query: $q}' | curl -sS -X POST "$API/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @-; }
+          cle=$(curl -sS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "$API/api-keys?reveal=true" \
+            | jq -r '([.[] | select(.name == "service_role")][0].api_key) // ([.[] | select(.type == "secret")][0].api_key) // empty')
+          echo "::add-mask::$cle"
+          [ -n "$cle" ] || { echo "::error::Clé de service Supabase introuvable."; exit 1; }
+          entetes=(-H "apikey: $cle" -H "Content-Type: application/json")
+          [[ "$cle" == eyJ* ]] && entetes+=(-H "Authorization: Bearer $cle")
+          AUTH="$PROJET_URL/auth/v1/admin/users"
+
+          id=$(sql "select id from auth.users where lower(email) = lower('$ADMIN_EMAIL') limit 1" | jq -r '.[0].id // empty')
+          if [ -z "$id" ]; then
+            [ -n "$ADMIN_MOT_DE_PASSE" ] || { echo "::error::Choisissez un mot de passe administrateur dans l'assistant."; exit 1; }
+            jq -n '{email: env.ADMIN_EMAIL, password: env.ADMIN_MOT_DE_PASSE, email_confirm: true}' \
+              | curl -sS -o compte.json -X POST "$AUTH" "${entetes[@]}" --data @-
+            id=$(jq -r '.id // empty' compte.json)
+            [ -n "$id" ] || { echo "::error::Création du compte impossible : $(jq -r '.msg // .message // .error_description // "erreur inconnue"' compte.json)"; exit 1; }
+            echo "Compte administrateur créé."
+          elif [ -n "$ADMIN_MOT_DE_PASSE" ]; then
+            jq -n '{password: env.ADMIN_MOT_DE_PASSE}' \
+              | curl -sS -o compte.json -X PUT "$AUTH/$id" "${entetes[@]}" --data @-
+            jq -e '.id' compte.json > /dev/null || { echo "::error::Changement du mot de passe impossible : $(jq -r '.msg // .message // "erreur inconnue"' compte.json)"; exit 1; }
+            echo "Compte administrateur existant : mot de passe mis à jour."
+          else
+            echo "Compte administrateur existant : inchangé."
+          fi
+          rm -f compte.json
+          sql "insert into public.admins (user_id) values ('$id') on conflict do nothing" > /dev/null
+
       - name: Réglages secrets des fonctions
         env:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
           {
-            echo "SITE_URL=${{ vars.SITE_URL }}"
+            echo "SITE_URL=$SITE_URL"
             echo "SITE_ORIGINES=${{ vars.SITE_ORIGINES }}"
             echo "BOUTIQUE_EMAIL=${{ vars.BOUTIQUE_EMAIL }}"
             echo "EMAIL_EXPEDITEUR=${{ vars.EMAIL_EXPEDITEUR }}"
-            [ -n "$STRIPE_SECRET_KEY" ] && echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY"
-            [ -n "$STRIPE_WEBHOOK_SECRET" ] && echo "STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET"
-            [ -n "$RESEND_API_KEY" ] && echo "RESEND_API_KEY=$RESEND_API_KEY"
+            echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY"
+            echo "RESEND_API_KEY=$RESEND_API_KEY"
           } | grep -v '=$' > secrets.env
           supabase secrets set --project-ref "$PROJET" --env-file secrets.env
           rm secrets.env
+
       - name: Déploiement des fonctions
-        run: supabase functions deploy commande suivi admin stripe-webhook --project-ref "$PROJET"
+        run: supabase functions deploy commande suivi admin stripe-webhook contact --project-ref "$PROJET"
+
+      - name: Webhook Stripe (confirmation automatique des paiements)
+        if: ${{ env.INSTALLATION == 'true' }}
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+        run: |
+          if [ -z "$STRIPE_SECRET_KEY" ]; then echo "Pas de clé Stripe : paiement par carte non activé."; exit 0; fi
+          url="$PROJET_URL/functions/v1/stripe-webhook"
+          anciens=$(curl -sS -u "$STRIPE_SECRET_KEY:" "https://api.stripe.com/v1/webhook_endpoints?limit=100" \
+            | jq -r --arg u "$url" '.data[]? | select(.url == $u) | .id')
+          curl -sS -u "$STRIPE_SECRET_KEY:" https://api.stripe.com/v1/webhook_endpoints -o webhook.json \
+            -d url="$url" -d "enabled_events[]=checkout.session.completed" -d "enabled_events[]=checkout.session.async_payment_succeeded" \
+            -d "description=Mon Truc en Bois : confirmation des paiements" -d "metadata[mtb]=1"
+          secret=$(jq -r '.secret // empty' webhook.json)
+          echo "::add-mask::$secret"
+          [ -n "$secret" ] || { echo "::error::Stripe : $(jq -r '.error.message // "création du webhook impossible"' webhook.json)"; rm webhook.json; exit 1; }
+          rm webhook.json
+          printf 'STRIPE_WEBHOOK_SECRET=%s\n' "$secret" > webhook.env
+          supabase secrets set --project-ref "$PROJET" --env-file webhook.env
+          rm webhook.env
+          for id in $anciens; do curl -sS -o /dev/null -u "$STRIPE_SECRET_KEY:" -X DELETE "https://api.stripe.com/v1/webhook_endpoints/$id"; done
+          echo "Webhook Stripe prêt ($( [[ "$STRIPE_SECRET_KEY" == *_live_* ]] && echo production || echo test ))."
+
+      - name: Résumé
+        run: |
+          {
+            echo "### Serveur de la boutique à jour"
+            echo "- Projet Supabase : \`$PROJET\`"
+            echo "- Installation complète : $([ "$INSTALLATION" = true ] && echo oui || echo "non (mise à jour)")"
+            echo "- Site : $SITE_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

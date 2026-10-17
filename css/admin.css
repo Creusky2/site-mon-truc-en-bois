@@ -132,3 +132,19 @@ body.admin { background: var(--fond-alt); min-height: 100vh; }
 .paiement-rembourse { background: #eee; color: #555; }
 .onglets .compteur { background: #2b4c7e; color: #fff; border-radius: 999px; font-size: 0.72rem; padding: 0.1em 0.5em; margin-left: 0.2em; }
 .filtre small { color: inherit; opacity: 0.7; }
+
+/* ---------- Installation du serveur ---------- */
+.checklist .encours { border: 3px solid var(--fond-alt); border-top-color: var(--foret); animation: tourne 0.9s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .checklist .encours { animation: none; } }
+.checklist.progression li { grid-template-columns: 28px 1fr; align-items: start; }
+.checklist.progression small { line-height: 1.7; }
+.etapes-ins { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 1rem; counter-reset: none; }
+.etapes-ins > li { border: 1px solid var(--trait); border-radius: var(--r-petit); padding: 1.1rem 1.2rem; display: grid; gap: 0.8rem; background: var(--fond); }
+.etapes-ins > li.fait { background: var(--fond-alt); }
+.etapes-ins h3 { font-size: 1.1rem; margin: 0; }
+.etapes-ins ol { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.35rem; }
+.etapes-ins code { font-size: 0.85em; }
+.etapes-ins .grille-champs { margin-top: 0.2rem; }
+#ins-connexion:not(:empty) { margin-top: 1rem; }
+#ins-connexion .bloc { box-shadow: none; border: 1px solid var(--trait); }

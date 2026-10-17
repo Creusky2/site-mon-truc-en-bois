@@ -128,12 +128,15 @@ export type DemandeCommande = {
   message?: string;
   paiement_mode: "en_ligne" | "apres_validation" | "boutique";
   retour?: string;
+  code_promo?: string;
+  consentement_marketing?: boolean;
+  simulation?: boolean;
 };
 
 const arrondi = (n: number) => Math.round(n * 100) / 100;
 const texte = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 
-export function calculerCommande(D: any, demande: DemandeCommande) {
+export function calculerCommande(D: any, demande: DemandeCommande, promo: any = null) {
   if (!Array.isArray(demande.lignes) || !demande.lignes.length) throw new ErreurClient("Votre panier est vide.");
   if (demande.lignes.length > 30) throw new ErreurClient("Trop d'articles dans une seule commande : contactez-nous pour un devis.");
   const lignes = demande.lignes.map((l) => {
@@ -171,7 +174,51 @@ export function calculerCommande(D: any, demande: DemandeCommande) {
   const site = D.site ?? {};
   const port = demande.mode_reception === "retrait" || sous_total >= Number(site.livraisonOfferteDes ?? Infinity) ? 0 : arrondi(Number(site.livraison || 0));
   const emballage = site.emballage?.actif && demande.cadeau?.emballage ? arrondi(Number(site.emballage.prix || 0)) : 0;
-  return { lignes, sous_total, port, emballage, total: arrondi(sous_total + port + emballage) };
+  const remise = promo ? montantRemise(promo, sous_total) : 0;
+  return { lignes, sous_total, port, emballage, remise, code_promo: promo?.code ?? "", total: arrondi(Math.max(0, sous_total + port + emballage - remise)) };
+}
+
+// ---------- Codes promo ----------
+export function montantRemise(promo: any, sousTotal: number) {
+  const v = Number(promo.valeur);
+  return arrondi(Math.min(sousTotal, promo.type === "pourcentage" ? (sousTotal * v) / 100 : v));
+}
+const aujourdhui = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" }); // AAAA-MM-JJ
+/** Renvoie le code promo valide, ou lève une erreur lisible par le client. */
+export async function chercherCodePromo(code: string | undefined, sousTotal: number) {
+  const c = String(code ?? "").trim().toUpperCase();
+  if (!c) return null;
+  if (!/^[A-Z0-9_-]{3,30}$/.test(c)) throw new ErreurClient("Code promo invalide.");
+  const [promo] = await db<any[]>(`codes_promo?code=eq.${encodeURIComponent(c)}`);
+  const j = aujourdhui();
+  if (!promo || !promo.actif || (promo.debut && j < promo.debut) || (promo.fin && j > promo.fin)) throw new ErreurClient("Ce code promo n'est pas valable.");
+  if (promo.utilisations_max && promo.utilisations >= promo.utilisations_max) throw new ErreurClient("Ce code promo a déjà été utilisé le nombre maximum de fois.");
+  if (sousTotal < Number(promo.minimum || 0)) throw new ErreurClient(`Ce code promo s'applique dès ${euros(promo.minimum)} d'achat.`);
+  return promo;
+}
+export async function compterUtilisation(promo: any) {
+  if (promo) await db(`codes_promo?code=eq.${encodeURIComponent(promo.code)}`, { method: "PATCH", body: JSON.stringify({ utilisations: Number(promo.utilisations || 0) + 1 }) });
+}
+
+// ---------- Fiches clients (CRM) ----------
+/** Crée ou complète la fiche client (clé : l'email). Le consentement n'est jamais retiré ici. */
+export async function enregistrerClient(c: { nom: string; email?: string; tel?: string; adresse?: string; source?: string; consentement?: boolean }) {
+  const email = (c.email ?? "").trim().toLowerCase();
+  const fiche: Record<string, unknown> = { nom: c.nom };
+  if (c.tel) fiche.tel = c.tel;
+  if (c.adresse) fiche.adresse = c.adresse;
+  if (c.consentement) Object.assign(fiche, { consentement_marketing: true, consentement_le: new Date().toISOString() });
+  if (!email) {
+    const [cree] = await db<any[]>("clients", { method: "POST", body: JSON.stringify({ ...fiche, source: c.source ?? "boutique" }) });
+    return cree;
+  }
+  const [existant] = await db<any[]>(`clients?email=eq.${encodeURIComponent(email)}&select=id`);
+  if (existant) {
+    const [maj] = await db<any[]>(`clients?id=eq.${existant.id}`, { method: "PATCH", body: JSON.stringify(fiche) });
+    return maj;
+  }
+  const [cree] = await db<any[]>("clients", { method: "POST", body: JSON.stringify({ ...fiche, email, source: c.source ?? "site" }) });
+  return cree;
 }
 
 export function validerClient(demande: DemandeCommande) {
@@ -228,7 +275,13 @@ export async function creerPaiementStripe(commande: any, retour: string) {
   if (Number(commande.port) > 0) articles.push({ quantity: 1, price_data: { currency: "eur", unit_amount: centimes(commande.port), product_data: { name: "Livraison" } } });
   if (Number(commande.emballage) > 0) articles.push({ quantity: 1, price_data: { currency: "eur", unit_amount: centimes(commande.emballage), product_data: { name: "Emballage cadeau" } } });
   const sep = retour.includes("?") ? "&" : "?";
+  let reduction: Record<string, unknown> | undefined;
+  if (Number(commande.remise) > 0) {
+    const coupon = await stripe("coupons", { amount_off: centimes(commande.remise), currency: "eur", duration: "once", name: commande.code_promo || "Remise" });
+    reduction = { 0: { coupon: coupon.id } };
+  }
   const session = await stripe("checkout/sessions", {
+    ...(reduction ? { discounts: reduction } : {}),
     mode: "payment",
     locale: "fr",
     customer_email: commande.client_email,
@@ -281,6 +334,8 @@ export const champsPublics = (c: any) => ({
   mode_reception: c.mode_reception,
   lignes: (c.lignes ?? []).map((l: any) => ({ nom: l.nom, quantite: l.quantite, variante: l.variante, texte: l.texte, total: l.total })),
   sous_total: c.sous_total,
+  remise: c.remise,
+  code_promo: c.code_promo,
   port: c.port,
   emballage: c.emballage,
   total: c.total,

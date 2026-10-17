@@ -1,11 +1,36 @@
 // POST /functions/v1/admin — actions réservées à la boutique (connectée à son compte Supabase) :
-//   lien_paiement : crée un lien de paiement Stripe pour une commande (et l'envoie au client si demandé)
-//   notifier      : envoie au client un email sur l'avancement de sa commande
-//   photos        : liens temporaires pour télécharger les photos envoyées par le client
-import { creerPaiementStripe, db, env, ErreurClient, json, lireJson, servir, urlLecturePhoto } from "../_shared/outils.ts";
-import { emailLienPaiement, emailStatut, envoyerEmail } from "../_shared/emails.ts";
+//   etat           : ce qui est configuré côté serveur (Stripe, webhook, emails…)
+//   lien_paiement  : crée un lien de paiement Stripe pour une commande (et l'envoie au client si demandé)
+//   notifier       : envoie au client un email sur l'avancement de sa commande
+//   photos         : liens temporaires pour télécharger les photos envoyées par le client
+//   creer_commande : vente en boutique, commande par téléphone ou sur un salon
+//   email_client   : message libre à un client (CRM)
+import { catalogue, creerPaiementStripe, db, enregistrerClient, env, ErreurClient, json, lireJson, servir, urlLecturePhoto } from "../_shared/outils.ts";
+import { emailLibre, emailLienPaiement, emailStatut, envoyerEmail } from "../_shared/emails.ts";
 
-type Demande = { action: "lien_paiement" | "notifier" | "photos"; commande_id: string; envoyer?: boolean; message?: string };
+type LigneSaisie = { id?: string; nom?: string; prix_unitaire?: number; quantite?: number; texte?: string; remarque?: string; variante?: string };
+type Demande = {
+  action: "etat" | "lien_paiement" | "notifier" | "photos" | "creer_commande" | "email_client";
+  commande_id?: string;
+  envoyer?: boolean;
+  message?: string;
+  sujet?: string;
+  email?: string;
+  nom?: string;
+  vente?: {
+    client?: { id?: string; nom?: string; email?: string; tel?: string; adresse?: string; consentement?: boolean };
+    lignes: LigneSaisie[];
+    canal?: "boutique" | "telephone" | "salon";
+    mode_reception?: "retrait" | "livraison";
+    statut?: string;
+    paiement_statut?: "paye" | "en_attente";
+    paiement_moyen?: string;
+    remise?: number;
+    port?: number;
+    notes?: string;
+    date_souhaitee?: string;
+  };
+};
 
 async function verifierAdmin(req: Request) {
   const jeton = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
@@ -20,9 +45,89 @@ async function verifierAdmin(req: Request) {
   return utilisateur;
 }
 
+const arrondi = (n: number) => Math.round(n * 100) / 100;
+const texte = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
+
+async function creerVente(v: NonNullable<Demande["vente"]>) {
+  if (!Array.isArray(v.lignes) || !v.lignes.length) throw new ErreurClient("Ajoutez au moins un article.");
+  const D = await catalogue();
+  const lignes = v.lignes.map((l) => {
+    const p = l.id ? (D.produits ?? []).find((x: any) => x.id === l.id) : null;
+    const nom = texte(l.nom || p?.nom, 160);
+    if (!nom) throw new ErreurClient("Chaque article doit avoir un nom.");
+    const quantite = Math.trunc(Number(l.quantite ?? 1));
+    if (!(quantite >= 1 && quantite <= 999)) throw new ErreurClient("Quantité invalide.");
+    const prix_unitaire = arrondi(Number(l.prix_unitaire ?? p?.prix ?? NaN));
+    if (!(prix_unitaire >= 0)) throw new ErreurClient(`Prix manquant pour « ${nom} ».`);
+    return { id: p?.id ?? "", nom, quantite, prix_unitaire, total: arrondi(prix_unitaire * quantite), variante: texte(l.variante, 120), texte: texte(l.texte, 200), police: "", remarque: texte(l.remarque, 500), photo_nom: "", photo_type: "", photo_chemin: "" };
+  });
+  const sous_total = arrondi(lignes.reduce((t, l) => t + l.total, 0));
+  const port = arrondi(Math.max(0, Number(v.port ?? 0)));
+  const remise = arrondi(Math.min(sous_total, Math.max(0, Number(v.remise ?? 0))));
+
+  const c = v.client ?? {};
+  let fiche: any = null;
+  if (c.id) [fiche] = await db<any[]>(`clients?id=eq.${encodeURIComponent(c.id)}`);
+  else if (texte(c.nom, 120) || texte(c.email, 160)) fiche = await enregistrerClient({ nom: texte(c.nom, 120) || "Client", email: texte(c.email, 160), tel: texte(c.tel, 30), adresse: texte(c.adresse, 400), source: v.canal ?? "boutique", consentement: !!c.consentement });
+
+  const canal = ["boutique", "telephone", "salon"].includes(v.canal ?? "") ? v.canal : "boutique";
+  const paye = v.paiement_statut === "paye";
+  const [commande] = await db<any[]>("commandes", {
+    method: "POST",
+    body: JSON.stringify({
+      client_id: fiche?.id ?? null,
+      canal,
+      client_nom: fiche?.nom || texte(c.nom, 120) || "Client en boutique",
+      client_email: fiche?.email || texte(c.email, 160).toLowerCase() || "sans-email@boutique.invalid",
+      client_tel: fiche?.tel || texte(c.tel, 30),
+      adresse: v.mode_reception === "livraison" ? fiche?.adresse || texte(c.adresse, 400) : "",
+      mode_reception: v.mode_reception === "livraison" ? "livraison" : "retrait",
+      lignes,
+      sous_total,
+      port,
+      emballage: 0,
+      remise,
+      total: arrondi(Math.max(0, sous_total + port - remise)),
+      paiement_mode: canal === "boutique" ? "boutique" : "apres_validation",
+      paiement_statut: paye ? "paye" : "en_attente",
+      paiement_moyen: texte(v.paiement_moyen, 30),
+      statut: ["nouvelle", "confirmee", "en_fabrication", "prete", "expediee", "terminee"].includes(v.statut ?? "") ? v.statut : paye && canal === "boutique" ? "terminee" : "nouvelle",
+      notes: texte(v.notes, 2000),
+      cadeau: /^\d{4}-\d{2}-\d{2}$/.test(v.date_souhaitee ?? "") ? { date: v.date_souhaitee } : {},
+    }),
+  });
+  return commande;
+}
+
 export const traiter = servir(async (req) => {
   await verifierAdmin(req);
-  const d = await lireJson<Demande>(req, 10_000);
+  const d = await lireJson<Demande>(req, 50_000);
+
+  if (d.action === "etat") {
+    const cle = env("STRIPE_SECRET_KEY");
+    return json(req, {
+      stripe: !!cle,
+      stripe_mode: cle ? (cle.startsWith("sk_live_") || cle.startsWith("rk_live_") ? "production" : "test") : null,
+      webhook: !!env("STRIPE_WEBHOOK_SECRET"),
+      emails: !!env("RESEND_API_KEY"),
+      expediteur: env("EMAIL_EXPEDITEUR"),
+      boutique_email: env("BOUTIQUE_EMAIL"),
+      site_url: env("SITE_URL"),
+    });
+  }
+  if (d.action === "creer_commande") {
+    if (!d.vente) throw new ErreurClient("Vente manquante.");
+    return json(req, { commande: await creerVente(d.vente) }, 201);
+  }
+  if (d.action === "email_client") {
+    const email = texte(d.email, 160);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new ErreurClient("Adresse email invalide.");
+    if (texte(d.sujet, 160).length < 2 || texte(d.message, 10_000).length < 2) throw new ErreurClient("Indiquez un sujet et un message.");
+    const r = await envoyerEmail({ a: email, ...emailLibre(texte(d.nom, 120), texte(d.sujet, 160), texte(d.message, 10_000)), repondreA: env("BOUTIQUE_EMAIL") || undefined });
+    if (!r.envoye) throw new ErreurClient(`Email non envoyé (${r.raison}).`);
+    return json(req, { email_envoye: true });
+  }
+
   if (!/^[0-9a-f-]{36}$/i.test(d.commande_id ?? "")) throw new ErreurClient("Commande invalide.");
   const [commande] = await db<any[]>(`commandes?id=eq.${d.commande_id}`);
   if (!commande) throw new ErreurClient("Commande introuvable.", 404);
@@ -32,10 +137,11 @@ export const traiter = servir(async (req) => {
     if (commande.paiement_statut === "paye") throw new ErreurClient("Cette commande est déjà payée.");
     const site = env("SITE_URL").replace(/\/$/, "");
     const url = await creerPaiementStripe(commande, `${site}/suivi.html`);
-    const email = d.envoyer ? await envoyerEmail({ a: commande.client_email, ...emailLienPaiement(commande, url, d.message) }) : null;
+    const email = d.envoyer && !commande.client_email.endsWith(".invalid") ? await envoyerEmail({ a: commande.client_email, ...emailLienPaiement(commande, url, d.message) }) : null;
     return json(req, { url, email_envoye: !!email?.envoye });
   }
   if (d.action === "notifier") {
+    if (commande.client_email.endsWith(".invalid")) throw new ErreurClient("Ce client n'a pas d'adresse email.");
     const email = await envoyerEmail({ a: commande.client_email, ...emailStatut(commande, d.message) });
     if (!email.envoye) throw new ErreurClient(`Email non envoyé (${email.raison}).`);
     return json(req, { email_envoye: true });

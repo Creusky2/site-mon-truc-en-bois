@@ -22,7 +22,6 @@
 
   let ctx = null; // { D, toast, echapper, euros }
   let client = null; // client Supabase
-  let session = null;
   let commandes = [];
   let filtre = "a_traiter";
   let recherche = "";
@@ -32,74 +31,18 @@
   const e = (s) => ctx.echapper(s);
   const date = (d, heure = false) =>
     d ? new Date(d).toLocaleString("fr-FR", heure ? { dateStyle: "short", timeStyle: "short" } : { dateStyle: "medium" }) : "";
-  const config = () => ctx.D.site.commandes || {};
 
-  function initialiser() {
-    const c = config();
-    if (!c.supabaseUrl || !c.supabaseCle || !window.supabase) return null;
-    if (!client || client.__url !== c.supabaseUrl) {
-      client = window.supabase.createClient(c.supabaseUrl, c.supabaseCle, { auth: { persistSession: true, storageKey: "mtb-admin-supabase" } });
-      client.__url = c.supabaseUrl;
-    }
-    return client;
-  }
-
-  async function appelAdmin(action, corps) {
-    const r = await fetch(`${config().supabaseUrl.replace(/\/$/, "")}/functions/v1/admin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: config().supabaseCle, Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ action, ...corps }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.erreur || `Erreur ${r.status}`);
-    return d;
-  }
-
-  // ---------- Écrans ----------
-  function ecranNonConfigure() {
-    zone.innerHTML = `
-      <section class="bloc">
-        <div class="bloc-tete"><h2>Commandes en ligne : à activer</h2></div>
-        <p>Pour recevoir les commandes ici (avec les photos des clients), proposer le paiement par carte et le suivi de commande, la boutique a besoin de deux comptes gratuits : <strong>Supabase</strong> (enregistrement des commandes) et <strong>Stripe</strong> (paiement). Le guide pas à pas est dans <a href="https://github.com/Creusky2/site-mon-truc-en-bois/blob/site-vitrine-boutique/docs/mise-en-ligne.md" target="_blank" rel="noopener">docs/mise-en-ligne.md</a>.</p>
-        <p class="aide">Une fois Supabase prêt, renseignez son adresse et sa clé publique dans <strong>Infos boutique → Commandes en ligne et paiement</strong>, puis publiez. En attendant, les commandes continuent d'arriver par email ou WhatsApp.</p>
-        <div><button class="btn btn-ligne" data-aller="boutique">Ouvrir les réglages</button></div>
-      </section>`;
-  }
-
-  function ecranConnexion(erreur = "") {
-    zone.innerHTML = `
-      <section class="bloc" style="max-width:520px">
-        <div class="bloc-tete"><h2>Connexion aux commandes</h2></div>
-        <p class="aide">Utilisez le compte administrateur créé dans Supabase (voir le guide de mise en ligne).</p>
-        <form id="cmd-connexion" class="pile">
-          <div class="champ"><label for="cmd-email">Email</label><input type="email" id="cmd-email" required autocomplete="username"></div>
-          <div class="champ"><label for="cmd-mdp">Mot de passe</label><input type="password" id="cmd-mdp" required autocomplete="current-password"></div>
-          <button class="btn" type="submit">Se connecter</button>
-          <button class="mini" type="button" id="cmd-oubli" style="justify-self:start">Mot de passe oublié ?</button>
-          ${erreur ? `<p class="message message-alerte">${e(erreur)}</p>` : ""}
-        </form>
-      </section>`;
-    zone.querySelector("#cmd-connexion").onsubmit = async (ev) => {
-      ev.preventDefault();
-      const { data, error } = await client.auth.signInWithPassword({ email: zone.querySelector("#cmd-email").value, password: zone.querySelector("#cmd-mdp").value });
-      if (error) return ecranConnexion("Email ou mot de passe incorrect.");
-      session = data.session;
-      charger();
-    };
-    zone.querySelector("#cmd-oubli").onclick = async () => {
-      const email = zone.querySelector("#cmd-email").value;
-      if (!email) return ctx.toast("Indiquez d'abord votre email.", true);
-      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: location.href.split("#")[0] });
-      ctx.toast(error ? "Envoi impossible, réessayez." : "Un email de réinitialisation vous a été envoyé.", !!error);
-    };
-  }
+  const S = () => window.AdminServeur;
+  const initialiser = () => (client = S().client(ctx.D));
+  const appelAdmin = (action, corps) => S().appel(ctx.D, action, corps);
+  const ecranConnexion = (erreur = "") => S().ecranConnexion(zone, ctx, charger, erreur);
 
   async function charger() {
     zone.innerHTML = `<p class="aide" style="padding:2rem 0">Chargement des commandes…</p>`;
     const { data, error } = await client.from("commandes").select("*").order("cree_le", { ascending: false }).limit(500);
     if (error) {
       if (/JWT|auth/i.test(error.message)) return ecranConnexion("Session expirée : reconnectez-vous.");
-      zone.innerHTML = `<p class="message message-alerte">Impossible de lire les commandes (${e(error.message)}). Vérifiez que le compte est bien administrateur (guide, étape 3).</p>`;
+      zone.innerHTML = `<p class="message message-alerte">Impossible de lire les commandes (${e(error.message)}). Vérifiez l’installation (onglet Installation → Vérifier).</p>`;
       return;
     }
     commandes = data;
@@ -360,9 +303,7 @@
   async function monter(element, contexte) {
     ctx = contexte;
     zone = element;
-    if (!initialiser()) return ecranNonConfigure();
-    if (!session) session = (await client.auth.getSession()).data.session;
-    if (!session) return ecranConnexion();
+    if (!initialiser() || !(await S().connecte(ctx.D))) return ecranConnexion();
     charger();
     clearInterval(minuteur);
     minuteur = setInterval(() => document.contains(zone) && !document.getElementById("fenetre").open ? charger() : null, 90_000);
@@ -381,7 +322,7 @@
     if (!b) return;
     if (b.dataset.cmd === "actualiser") charger();
     if (b.dataset.cmd === "export") exporter();
-    if (b.dataset.cmd === "deconnexion") client.auth.signOut().then(() => ((session = null), ecranConnexion()));
+    if (b.dataset.cmd === "deconnexion") S().deconnecter(ctx.D).then(() => ecranConnexion());
   });
   document.addEventListener("input", (ev) => {
     if (ev.target.id !== "cmd-q") return;
@@ -397,8 +338,7 @@
   async function resume(contexte) {
     ctx = contexte;
     if (!initialiser()) return null;
-    if (!session) session = (await client.auth.getSession()).data.session;
-    if (!session) return { connecte: false };
+    if (!(await S().connecte(ctx.D))) return { connecte: false };
     const { data, error } = await client.from("commandes").select("statut").in("statut", ["nouvelle", "confirmee", "en_fabrication"]);
     if (error) return { connecte: false };
     return { connecte: true, nouvelles: data.filter((c) => c.statut === "nouvelle").length, aTraiter: data.length };

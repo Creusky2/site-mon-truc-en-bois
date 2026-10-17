@@ -20,6 +20,7 @@ as $$
   select exists (select 1 from public.admins where user_id = auth.uid());
 $$;
 
+drop policy if exists "admins : lecture de sa propre ligne" on public.admins;
 create policy "admins : lecture de sa propre ligne" on public.admins
   for select to authenticated using (user_id = auth.uid());
 
@@ -99,10 +100,13 @@ create trigger commandes_avant_ecriture
 -- commandes après avoir recalculé les prix, et le suivi client passe par la fonction « suivi ».
 alter table public.commandes enable row level security;
 
+drop policy if exists "commandes : lecture admin" on public.commandes;
 create policy "commandes : lecture admin" on public.commandes
   for select to authenticated using (public.est_admin());
+drop policy if exists "commandes : modification admin" on public.commandes;
 create policy "commandes : modification admin" on public.commandes
   for update to authenticated using (public.est_admin()) with check (public.est_admin());
+drop policy if exists "commandes : suppression admin" on public.commandes;
 create policy "commandes : suppression admin" on public.commandes
   for delete to authenticated using (public.est_admin());
 
@@ -116,7 +120,9 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('photos-clients', 'photos-clients', false, 15728640, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
 on conflict (id) do nothing;
 
+drop policy if exists "photos clients : lecture admin" on storage.objects;
 create policy "photos clients : lecture admin" on storage.objects
   for select to authenticated using (bucket_id = 'photos-clients' and public.est_admin());
+drop policy if exists "photos clients : suppression admin" on storage.objects;
 create policy "photos clients : suppression admin" on storage.objects
   for delete to authenticated using (bucket_id = 'photos-clients' and public.est_admin());

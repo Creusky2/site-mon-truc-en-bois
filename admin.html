@@ -41,7 +41,7 @@
           <li>Ouvrez <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a> (connecté à votre compte GitHub).</li>
           <li><strong>Token name</strong> : « Admin site » — <strong>Expiration</strong> : 1 an (ou plus).</li>
           <li><strong>Repository access</strong> : <em>Only select repositories</em> → choisissez <code>site-mon-truc-en-bois</code>.</li>
-          <li><strong>Permissions</strong> → <em>Repository permissions</em> → <strong>Contents</strong> : <em>Read and write</em>.</li>
+          <li><strong>Permissions</strong> → <em>Repository permissions</em> : <strong>Contents</strong>, <strong>Secrets</strong> et <strong>Variables</strong> sur <em>Read and write</em>, <strong>Actions</strong> sur <em>Read-only</em> (les trois derniers servent à installer le serveur des commandes).</li>
           <li>Cliquez sur <strong>Generate token</strong>, copiez la clé (elle commence par <code>github_pat_</code>) et collez-la ici.</li>
         </ol>
       </details>
@@ -73,6 +73,7 @@
         <button role="tab" data-onglet="boutique" aria-selected="false">Infos boutique</button>
         <button role="tab" data-onglet="textes" aria-selected="false">Textes & annonce</button>
         <button role="tab" data-onglet="galerie" aria-selected="false">Galerie</button>
+        <button role="tab" data-onglet="installation" aria-selected="false">Installation</button>
       </nav>
     </header>
     <main class="conteneur admin-contenu" id="contenu"></main>
@@ -85,7 +86,9 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="js/admin-serveur.js"></script>
   <script src="js/admin-commandes.js"></script>
+  <script src="js/admin-installation.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>
