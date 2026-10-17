@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mon Truc en Bois — Cadeaux personnalisés à Auchel</title>
   <meta name="description" content="Mon Truc en Bois, boutique de personnalisation à Auchel (62) : gravure texte et photo sur bois, sérigraphie, mugs, verres, plaques de naissance, bijoux gravés. Cadeaux uniques.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Mon Truc en Bois — Cadeaux personnalisés à Auchel">
+  <meta property="og:description" content="Gravure texte et photo, sérigraphie, bijoux : des cadeaux uniques personnalisés dans notre boutique d'Auchel.">
+  <meta property="og:image" content="https://creusky2.github.io/site-mon-truc-en-bois/img/boutique-interieur.jpg">
+  <meta property="og:locale" content="fr_FR">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -60,6 +65,32 @@
           <a class="lien-fleche" href="boutique.html">Voir tous les produits <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
         <div class="produits" id="vedettes"></div>
+      </div>
+    </section>
+
+    <section class="section" id="idees">
+      <div class="conteneur">
+        <div class="titre-section">
+          <div class="pile">
+            <span class="etiquette">Idées cadeaux</span>
+            <h2>Un cadeau pour quelle occasion ?</h2>
+          </div>
+          <a class="lien-fleche" href="idees-cadeaux.html">Toutes les idées <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="occasions" id="occasions"></div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="bloc-avis" hidden>
+      <div class="conteneur">
+        <div class="titre-section">
+          <div class="pile">
+            <span class="etiquette">Avis clients</span>
+            <h2>Ils nous ont fait confiance</h2>
+          </div>
+          <a class="lien-fleche" data-facebook target="_blank" rel="noopener">Tous les avis sur Facebook <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="avis-grille" id="avis"></div>
       </div>
     </section>
 
@@ -136,6 +167,25 @@
           </a>`;
       })
       .join("");
+
+    document.getElementById("occasions").innerHTML = (D.occasions || [])
+      .map((o) => ({ o, n: PRODUITS.filter((p) => (p.occasions || []).includes(o.id)).length }))
+      .filter(({ n }) => n)
+      .map(({ o, n }) => `<a class="occasion" href="boutique.html?occasion=${encodeURIComponent(o.id)}">${echapper(o.nom)} <small>${n}</small></a>`)
+      .join("");
+
+    const avis = (D.avis || []).filter((a) => a.texte).slice(0, 3);
+    if (avis.length) {
+      document.getElementById("bloc-avis").hidden = false;
+      document.getElementById("avis").innerHTML = avis
+        .map((a) => `
+          <figure class="avis-carte">
+            <span class="note" aria-label="${Number(a.note) || 5} sur 5">${"★".repeat(Number(a.note) || 5)}</span>
+            <blockquote>« ${echapper(a.texte)} »</blockquote>
+            <figcaption><strong>${echapper(a.nom)}</strong>${a.date ? ` · ${echapper(a.date)}` : ""}${a.source ? ` · ${echapper(a.source)}` : ""}</figcaption>
+          </figure>`)
+        .join("");
+    }
 
     document.getElementById("vedettes").innerHTML = (vedettes.length ? vedettes : PRODUITS).slice(0, 8).map(carteProduit).join("");
   </script>

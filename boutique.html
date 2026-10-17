@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Boutique — Mon Truc en Bois</title>
   <meta name="description" content="Tous nos produits personnalisables : gravure bois, mugs et verres, plaques de naissance, souvenirs de mariage, bijoux gravés.">
+  <meta property="og:title" content="La boutique — Mon Truc en Bois">
+  <meta property="og:image" content="img/boutique-interieur.jpg">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -14,7 +16,7 @@
   <main class="conteneur">
     <div class="page-tete">
       <span class="etiquette">Catalogue</span>
-      <h1>La boutique</h1>
+      <h1 id="titre">La boutique</h1>
       <p class="chapeau">Tous nos produits se personnalisent. Vous ne trouvez pas votre bonheur ? <a href="contact.html">Demandez-nous un devis sur mesure</a>.</p>
     </div>
 
@@ -27,6 +29,17 @@
           <option value="prix-asc">Prix croissant</option>
           <option value="prix-desc">Prix décroissant</option>
           <option value="nom">Nom (A → Z)</option>
+        </select>
+      </div>
+    </div>
+    <div class="outils" style="margin-top:-1rem">
+      <div class="recherche">
+        <select id="occasion" aria-label="Occasion"><option value="">Toutes les occasions</option></select>
+        <select id="budget" aria-label="Budget">
+          <option value="">Tous les budgets</option>
+          <option value="0-15">Moins de 15 €</option>
+          <option value="15-30">De 15 à 30 €</option>
+          <option value="30-">Plus de 30 €</option>
         </select>
       </div>
     </div>
@@ -44,36 +57,58 @@
     const params = new URLSearchParams(location.search);
     const demande = params.get("categorie") || location.hash.slice(1);
     let actif = CATEGORIES[demande] ? demande : "tout";
+    const $ = (id) => document.getElementById(id);
     const sansAccent = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+    $("occasion").insertAdjacentHTML("beforeend", (D.occasions || []).map((o) => `<option value="${echapper(o.id)}">${echapper(o.nom)}</option>`).join(""));
+    if (OCCASIONS[params.get("occasion")]) $("occasion").value = params.get("occasion");
+    if ([...$("budget").options].some((o) => o.value === params.get("budget"))) $("budget").value = params.get("budget");
+    if (params.get("q")) $("q").value = params.get("q");
 
     function afficher() {
       const boutons = [["tout", "Tout"], ...D.categories.map((c) => [c.id, c.nom])];
-      document.getElementById("filtres").innerHTML = boutons
+      $("filtres").innerHTML = boutons
         .map(([id, nom]) => `<button class="filtre" data-cat="${echapper(id)}" aria-pressed="${id === actif}">${echapper(nom)}</button>`)
         .join("");
 
-      const q = sansAccent(document.getElementById("q").value.trim());
-      let liste = PRODUITS.filter((p) => (actif === "tout" || p.categorie === actif) && (!q || sansAccent(p.nom + " " + p.description).includes(q)));
-      const tri = document.getElementById("tri").value;
+      const q = sansAccent($("q").value.trim());
+      const occ = $("occasion").value;
+      const [min, max] = $("budget").value ? $("budget").value.split("-").map((x) => (x === "" ? Infinity : Number(x))) : [0, Infinity];
+      let liste = PRODUITS.filter(
+        (p) =>
+          (actif === "tout" || p.categorie === actif) &&
+          (!occ || (p.occasions || []).includes(occ)) &&
+          p.prix >= min && p.prix < max &&
+          (!q || sansAccent(p.nom + " " + p.description).includes(q))
+      );
+      const tri = $("tri").value;
       if (tri === "prix-asc") liste = [...liste].sort((a, b) => a.prix - b.prix);
       if (tri === "prix-desc") liste = [...liste].sort((a, b) => b.prix - a.prix);
       if (tri === "nom") liste = [...liste].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+      // Les produits épuisés passent en fin de liste
+      liste = [...liste.filter((p) => p.dispo !== "epuise"), ...liste.filter((p) => p.dispo === "epuise")];
 
-      document.getElementById("resultats").textContent = `${liste.length} produit${liste.length > 1 ? "s" : ""}`;
-      document.getElementById("produits").innerHTML = liste.length
+      $("titre").textContent = occ ? `Idées cadeaux : ${OCCASIONS[occ].nom}` : actif !== "tout" ? CATEGORIES[actif].nom : "La boutique";
+      $("resultats").textContent = `${liste.length} produit${liste.length > 1 ? "s" : ""}`;
+      $("produits").innerHTML = liste.length
         ? liste.map(carteProduit).join("")
         : `<p class="aucun" style="grid-column:1/-1">Aucun produit ne correspond. <a href="contact.html">Demandez-nous un devis sur mesure</a> !</p>`;
+
+      const u = new URLSearchParams();
+      if (actif !== "tout") u.set("categorie", actif);
+      if (occ) u.set("occasion", occ);
+      if ($("budget").value) u.set("budget", $("budget").value);
+      history.replaceState(null, "", "boutique.html" + (u.toString() ? "?" + u : ""));
     }
 
-    document.getElementById("filtres").addEventListener("click", (e) => {
+    $("filtres").addEventListener("click", (e) => {
       const b = e.target.closest("[data-cat]");
       if (!b) return;
       actif = b.dataset.cat;
-      history.replaceState(null, "", actif === "tout" ? "boutique.html" : `boutique.html?categorie=${encodeURIComponent(actif)}`);
       afficher();
     });
-    document.getElementById("q").addEventListener("input", afficher);
-    document.getElementById("tri").addEventListener("change", afficher);
+    $("q").addEventListener("input", afficher);
+    ["tri", "occasion", "budget"].forEach((id) => $(id).addEventListener("change", afficher));
     afficher();
   </script>
 </body>

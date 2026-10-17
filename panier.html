@@ -18,14 +18,18 @@
   <script src="data/donnees.js"></script>
   <script src="js/main.js"></script>
   <script>
-    const { echapper, euros, visuel, lirePanier, ecrirePanier } = MTB;
+    const { echapper, euros, visuel, lirePanier, ecrirePanier, lienWhatsapp } = MTB;
     const zone = document.getElementById("contenu");
     let modeLivraison = "livraison";
+    const cadeau = { emballage: false, message: "", date: "" };
+    const emballageActif = SITE.emballage?.actif;
+    const prixEmballage = Number(SITE.emballage?.prix || 0);
 
     const totaux = (panier) => {
       const sousTotal = panier.reduce((t, l) => t + l.prix * l.quantite, 0);
       const port = modeLivraison === "retrait" || sousTotal >= SITE.livraisonOfferteDes ? 0 : Number(SITE.livraison);
-      return { sousTotal, port, total: sousTotal + port };
+      const emballage = emballageActif && cadeau.emballage ? prixEmballage : 0;
+      return { sousTotal, port, emballage, total: sousTotal + port + emballage };
     };
 
     function resumeTexte(panier) {
@@ -42,13 +46,29 @@
       return [
         ...lignes,
         "",
+        cadeau.emballage && emballageActif && `Emballage cadeau : ${euros(t.emballage)}`,
+        cadeau.message && `Message pour la carte : « ${cadeau.message} »`,
+        cadeau.date && `Date souhaitée : ${new Date(cadeau.date).toLocaleDateString("fr-FR")}`,
         `Sous-total : ${euros(t.sousTotal)}`,
         `${modeLivraison === "retrait" ? "Retrait à la boutique d'Auchel" : "Livraison"} : ${t.port ? euros(t.port) : "offerte"}`,
         `TOTAL : ${euros(t.total)}`,
-      ].join("\n");
+      ].filter((x) => x !== false && x !== "").join("\n");
     }
 
     function afficher() {
+      // Conserve ce que le client a déjà saisi quand la page se redessine
+      const saisies = {};
+      zone.querySelectorAll("#commande input, #commande textarea").forEach((el) => (saisies[el.id] = el.type === "checkbox" ? el.checked : el.value));
+      dessiner();
+      for (const [id, v] of Object.entries(saisies)) {
+        const el = document.getElementById(id);
+        if (!el || id === "c-emballage") continue;
+        if (el.type === "checkbox") el.checked = v;
+        else el.value = v;
+      }
+    }
+
+    function dessiner() {
       const panier = lirePanier();
       if (!panier.length) {
         zone.innerHTML = `<div class="vide"><h1>Votre panier est vide</h1><p class="chapeau">Découvrez nos créations personnalisables.</p><a class="btn" href="boutique.html">Aller à la boutique</a></div>`;
@@ -96,7 +116,8 @@
             <div class="pile" style="gap:.5rem">
               <div class="recap-ligne"><span>Sous-total</span><span>${euros(t.sousTotal)}</span></div>
               <div class="recap-ligne"><span>${modeLivraison === "retrait" ? "Retrait" : "Livraison"}</span><span>${t.port ? euros(t.port) : "Offert"}</span></div>
-              ${modeLivraison === "livraison" && restant > 0 ? `<p class="aide">Plus que ${euros(restant)} pour la livraison offerte.</p>` : ""}
+              ${modeLivraison === "livraison" && restant > 0 ? `<p class="aide">Plus que <strong>${euros(restant)}</strong> pour la livraison offerte.</p><div class="jauge" aria-hidden="true"><span style="width:${Math.min(100, (t.sousTotal / SITE.livraisonOfferteDes) * 100)}%"></span></div>` : ""}
+              ${t.emballage ? `<div class="recap-ligne"><span>Emballage cadeau</span><span>${euros(t.emballage)}</span></div>` : ""}
               <div class="recap-ligne recap-total"><span>Total</span><span>${euros(t.total)}</span></div>
             </div>
 
@@ -108,16 +129,31 @@
                 <div class="champ"><label for="c-tel">Téléphone *</label><input type="tel" id="c-tel" name="telephone" required autocomplete="tel"></div>
               </div>
               ${modeLivraison === "livraison" ? `<div class="champ"><label for="c-adr">Adresse de livraison *</label><textarea id="c-adr" name="adresse" required autocomplete="street-address" style="min-height:80px"></textarea></div>` : ""}
-              <div class="champ"><label for="c-msg">Message <small>(date souhaitée, occasion…)</small></label><textarea id="c-msg" name="message" style="min-height:70px"></textarea></div>
+              <div class="options-cadeau">
+                <span class="label" style="display:flex;gap:.5rem;align-items:center">${MTB.icone("cadeau")} C'est pour offrir ?</span>
+                ${emballageActif ? `<label class="case"><input type="checkbox" id="c-emballage" ${cadeau.emballage ? "checked" : ""}> Emballage cadeau (+${euros(prixEmballage)})</label>` : ""}
+                <div class="champ"><label for="c-carte">Message pour la carte <small>(facultatif)</small></label><input type="text" id="c-carte" maxlength="160" value="${echapper(cadeau.message)}" placeholder="Joyeux anniversaire Mamie !"></div>
+                <div class="champ"><label for="c-date">Pour quelle date ? <small>(facultatif)</small></label><input type="date" id="c-date" value="${echapper(cadeau.date)}" min="${new Date().toISOString().slice(0, 10)}"></div>
+              </div>
+              <div class="champ"><label for="c-msg">Message <small>(occasion, question…)</small></label><textarea id="c-msg" name="message" style="min-height:70px"></textarea></div>
               <label class="case"><input type="checkbox" id="c-cgv" required> <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span></label>
-              <button class="btn btn-plein" type="submit">Envoyer ma commande</button>
+              <button class="btn btn-plein" type="submit" data-canal="email">Envoyer ma commande</button>
+              ${lienWhatsapp() ? `<div class="ou">ou</div><button class="btn btn-plein btn-whatsapp" type="submit" data-canal="whatsapp">${MTB.icone("bulle")} Commander par WhatsApp</button>` : ""}
               <p class="aide">Nous vous recontactons sous 48 h pour valider la personnalisation (maquette si besoin) et vous indiquer les modalités de paiement. Aucun paiement n'est demandé à cette étape.</p>
             </form>
           </div>
         </div>`;
     }
 
+    zone.addEventListener("input", (e) => {
+      if (e.target.id === "c-carte") cadeau.message = e.target.value.trim();
+      if (e.target.id === "c-date") cadeau.date = e.target.value;
+    });
     zone.addEventListener("change", (e) => {
+      if (e.target.id === "c-emballage") {
+        cadeau.emballage = e.target.checked;
+        afficher();
+      }
       if (e.target.name === "mode") {
         modeLivraison = e.target.value;
         afficher();
@@ -162,10 +198,14 @@
         resumeTexte(panier),
       ].filter((x) => x !== "").join("\n");
       const aDesPhotos = panier.some((l) => l.photoNom);
-      f.querySelector("button").disabled = true;
+      f.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      const parWhatsapp = e.submitter?.dataset.canal === "whatsapp";
 
       let envoye = false;
-      if (SITE.formulaireCommande) {
+      if (parWhatsapp) {
+        window.open(lienWhatsapp(corps), "_blank", "noopener");
+        envoye = "whatsapp";
+      } else if (SITE.formulaireCommande) {
         try {
           const r = await fetch(SITE.formulaireCommande, {
             method: "POST",
@@ -175,7 +215,7 @@
           envoye = r.ok;
         } catch {}
       }
-      if (!envoye) {
+      if (envoye === false) {
         // Repli : ouverture de la messagerie du client avec la commande pré-remplie.
         location.href = `mailto:${SITE.email}?subject=${encodeURIComponent("Commande " + numero)}&body=${encodeURIComponent(corps)}`;
       }
@@ -184,7 +224,7 @@
       zone.innerHTML = `
         <div class="vide">
           <h1>Merci ${echapper(client.nom.split(" ")[0])} !</h1>
-          <p class="chapeau">Votre commande <strong>${numero}</strong> ${envoye ? "a bien été envoyée" : "est prête dans votre messagerie : pensez à cliquer sur « Envoyer »"}. Nous vous recontactons très vite pour valider votre personnalisation et le paiement.</p>
+          <p class="chapeau">Votre commande <strong>${numero}</strong> ${envoye === "whatsapp" ? "est prête dans WhatsApp : pensez à envoyer le message" : envoye ? "a bien été envoyée" : "est prête dans votre messagerie : pensez à cliquer sur « Envoyer »"}. Nous vous recontactons très vite pour valider votre personnalisation et le paiement.</p>
           ${aDesPhotos ? `<p class="message">N'oubliez pas de nous envoyer vos photos en haute qualité à <a href="mailto:${echapper(SITE.email)}?subject=${encodeURIComponent("Photos commande " + numero)}">${echapper(SITE.email)}</a> en indiquant le numéro de commande.</p>` : ""}
           <a class="btn" href="index.html">Retour à l'accueil</a>
         </div>`;

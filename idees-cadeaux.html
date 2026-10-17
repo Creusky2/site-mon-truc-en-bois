@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Idées cadeaux personnalisés — Mon Truc en Bois</title>
+  <meta name="description" content="Idées de cadeaux personnalisés par occasion et par budget : naissance, mariage, fête des pères et des mères, Noël, remerciements, retraite.">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="conteneur" style="padding-bottom:5rem">
+    <div class="page-tete">
+      <span class="etiquette">Idées cadeaux</span>
+      <h1>Trouvez le cadeau qui fera plaisir</h1>
+      <p class="chapeau">Choisissez l'occasion ou votre budget : nous vous proposons les créations les plus adaptées, toutes personnalisables.</p>
+    </div>
+
+    <section class="pile" style="gap:1.25rem;margin-bottom:3.5rem">
+      <h2 style="font-size:1.4rem">Par occasion</h2>
+      <div class="occasions-grandes" id="occasions"></div>
+    </section>
+
+    <section class="pile" style="gap:1.25rem;margin-bottom:3.5rem">
+      <h2 style="font-size:1.4rem">Par budget</h2>
+      <div class="occasions">
+        <a class="occasion" href="boutique.html?budget=0-15">Moins de 15 €</a>
+        <a class="occasion" href="boutique.html?budget=15-30">De 15 à 30 €</a>
+        <a class="occasion" href="boutique.html?budget=30-">Plus de 30 €</a>
+      </div>
+    </section>
+
+    <div class="appel">
+      <div>
+        <h2>Vous ne savez pas quoi choisir ?</h2>
+        <p>Dites-nous pour qui c'est, l'occasion et votre budget : nous vous conseillons et vous proposons une idée sur mesure.</p>
+      </div>
+      <a class="btn btn-clair" href="contact.html">Demander conseil</a>
+    </div>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="data/donnees.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { D, echapper, imagesProduit, euros } = MTB;
+    document.getElementById("occasions").innerHTML = (D.occasions || [])
+      .map((o) => {
+        const liste = PRODUITS.filter((p) => (p.occasions || []).includes(o.id));
+        if (!liste.length) return "";
+        const photo = liste.map((p) => imagesProduit(p)[0]).find(Boolean);
+        const min = Math.min(...liste.map((p) => p.prix));
+        return `
+          <a class="occasion-carte" href="boutique.html?occasion=${encodeURIComponent(o.id)}">
+            ${photo ? `<img src="${echapper(photo)}" alt="" loading="lazy">` : "<span></span>"}
+            <span class="pile" style="gap:.25rem">
+              <h3>${echapper(o.nom)}</h3>
+              <p>${liste.length} idée${liste.length > 1 ? "s" : ""} · dès ${euros(min)}</p>
+            </span>
+          </a>`;
+      })
+      .join("");
+  </script>
+</body>
+</html>

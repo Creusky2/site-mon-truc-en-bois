@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Questions fréquentes — Mon Truc en Bois</title>
+  <meta name="description" content="Délais, retrait en boutique à Auchel, paiement, envoi de photos, commandes en quantité : toutes les réponses sur nos créations personnalisées.">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="conteneur" style="padding-bottom:5rem">
+    <div class="page-tete">
+      <span class="etiquette">Aide</span>
+      <h1>Questions fréquentes</h1>
+      <p class="chapeau">Vous ne trouvez pas votre réponse ? <a href="contact.html">Écrivez-nous</a> ou appelez-nous au <a data-tel></a>.</p>
+    </div>
+    <div class="faq" id="faq"></div>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="data/donnees.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { D, echapper } = MTB;
+    const faq = (D.faq || []).filter((x) => x.q && x.r);
+    document.getElementById("faq").innerHTML = faq
+      .map((x, i) => `<details${i === 0 ? " open" : ""}><summary>${echapper(x.q)}</summary><p>${echapper(x.r)}</p></details>`)
+      .join("");
+    const ld = document.createElement("script");
+    ld.type = "application/ld+json";
+    ld.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faq.map((x) => ({ "@type": "Question", name: x.q, acceptedAnswer: { "@type": "Answer", text: x.r } })),
+    });
+    document.head.append(ld);
+  </script>
+</body>
+</html>

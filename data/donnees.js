@@ -23,11 +23,17 @@ window.DONNEES = {
     "avis": "Recommandé à 100 % · 16 avis",
     "formulaireCommande": "",
     "livraison": 5.9,
-    "livraisonOfferteDes": 60
+    "livraisonOfferteDes": 60,
+    "whatsapp": "",
+    "emballage": {
+      "actif": false,
+      "prix": 2.5
+    }
   },
   "annonce": {
     "actif": false,
-    "texte": "La boutique sera fermée du mercredi 21 au mercredi 28 octobre."
+    "texte": "La boutique sera fermée du mercredi 21 au mercredi 28 octobre.",
+    "lien": ""
   },
   "textes": {
     "heroTitre": "Offrez un cadeau unique, qui restera gravé dans les mémoires",
@@ -101,7 +107,20 @@ window.DONNEES = {
         ]
       },
       "visible": true,
-      "vedette": true
+      "vedette": true,
+      "images": [
+        "img/planche-aperitif.jpg"
+      ],
+      "occasions": [
+        "fete-peres",
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "plaque-message",
@@ -115,7 +134,20 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/plaque-message.jpg"
+      ],
+      "occasions": [
+        "anniversaire",
+        "remerciement",
+        "fete-meres"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "verres-graves",
@@ -146,7 +178,20 @@ window.DONNEES = {
         ]
       },
       "visible": true,
-      "vedette": true
+      "vedette": true,
+      "images": [
+        "img/verres-graves.jpg"
+      ],
+      "occasions": [
+        "mariage",
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "photo-gravee-bois",
@@ -173,7 +218,20 @@ window.DONNEES = {
         ]
       },
       "visible": true,
-      "vedette": true
+      "vedette": true,
+      "images": [
+        "img/photo-gravee-bois.jpg"
+      ],
+      "occasions": [
+        "anniversaire",
+        "noel",
+        "fete-meres"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "tableau-scrabble",
@@ -187,7 +245,20 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": true
+      "vedette": true,
+      "images": [
+        "img/tableau-scrabble.jpg"
+      ],
+      "occasions": [
+        "fete-peres",
+        "fete-meres",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "panneau-directionnel",
@@ -201,7 +272,19 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/panneau-directionnel.jpg"
+      ],
+      "occasions": [
+        "mariage",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "decapsuleur-mural",
@@ -215,7 +298,20 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/decapsuleur-mural.jpg"
+      ],
+      "occasions": [
+        "fete-peres",
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "accroche-porte",
@@ -229,7 +325,19 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/accroche-porte.jpg"
+      ],
+      "occasions": [
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "dessous-de-verre",
@@ -243,7 +351,20 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/dessous-de-verre.jpg"
+      ],
+      "occasions": [
+        "mariage",
+        "remerciement",
+        "pro"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "ardoise-gravee",
@@ -257,7 +378,19 @@ window.DONNEES = {
         "photo": true
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/ardoise-gravee.jpg"
+      ],
+      "occasions": [
+        "fete-meres",
+        "anniversaire"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "mug-personnalise",
@@ -271,7 +404,22 @@ window.DONNEES = {
         "photo": true
       },
       "visible": true,
-      "vedette": true
+      "vedette": true,
+      "images": [
+        "img/mug-personnalise.jpg"
+      ],
+      "occasions": [
+        "fete-peres",
+        "fete-meres",
+        "remerciement",
+        "noel",
+        "pro"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "verre-imprime",
@@ -285,7 +433,19 @@ window.DONNEES = {
         "photo": true
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/verre-imprime.jpg"
+      ],
+      "occasions": [
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "plaque-voiture",
@@ -299,7 +459,20 @@ window.DONNEES = {
         "photo": true
       },
       "visible": true,
-      "vedette": true
+      "vedette": true,
+      "images": [
+        "img/plaque-voiture.jpg"
+      ],
+      "occasions": [
+        "retraite",
+        "remerciement",
+        "anniversaire"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "baskets-personnalisees",
@@ -313,7 +486,19 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/baskets-personnalisees.jpg"
+      ],
+      "occasions": [
+        "mariage",
+        "anniversaire"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "prenom-vinyle",
@@ -344,7 +529,19 @@ window.DONNEES = {
         ]
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/prenom-vinyle.jpg"
+      ],
+      "occasions": [
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "tirelire",
@@ -358,7 +555,19 @@ window.DONNEES = {
         "photo": true
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/tirelire.jpg"
+      ],
+      "occasions": [
+        "pro",
+        "retraite"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "plaque-naissance-bois",
@@ -372,7 +581,18 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": true
+      "vedette": true,
+      "images": [
+        "img/plaque-naissance-bois.jpg"
+      ],
+      "occasions": [
+        "naissance"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "plaque-naissance-illustree",
@@ -386,7 +606,18 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/plaque-naissance-illustree.jpg"
+      ],
+      "occasions": [
+        "naissance"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "panneau-bienvenue",
@@ -400,7 +631,19 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/panneau-bienvenue.jpg"
+      ],
+      "occasions": [
+        "naissance",
+        "mariage"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "calendrier-date",
@@ -414,7 +657,19 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/calendrier-date.jpg"
+      ],
+      "occasions": [
+        "mariage",
+        "naissance"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "cadre-mariage",
@@ -428,7 +683,18 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/cadre-mariage.jpg"
+      ],
+      "occasions": [
+        "mariage"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "coeur-anniversaire-mariage",
@@ -442,7 +708,18 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/coeur-anniversaire-mariage.jpg"
+      ],
+      "occasions": [
+        "mariage"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "urne-mariage",
@@ -456,7 +733,19 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/urne-mariage.jpg"
+      ],
+      "occasions": [
+        "mariage",
+        "naissance"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "bracelet-jonc",
@@ -487,7 +776,20 @@ window.DONNEES = {
         ]
       },
       "visible": true,
-      "vedette": true
+      "vedette": true,
+      "images": [
+        "img/bracelet-jonc.jpg"
+      ],
+      "occasions": [
+        "fete-meres",
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "bracelets-emailles",
@@ -501,7 +803,19 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/bracelets-emailles.jpg"
+      ],
+      "occasions": [
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "boite-a-bijoux",
@@ -515,7 +829,20 @@ window.DONNEES = {
         "photo": false
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/boite-a-bijoux.jpg"
+      ],
+      "occasions": [
+        "naissance",
+        "anniversaire",
+        "noel"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
     },
     {
       "id": "porte-cles-grave",
@@ -529,7 +856,89 @@ window.DONNEES = {
         "photo": true
       },
       "visible": true,
-      "vedette": false
+      "vedette": false,
+      "images": [
+        "img/porte-cles-grave.jpg"
+      ],
+      "occasions": [
+        "fete-peres",
+        "noel",
+        "remerciement"
+      ],
+      "badge": "",
+      "prixBarre": 0,
+      "delai": 0,
+      "instructions": "",
+      "dispo": "disponible"
+    }
+  ],
+  "occasions": [
+    {
+      "id": "naissance",
+      "nom": "Naissance & baptême"
+    },
+    {
+      "id": "mariage",
+      "nom": "Mariage"
+    },
+    {
+      "id": "anniversaire",
+      "nom": "Anniversaire"
+    },
+    {
+      "id": "fete-meres",
+      "nom": "Fête des mères"
+    },
+    {
+      "id": "fete-peres",
+      "nom": "Fête des pères & papys"
+    },
+    {
+      "id": "noel",
+      "nom": "Noël"
+    },
+    {
+      "id": "remerciement",
+      "nom": "Merci (maîtresse, nounou…)"
+    },
+    {
+      "id": "retraite",
+      "nom": "Départ & retraite"
+    },
+    {
+      "id": "pro",
+      "nom": "Entreprises & associations"
+    }
+  ],
+  "avis": [],
+  "faq": [
+    {
+      "q": "Comment se passe une commande personnalisée ?",
+      "r": "Vous choisissez votre produit, indiquez votre texte et, si besoin, envoyez votre photo. Nous vous recontactons pour valider le rendu (avec une maquette si nécessaire) et le paiement avant de lancer la fabrication."
+    },
+    {
+      "q": "Quel est le délai de fabrication ?",
+      "r": "Il dépend de la pièce et de la période : il est indiqué sur la fiche produit quand il est connu, et nous vous le confirmons au moment de la validation. Pour une date précise (anniversaire, mariage…), indiquez-la dans votre commande."
+    },
+    {
+      "q": "Puis-je retirer ma commande à la boutique ?",
+      "r": "Oui, le retrait est gratuit à la boutique, 3 rue Salengro à Auchel, aux horaires d'ouverture. Nous vous prévenons dès que votre création est prête."
+    },
+    {
+      "q": "Comment payer ?",
+      "r": "Aucun paiement n'est demandé sur le site : nous vous indiquons les modalités de paiement au moment où nous validons votre commande avec vous."
+    },
+    {
+      "q": "Puis-je envoyer ma propre photo ou mon logo ?",
+      "r": "Bien sûr. Vous pouvez l'ajouter directement sur la fiche produit, ou nous l'envoyer après la commande. Une image nette et de bonne qualité donne le meilleur résultat."
+    },
+    {
+      "q": "Faites-vous des commandes en quantité ?",
+      "r": "Oui : mariages, associations, clubs, entreprises… Décrivez-nous votre projet dans le formulaire de devis, nous vous répondons rapidement avec un tarif adapté."
+    },
+    {
+      "q": "Puis-je retourner un article personnalisé ?",
+      "r": "Les articles personnalisés sont fabriqués spécialement pour vous : ils ne peuvent pas être échangés ni remboursés, sauf défaut. C'est pour cela que nous validons le rendu avec vous avant fabrication."
     }
   ]
 };

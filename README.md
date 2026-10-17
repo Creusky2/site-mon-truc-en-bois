@@ -12,15 +12,20 @@ Site **statique** (HTML / CSS / JavaScript) : aucun serveur ni base de données 
 
 Ouvrir **`/admin.html`** (ex. `https://creusky2.github.io/site-mon-truc-en-bois/admin.html`).
 
-- **Produits** : ajouter, modifier, dupliquer, masquer, supprimer, réordonner ; photo, prix, description,
-  choix proposés (taille, finition…) avec supplément, « coup de cœur » pour la page d'accueil.
-- **Catégories** : nom, description, photo de la tuile, ordre.
-- **Infos boutique** : coordonnées, email, horaires, frais de livraison, mode « site en construction ».
-- **Textes & annonce** : titre et texte d'accueil, présentation, bandeau d'annonce (fermeture, salon…).
-- **Galerie** : photos des réalisations de la page « Qui sommes-nous ? ».
+- **Tableau de bord** : chiffres clés, liste de vérification avant d'ouvrir les commandes, raccourcis,
+  sauvegarde / restauration du contenu, historique des publications.
+- **Produits** : prix modifiables directement dans la liste, coup de cœur et visibilité en un clic ;
+  fiche complète : plusieurs photos, prix barré, badge (Nouveau, Promo…), délai de fabrication,
+  consigne de personnalisation, disponibilité, occasions, choix avec supplément.
+- **Catégories & occasions** : catégories (photo, ordre) et occasions de la page « Idées cadeaux ».
+- **Avis clients** et **FAQ**.
+- **Infos boutique** : coordonnées, WhatsApp, horaires, livraison, emballage cadeau, mode « site en construction ».
+- **Textes & annonce** : textes d'accueil et de présentation, bandeau d'annonce avec lien.
+- **Galerie** : photos des réalisations.
 
-Les modifications sont enregistrées dans `data/donnees.js` sur GitHub en cliquant sur **Publier les modifications** ;
-le site est à jour quelques minutes plus tard. Les photos ajoutées sont réduites automatiquement et rangées dans `img/`.
+**Prévisualiser** affiche le site avec les modifications non publiées (sur cet appareil uniquement).
+**Publier les modifications** enregistre `data/donnees.js` sur GitHub ; le site est à jour quelques minutes plus tard.
+Les modifications en cours sont gardées automatiquement sur l'appareil en cas de fermeture de la page.
 
 **Connexion** : la page demande une clé d'accès GitHub (*fine-grained personal access token*), limitée à ce dépôt
 avec la permission **Contents : Read and write**. La marche à suivre est rappelée sur l'écran de connexion.
@@ -30,14 +35,19 @@ La clé reste enregistrée uniquement dans le navigateur de l'appareil utilisé.
 
 | Page | Rôle |
 |---|---|
-| `index.html` | Accueil : univers, coups de cœur, fonctionnement, horaires |
-| `boutique.html` | Catalogue avec filtres, recherche et tri |
-| `produit.html?id=…` | Fiche produit : choix, texte, police, photo, **aperçu en direct** |
-| `panier.html` | Panier, livraison ou retrait, formulaire de commande |
+| `index.html` | Accueil : univers, coups de cœur, occasions, avis, fonctionnement, horaires |
+| `boutique.html` | Catalogue : catégories, occasion, budget, recherche, tri |
+| `idees-cadeaux.html` | Idées cadeaux par occasion et par budget |
+| `produit.html?id=…` | Fiche produit : galerie, choix, texte, police, photo, **aperçu en direct**, délai, favori, partage |
+| `favoris.html` | Produits mis de côté par le client |
+| `panier.html` | Panier, livraison ou retrait, options cadeau, commande par email ou WhatsApp |
 | `atelier.html` | Qui sommes-nous ? (présentation, savoir-faire, galerie) |
+| `faq.html` | Questions fréquentes |
 | `contact.html` | Coordonnées, horaires, itinéraire, demande de devis |
 | `cgv.html`, `mentions-legales.html` | Pages légales (modèles à compléter) |
 | `admin.html` | Administration du contenu |
+
+Le benchmark qui a guidé ces choix est dans [`docs/benchmark.md`](docs/benchmark.md).
 
 ## Fichiers
 

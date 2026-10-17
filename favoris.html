@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mes favoris — Mon Truc en Bois</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="conteneur" style="padding-bottom:5rem">
+    <div class="page-tete">
+      <span class="etiquette">Ma sélection</span>
+      <h1>Mes favoris</h1>
+      <p class="chapeau">Les créations que vous avez mises de côté avec le cœur. Elles restent enregistrées sur cet appareil.</p>
+    </div>
+    <div class="produits" id="favoris"></div>
+    <div class="actions-secondaires" id="partage-liste" style="margin-top:2rem" hidden>
+      <button class="btn btn-ligne" type="button" id="copier">Copier la liste pour l'envoyer à un proche</button>
+    </div>
+    <p id="retour" aria-live="polite" style="margin-top:1rem"></p>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="data/donnees.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { lireFavoris, carteProduit, euros } = MTB;
+    function afficher() {
+      const liste = lireFavoris().map(trouverProduit).filter(Boolean);
+      document.getElementById("partage-liste").hidden = !liste.length;
+      document.getElementById("favoris").innerHTML = liste.length
+        ? liste.map(carteProduit).join("")
+        : `<div class="vide" style="grid-column:1/-1"><p class="chapeau">Aucun favori pour l'instant. Touchez le cœur sur un produit pour le garder ici.</p><a class="btn" href="boutique.html">Parcourir la boutique</a></div>`;
+    }
+    document.addEventListener("favoris", afficher);
+    document.getElementById("copier").addEventListener("click", async () => {
+      const base = location.href.replace(/[^/]*$/, "");
+      const texte = lireFavoris().map(trouverProduit).filter(Boolean).map((p) => `• ${p.nom} (${euros(p.prix)}) : ${base}produit.html?id=${p.id}`).join("\n");
+      try {
+        await navigator.clipboard.writeText(`Mes idées chez ${SITE.nom} :\n${texte}`);
+        document.getElementById("retour").textContent = "Liste copiée : collez-la dans un message.";
+      } catch {
+        document.getElementById("retour").textContent = "Copie impossible sur cet appareil.";
+      }
+    });
+    afficher();
+  </script>
+</body>
+</html>

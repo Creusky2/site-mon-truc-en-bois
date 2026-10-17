@@ -1,12 +1,41 @@
-// En-tête, pied de page, panier et utilitaires partagés par toutes les pages.
+// En-tête, pied de page, panier, favoris et utilitaires partagés par toutes les pages.
 // Les contenus (infos, textes, catalogue) viennent de data/donnees.js, modifiable depuis admin.html.
 (function () {
-  const D = window.DONNEES;
+  // ---------- Aperçu d'un brouillon de l'admin (?brouillon=1, garde le mode pendant la navigation) ----------
+  let D = window.DONNEES;
+  let enBrouillon = false;
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.has("brouillon")) sessionStorage.setItem("mode-brouillon", "1");
+    if (params.has("quitter-brouillon")) sessionStorage.removeItem("mode-brouillon");
+    const brouillon = localStorage.getItem("brouillon-mtb");
+    if (sessionStorage.getItem("mode-brouillon") && brouillon) {
+      const b = JSON.parse(brouillon);
+      D = b.donnees;
+      enBrouillon = true;
+      // Une photo tout juste ajoutée n'est pas encore publiée sur le site : on la prend directement sur GitHub.
+      if (b.depot)
+        document.addEventListener(
+          "error",
+          (e) => {
+            const img = e.target;
+            if (img.tagName !== "IMG" || img.dataset.secours) return;
+            const chemin = img.getAttribute("src") || "";
+            if (!chemin.startsWith("img/")) return;
+            img.dataset.secours = "1";
+            img.src = `https://raw.githubusercontent.com/${b.depot}/${chemin}`;
+          },
+          true
+        );
+    }
+  } catch {}
   const S = D.site;
 
   // Raccourcis utilisés par les pages
+  window.DONNEES = D;
   window.SITE = S;
   window.CATEGORIES = Object.fromEntries(D.categories.map((c) => [c.id, c]));
+  window.OCCASIONS = Object.fromEntries((D.occasions || []).map((o) => [o.id, o]));
   window.PRODUITS = D.produits.filter((p) => p.visible !== false);
   window.trouverProduit = (id) => window.PRODUITS.find((p) => p.id === id);
 
@@ -14,6 +43,13 @@
   const echapper = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const telLien = (t) => "tel:" + String(t).replace(/[^\d+]/g, "");
+  // WhatsApp attend le numéro au format international sans « + » ni 0 initial : 07… → 337…
+  const numeroWhatsapp = () => {
+    let n = String(S.whatsapp || "").replace(/\D/g, "");
+    if (n.startsWith("0")) n = "33" + n.slice(1);
+    return n;
+  };
+  const lienWhatsapp = (texte = "") => (numeroWhatsapp() ? `https://wa.me/${numeroWhatsapp()}${texte ? "?text=" + encodeURIComponent(texte) : ""}` : "");
 
   // ---------- Icônes (traits simples) ----------
   const TRACES = {
@@ -25,7 +61,6 @@
     fleche: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     main: '<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5V4.5a1.5 1.5 0 0 1 3 0V11m0-4.5a1.5 1.5 0 0 1 3 0V13a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3 14a1.6 1.6 0 0 1 2.6-1.8L8 15"/>',
-    eclat: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
     crayon: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/>',
     boutique: '<path d="M4 10v10h16V10"/><path d="M3 10 5 4h14l2 6"/><path d="M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M10 20v-5h4v5"/>',
     camion: '<path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.5"/><circle cx="17" cy="17.5" r="1.5"/>',
@@ -36,60 +71,112 @@
     tshirt: '<path d="M8 4 4 6l1.5 4L8 9v11h8V9l2.5 1L20 6l-4-2a4 4 0 0 1-8 0z"/>',
     fete: '<path d="m4 20 5-14 9 9z"/><path d="M14 4c1 1 1 2 0 3M19 9c1-1 2-1 3 0M17 3l.5 1.5M21 6l-1.5.5"/>',
     bijou: '<circle cx="12" cy="14" r="6"/><path d="m9 4 3 4 3-4z"/>',
+    coeur: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+    cadeau: '<rect x="3" y="8" width="18" height="13" rx="1"/><path d="M12 8v13M3 12h18M12 8S10.5 3 8 4s0 4 4 4zM12 8s1.5-5 4-4 0 4-4 4z"/>',
+    calendrier: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    partage: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.2 10.8 7.6-3.6M8.2 13.2l7.6 3.6"/>',
+    bulle: '<path d="M4 19.5 5.5 15A8 8 0 1 1 9 18.6z"/>',
+    question: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/>',
+    etoile: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
   };
   const icone = (nom, cls = "ico") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${TRACES[nom] || ""}</svg>`;
   const LOGO = `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#a8693a"/><circle cx="20" cy="20" r="14" fill="none" stroke="#f1dcc3" stroke-width="1.6"/><circle cx="20.5" cy="19.5" r="9" fill="none" stroke="#f1dcc3" stroke-width="1.4"/><circle cx="21" cy="19" r="4.2" fill="none" stroke="#f1dcc3" stroke-width="1.2"/><circle cx="21.2" cy="18.8" r="1.1" fill="#f1dcc3"/></svg>`;
 
-  // ---------- Panier (stocké dans le navigateur) ----------
-  const CLE = "panier-mtb";
-  const lirePanier = () => {
+  // ---------- Stockage navigateur (panier, favoris) ----------
+  const lire = (cle, defaut) => {
     try {
-      return JSON.parse(localStorage.getItem(CLE)) || [];
+      return JSON.parse(localStorage.getItem(cle)) ?? defaut;
     } catch {
-      return [];
+      return defaut;
     }
   };
-  const ecrirePanier = (panier) => {
+  const garder = (cle, valeur) => {
     try {
-      localStorage.setItem(CLE, JSON.stringify(panier));
+      localStorage.setItem(cle, JSON.stringify(valeur));
+      return true;
     } catch {
-      // Quota dépassé (photos trop lourdes) : on retire les aperçus photo.
-      try {
-        localStorage.setItem(CLE, JSON.stringify(panier.map((l) => ({ ...l, photo: "" }))));
-      } catch {}
+      return false;
     }
-    majCompteur();
+  };
+
+  const CLE = "panier-mtb";
+  const lirePanier = () => lire(CLE, []);
+  const ecrirePanier = (panier) => {
+    // Quota dépassé (photos trop lourdes) : on retire les aperçus photo.
+    if (!garder(CLE, panier)) garder(CLE, panier.map((l) => ({ ...l, photo: "" })));
+    majCompteurs();
   };
   const ajouterAuPanier = (ligne) => {
     const panier = lirePanier();
     panier.push({ ...ligne, uid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) });
     ecrirePanier(panier);
   };
-  function majCompteur() {
-    const el = document.querySelector("[data-compteur]");
-    if (!el) return;
+
+  const CLE_FAVORIS = "favoris-mtb";
+  const lireFavoris = () => lire(CLE_FAVORIS, []).filter((id) => window.trouverProduit(id));
+  const estFavori = (id) => lireFavoris().includes(id);
+  function basculerFavori(id) {
+    const f = lireFavoris();
+    const i = f.indexOf(id);
+    i >= 0 ? f.splice(i, 1) : f.push(id);
+    garder(CLE_FAVORIS, f);
+    majCompteurs();
+    document.querySelectorAll(`[data-favori="${CSS.escape(id)}"]`).forEach((b) => b.setAttribute("aria-pressed", i < 0));
+    document.dispatchEvent(new CustomEvent("favoris"));
+  }
+
+  function majCompteurs() {
     const n = lirePanier().reduce((t, l) => t + l.quantite, 0);
-    el.textContent = n;
-    el.hidden = n === 0;
+    document.querySelectorAll("[data-compteur]").forEach((el) => {
+      el.textContent = n;
+      el.hidden = n === 0;
+    });
+    const f = lireFavoris().length;
+    document.querySelectorAll("[data-compteur-favoris]").forEach((el) => {
+      el.textContent = f;
+      el.hidden = f === 0;
+    });
   }
 
   // ---------- Produits ----------
+  const imagesProduit = (p) => (p.images?.length ? p.images : p.image ? [p.image] : []);
   function visuel(produit) {
-    if (produit.image) return `<img src="${echapper(produit.image)}" alt="${echapper(produit.nom)}" loading="lazy">`;
+    const src = imagesProduit(produit)[0];
+    if (src) return `<img src="${echapper(src)}" alt="${echapper(produit.nom)}" loading="lazy">`;
     return `<div class="vide-image" role="img" aria-label="${echapper(produit.nom)}">${icone("image", "")}</div>`;
   }
-  const aPartirDe = (p) => p.variantes?.choix?.some((c) => c.prix) ? "<small>dès</small> " : "";
+  const BADGES = { nouveau: "Nouveau", promo: "Promo", best: "Best-seller", edition: "Édition limitée" };
+  function badges(p) {
+    const b = [];
+    if (p.dispo === "epuise") b.push(`<span class="badge badge-epuise">Épuisé</span>`);
+    else if (p.badge && BADGES[p.badge]) b.push(`<span class="badge badge-${p.badge}">${BADGES[p.badge]}</span>`);
+    else if (p.prixBarre > p.prix) b.push(`<span class="badge badge-promo">−${Math.round((1 - p.prix / p.prixBarre) * 100)} %</span>`);
+    return b.length ? `<div class="badges">${b.join("")}</div>` : "";
+  }
+  const aPartirDe = (p) => (p.variantes?.choix?.some((c) => c.prix) ? "<small>dès</small> " : "");
+  const prixHTML = (p) =>
+    `<span class="prix">${aPartirDe(p)}${euros(p.prix)}${p.prixBarre > p.prix ? ` <s class="prix-barre">${euros(p.prixBarre)}</s>` : ""}</span>`;
+  const boutonFavori = (p) =>
+    `<button class="favori" type="button" data-favori="${echapper(p.id)}" aria-pressed="${estFavori(p.id)}" aria-label="Ajouter « ${echapper(p.nom)} » aux favoris" title="Favori">${icone("coeur")}</button>`;
   function carteProduit(p) {
     const cat = window.CATEGORIES[p.categorie];
+    const images = imagesProduit(p);
     return `
-      <a class="produit-carte" href="produit.html?id=${encodeURIComponent(p.id)}">
-        <div class="produit-image">${visuel(p)}</div>
-        <div class="produit-infos">
-          ${cat ? `<span class="etiquette">${echapper(cat.nom)}</span>` : ""}
-          <h3>${echapper(p.nom)}</h3>
-          <span class="prix">${aPartirDe(p)}${euros(p.prix)}</span>
-        </div>
-      </a>`;
+      <article class="produit-carte">
+        <a href="produit.html?id=${encodeURIComponent(p.id)}">
+          <div class="produit-image">
+            ${visuel(p)}
+            ${images[1] ? `<img class="produit-image-2" src="${echapper(images[1])}" alt="" loading="lazy">` : ""}
+            ${badges(p)}
+          </div>
+          <div class="produit-infos">
+            ${cat ? `<span class="etiquette">${echapper(cat.nom)}</span>` : ""}
+            <h3>${echapper(p.nom)}</h3>
+            ${prixHTML(p)}
+          </div>
+        </a>
+        ${boutonFavori(p)}
+      </article>`;
   }
 
   // ---------- Horaires : « Mardi : 9h – 18h » → ligne, jour courant en évidence ----------
@@ -111,14 +198,18 @@
     return `
       <div class="conteneur entete-int">
         <a class="logo" href="index.html" aria-label="${echapper(S.nom)} — accueil">${LOGO}<span><span class="logo-nom">${echapper(S.nom)}</span><span class="logo-lieu">Personnalisation · Auchel</span></span></a>
-        <button class="burger" aria-label="Menu" aria-expanded="false">${icone("menu")}</button>
-        <nav class="nav" aria-label="Navigation principale">
-          ${lien("index.html", "Accueil")}
-          ${lien("boutique.html", "Boutique")}
-          ${lien("atelier.html", "Qui sommes-nous ?")}
-          ${lien("contact.html", "Contact & devis")}
-          <a class="lien-panier" href="panier.html"${page === "panier.html" ? ' aria-current="page"' : ""}>${icone("panier")} Panier <span class="compteur" data-compteur hidden>0</span></a>
-        </nav>
+        <div class="entete-droite">
+          <nav class="nav" aria-label="Navigation principale">
+            ${lien("boutique.html", "Boutique")}
+            ${lien("idees-cadeaux.html", "Idées cadeaux")}
+            ${lien("atelier.html", "Qui sommes-nous ?")}
+            ${lien("faq.html", "Questions")}
+            ${lien("contact.html", "Contact")}
+          </nav>
+          <a class="icone-entete" href="favoris.html" aria-label="Mes favoris" title="Mes favoris"${page === "favoris.html" ? ' aria-current="page"' : ""}>${icone("coeur")}<span class="compteur" data-compteur-favoris hidden>0</span></a>
+          <a class="icone-entete" href="panier.html" aria-label="Panier" title="Panier"${page === "panier.html" ? ' aria-current="page"' : ""}>${icone("panier")}<span class="compteur" data-compteur hidden>0</span></a>
+          <button class="burger" aria-label="Menu" aria-expanded="false">${icone("menu")}</button>
+        </div>
       </div>`;
   }
   function pied() {
@@ -141,8 +232,8 @@
             ${S.horaires.map((h) => `<span>${echapper(h)}</span>`).join("")}
           </div>
           <div class="pile">
-            <h4>Le site</h4>
-            <a href="boutique.html">Boutique</a>
+            <h4>Aide</h4>
+            <a href="faq.html">Questions fréquentes</a>
             <a href="contact.html">Demande de devis</a>
             <a href="cgv.html">Conditions générales de vente</a>
             <a href="mentions-legales.html">Mentions légales</a>
@@ -154,10 +245,59 @@
 
   function bandeaux() {
     const html = [];
+    if (enBrouillon)
+      html.push(`<div class="bandeau-info bandeau-brouillon">Aperçu des modifications non publiées — <a href="?quitter-brouillon=1">quitter l'aperçu</a></div>`);
     if (S.apercu)
       html.push(`<div class="bandeau-info bandeau-apercu">Site en construction — les prix sont provisoires et les commandes en ligne ne sont pas encore ouvertes. Contactez-nous au ${echapper(S.telephone)}.</div>`);
-    if (D.annonce?.actif && D.annonce.texte) html.push(`<div class="bandeau-info bandeau-annonce">${echapper(D.annonce.texte)}</div>`);
+    if (D.annonce?.actif && D.annonce.texte)
+      html.push(`<div class="bandeau-info bandeau-annonce">${D.annonce.lien ? `<a href="${echapper(D.annonce.lien)}">${echapper(D.annonce.texte)} →</a>` : echapper(D.annonce.texte)}</div>`);
     if (html.length) document.body.insertAdjacentHTML("afterbegin", html.join(""));
+  }
+
+  // Bouton de contact flottant : WhatsApp si renseigné, sinon téléphone.
+  function boutonContact() {
+    if (document.body.dataset.sansContact !== undefined) return;
+    const wa = lienWhatsapp("Bonjour, j'ai une question au sujet d'une création personnalisée.");
+    const a = document.createElement("a");
+    a.className = "contact-flottant";
+    a.href = wa || telLien(S.telephone);
+    if (wa) a.target = "_blank";
+    a.rel = "noopener";
+    a.setAttribute("aria-label", wa ? "Nous écrire sur WhatsApp" : `Nous appeler au ${S.telephone}`);
+    a.innerHTML = `${icone(wa ? "bulle" : "tel")}<span>${wa ? "Une question ?" : "Appeler"}</span>`;
+    document.body.append(a);
+  }
+
+  // Données structurées pour Google (fiche commerce local)
+  function donneesStructurees() {
+    const jours = { lundi: "Monday", mardi: "Tuesday", mercredi: "Wednesday", jeudi: "Thursday", vendredi: "Friday", samedi: "Saturday", dimanche: "Sunday" };
+    const ouvertures = [];
+    S.horaires.forEach((h) => {
+      const [j, v = ""] = h.split(/\s*:\s*(.*)/s);
+      const jour = jours[j.trim().toLowerCase()];
+      if (!jour) return;
+      for (const [, a, am, b, bm] of v.matchAll(/(\d{1,2})h(\d{2})?\s*[–-]\s*(\d{1,2})h(\d{2})?/g))
+        ouvertures.push({ "@type": "OpeningHoursSpecification", dayOfWeek: jour, opens: `${a.padStart(2, "0")}:${am || "00"}`, closes: `${b.padStart(2, "0")}:${bm || "00"}` });
+    });
+    const [rue, ...ville] = S.adresse.split(",");
+    const cp = (ville.join(",").match(/\d{5}/) || [""])[0];
+    const json = {
+      "@context": "https://schema.org",
+      "@type": "Store",
+      name: S.nom,
+      description: S.slogan,
+      telephone: S.telephone,
+      email: S.email,
+      url: location.origin + location.pathname.replace(/[^/]*$/, ""),
+      image: new URL("img/boutique-auchel.jpg", location.href).href,
+      address: { "@type": "PostalAddress", streetAddress: rue.trim(), postalCode: cp, addressLocality: ville.join(",").replace(cp, "").trim(), addressCountry: "FR" },
+      openingHoursSpecification: ouvertures,
+      sameAs: [S.facebook],
+    };
+    const s = document.createElement("script");
+    s.type = "application/ld+json";
+    s.textContent = JSON.stringify(json);
+    document.head.append(s);
   }
 
   // Mode aperçu : les formulaires de commande et de devis ne partent pas.
@@ -180,12 +320,21 @@
     );
   }
 
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-favori]");
+    if (!b) return;
+    e.preventDefault();
+    basculerFavori(b.dataset.favori);
+  });
+
   document.addEventListener("DOMContentLoaded", () => {
     const h = document.querySelector("header.entete");
     const f = document.querySelector("footer.pied");
     if (h) h.innerHTML = entete();
     if (f) f.innerHTML = pied();
     bandeaux();
+    boutonContact();
+    donneesStructurees();
     document.querySelectorAll("[data-site]").forEach((el) => (el.textContent = S[el.dataset.site] ?? ""));
     document.querySelectorAll("[data-texte]").forEach((el) => (el.textContent = D.textes?.[el.dataset.texte] ?? ""));
     document.querySelectorAll("[data-icone]").forEach((el) => el.insertAdjacentHTML("afterbegin", icone(el.dataset.icone)));
@@ -199,13 +348,22 @@
       el.insertAdjacentText("beforeend", S.email);
     });
     document.querySelectorAll("[data-facebook]").forEach((el) => (el.href = S.facebook));
+    document.querySelectorAll("[data-whatsapp]").forEach((el) => {
+      const l = lienWhatsapp("Bonjour !");
+      if (l) el.href = l;
+      else el.hidden = true;
+    });
     const burger = document.querySelector(".burger");
     burger?.addEventListener("click", () => {
       const ouvert = document.querySelector(".nav").classList.toggle("ouvert");
       burger.setAttribute("aria-expanded", ouvert);
     });
-    majCompteur();
+    majCompteurs();
   });
 
-  window.MTB = { D, euros, echapper, icone, lirePanier, ecrirePanier, ajouterAuPanier, visuel, carteProduit, majCompteur, telLien };
+  window.MTB = {
+    D, euros, echapper, icone, telLien, lienWhatsapp,
+    lirePanier, ecrirePanier, ajouterAuPanier, lireFavoris, estFavori, basculerFavori,
+    imagesProduit, visuel, badges, prixHTML, boutonFavori, carteProduit, majCompteurs,
+  };
 })();

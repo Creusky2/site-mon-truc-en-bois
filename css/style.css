@@ -323,3 +323,127 @@ input[type="file"] { font: inherit; font-size: 0.9rem; }
   .filtre { white-space: nowrap; flex: none; }
   .recherche { display: grid; grid-template-columns: 1fr auto; }
 }
+
+/* ======================================================================
+   Fonctionnalités v3 : favoris, badges, galerie, avis, FAQ, occasions…
+   ====================================================================== */
+.entete-droite { display: flex; align-items: center; gap: 0.35rem; }
+.icone-entete { position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; color: var(--encre); }
+.icone-entete:hover { background: var(--fond-alt); }
+.icone-entete .ico { width: 1.35em; height: 1.35em; }
+.icone-entete .compteur { position: absolute; top: 3px; right: 1px; }
+.icone-entete[aria-current="page"] { color: var(--foret); background: var(--fond-alt); }
+@media (min-width: 861px) { .nav { margin-right: 0.5rem; } }
+
+.bandeau-brouillon { background: #2b4c7e; color: #fff; }
+.bandeau-brouillon a, .bandeau-annonce a { color: #fff; font-weight: 600; }
+
+/* Cartes produit : favori, badges, 2e photo au survol */
+.produit-carte { position: relative; }
+.produit-carte > a { display: grid; gap: 0.75rem; text-decoration: none; color: inherit; }
+.produit-image { position: relative; }
+.produit-image-2 { position: absolute; inset: 0; opacity: 0; transition: opacity 0.35s; }
+.produit-carte:hover .produit-image-2 { opacity: 1; }
+.badges { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.badge { font: 600 0.72rem/1 var(--f-texte); padding: 0.45em 0.7em; border-radius: 999px; background: #fff; color: var(--encre); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.badge-promo { background: #b42318; color: #fff; }
+.badge-nouveau { background: var(--foret); color: #fff; }
+.badge-best { background: #d99a1e; color: #1b1a17; }
+.badge-epuise { background: #4b4b4b; color: #fff; }
+.prix-barre { color: var(--encre-douce); font-weight: 400; font-size: 0.9em; margin-left: 0.3em; }
+.favori {
+  position: absolute; top: 10px; right: 10px; width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,0.92); color: var(--encre); display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  transition: transform 0.15s;
+}
+.favori:hover { transform: scale(1.08); }
+.favori .ico { width: 1.15em; height: 1.15em; }
+.favori[aria-pressed="true"] { color: #c0392b; }
+.favori[aria-pressed="true"] .ico { fill: currentColor; }
+
+/* Occasions (idées cadeaux) */
+.occasions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.occasion { display: inline-flex; align-items: center; gap: 0.5em; padding: 0.7em 1.1em; border: 1px solid var(--trait); border-radius: 999px; background: #fff; color: var(--encre); text-decoration: none; font-weight: 500; transition: border-color 0.15s, background 0.15s; }
+.occasion:hover { border-color: var(--foret); background: #f2f6f4; }
+.occasion small { color: var(--encre-douce); font: 500 0.75rem var(--f-mono); }
+.occasions-grandes { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 860px) { .occasions-grandes { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .occasions-grandes { grid-template-columns: 1fr; } }
+.occasion-carte { display: grid; grid-template-columns: 96px 1fr; gap: 1rem; align-items: center; padding: 12px; border: 1px solid var(--trait); border-radius: var(--r); background: #fff; color: var(--encre); text-decoration: none; }
+.occasion-carte:hover { border-color: var(--foret); }
+.occasion-carte img { width: 96px; height: 96px; border-radius: var(--r-petit); object-fit: cover; }
+.occasion-carte h3 { font-size: 1.05rem; }
+.occasion-carte p { color: var(--encre-douce); font-size: 0.9rem; }
+
+/* Avis clients */
+.avis-grille { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 900px) { .avis-grille { grid-template-columns: 1fr; } }
+.avis-carte { background: #fff; border: 1px solid var(--trait); border-radius: var(--r); padding: 1.4rem; display: grid; gap: 0.8rem; align-content: start; margin: 0; }
+.avis-carte blockquote { margin: 0; font-size: 1.02rem; }
+.avis-carte figcaption { color: var(--encre-douce); font-size: 0.88rem; }
+.avis-carte figcaption strong { color: var(--encre); }
+.note { color: #d99a1e; letter-spacing: 2px; }
+
+/* FAQ */
+.faq { display: grid; border-top: 1px solid var(--trait); max-width: 820px; }
+.faq details { border-bottom: 1px solid var(--trait); }
+.faq summary { list-style: none; cursor: pointer; padding: 1.1rem 2.5rem 1.1rem 0; font-weight: 600; font-size: 1.05rem; position: relative; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%); font: 400 1.5rem var(--f-texte); color: var(--encre-douce); }
+.faq details[open] summary::after { content: "–"; }
+.faq details p { padding: 0 0 1.2rem; color: var(--encre-douce); max-width: 70ch; }
+
+/* Fiche produit : galerie, disponibilité, partage, barre mobile */
+.vignettes { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.vignettes button { flex: none; width: 72px; height: 72px; padding: 0; border: 2px solid transparent; border-radius: 10px; overflow: hidden; cursor: pointer; background: var(--fond-alt); }
+.vignettes button[aria-current="true"] { border-color: var(--foret); }
+.vignettes img { width: 100%; height: 100%; object-fit: cover; }
+.dispo { display: inline-flex; align-items: center; gap: 0.45em; font-weight: 600; font-size: 0.92rem; color: var(--succes); }
+.dispo::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.dispo-commande { color: #9a5b00; }
+.dispo-epuise { color: #9b2c2c; }
+.encart { display: flex; gap: 0.8rem; align-items: flex-start; background: var(--fond-alt); border-radius: var(--r-petit); padding: 0.9rem 1rem; font-size: 0.93rem; }
+.encart .ico { color: var(--bois); margin-top: 0.1em; }
+.actions-secondaires { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.actions-secondaires .btn { padding: 0.7em 1em; font-size: 0.9rem; }
+.actions-secondaires .btn[aria-pressed="true"] { color: #c0392b; border-color: #e7b3ad; }
+.actions-secondaires .btn[aria-pressed="true"] .ico { fill: currentColor; }
+.barre-achat { display: none; }
+@media (max-width: 860px) {
+  .barre-achat {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    background: #fff; border-top: 1px solid var(--trait); box-shadow: 0 -6px 20px rgba(0,0,0,0.06);
+    padding: 0.7rem max(16px, env(safe-area-inset-right, 0px)) calc(0.7rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    transform: translateY(110%); transition: transform 0.25s;
+  }
+  .barre-achat.visible { transform: none; }
+  .barre-achat strong { font: 600 1.15rem var(--f-titre); }
+  .barre-achat .btn { padding: 0.85em 1.2em; }
+  body.avec-barre .contact-flottant { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Panier : options cadeau et barre de livraison offerte */
+.jauge { height: 6px; background: var(--fond-alt); border-radius: 99px; overflow: hidden; }
+.jauge span { display: block; height: 100%; background: var(--foret); border-radius: 99px; }
+.options-cadeau { border: 1px dashed var(--trait); border-radius: var(--r-petit); padding: 1rem; display: grid; gap: 0.8rem; }
+.btn-whatsapp { background: #1f8f4e; }
+.btn-whatsapp:hover { background: #17713d; }
+.ou { display: flex; align-items: center; gap: 0.8rem; color: var(--encre-douce); font-size: 0.85rem; }
+.ou::before, .ou::after { content: ""; flex: 1; height: 1px; background: var(--trait); }
+
+/* Bouton de contact flottant */
+.contact-flottant {
+  position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 44;
+  display: inline-flex; align-items: center; gap: 0.5em; padding: 0.85em 1.15em; border-radius: 999px;
+  background: var(--encre); color: #fff; text-decoration: none; font-weight: 600; font-size: 0.92rem; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  transition: bottom 0.25s, transform 0.15s;
+}
+.contact-flottant:hover { transform: translateY(-2px); }
+.contact-flottant .ico { width: 1.25em; height: 1.25em; }
+@media (max-width: 520px) { .contact-flottant span { display: none; } .contact-flottant { padding: 0.95em; } }
+
+/* Bandeau avis / réassurance d'accueil */
+.chiffres { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; color: var(--encre-douce); font-size: 0.92rem; }
+.chiffres strong { color: var(--encre); }
+.logo-lieu { white-space: nowrap; }
+@media (max-width: 400px) { .logo-lieu { display: none; } .logo-nom { font-size: 1.1rem; } }

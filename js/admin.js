@@ -10,6 +10,10 @@
     "// ============================================================\n";
   const DEFAUT = { proprio: "Creusky2", depot: "site-mon-truc-en-bois", branche: "site-vitrine-boutique" };
   const CLE_STOCKAGE = "admin-mtb";
+  const CLE_BROUILLON = "brouillon-mtb"; // aussi lu par le site pour la prévisualisation
+  const EMAIL_PROVISOIRE = "contact@montrucenbois.fr";
+  const BADGES = { "": "Aucun", nouveau: "Nouveau", promo: "Promo", best: "Best-seller", edition: "Édition limitée" };
+  const DISPOS = { disponible: "Disponible", commande: "Fabriqué sur commande", epuise: "Épuisé" };
 
   const $ = (s, el = document) => el.querySelector(s);
   const echapper = (s) =>
@@ -31,6 +35,7 @@
       (souvenir ? localStorage : sessionStorage).setItem(CLE_STOCKAGE, JSON.stringify(cfg));
     } catch {}
   }
+  const lienGithub = (chemin) => `https://github.com/${cfg.proprio}/${cfg.depot}/${chemin}`;
 
   // ---------- API GitHub ----------
   async function api(chemin, options = {}) {
@@ -82,13 +87,50 @@
   let D = null; // données en cours d'édition
   let sha = null;
   let modifie = false;
-  let onglet = "produits";
+  let onglet = "accueil";
   let filtre = { q: "", cat: "" };
   const apercusLocaux = {}; // chemin image → dataURL (photos envoyées mais pas encore en ligne)
+
+  // Complète les champs ajoutés au fil des versions, pour que l'admin et le site s'y retrouvent.
+  function normaliser(d) {
+    d.site ||= {};
+    d.site.horaires ||= [];
+    d.site.emballage ||= { actif: false, prix: 0 };
+    d.produits ||= [];
+    d.categories ||= [];
+    d.occasions ||= [];
+    d.galerie ||= [];
+    d.avis ||= [];
+    d.faq ||= [];
+    d.textes ||= {};
+    d.annonce ||= { actif: false, texte: "", lien: "" };
+    d.produits.forEach((p) => {
+      p.images ||= p.image ? [p.image] : [];
+      p.occasions ||= [];
+      p.options ||= {};
+      p.dispo ||= "disponible";
+    });
+    return d;
+  }
+
+  // Brouillon local : protège contre une fermeture accidentelle et sert à la prévisualisation.
+  let minuteurBrouillon;
+  function garderBrouillon() {
+    try {
+      localStorage.setItem(CLE_BROUILLON, JSON.stringify({ donnees: D, sha, date: Date.now(), depot: `${cfg.proprio}/${cfg.depot}/${cfg.branche}` }));
+    } catch {}
+  }
+  const oublierBrouillon = () => {
+    try {
+      localStorage.removeItem(CLE_BROUILLON);
+    } catch {}
+  };
 
   function marquerModifie() {
     modifie = true;
     majStatut();
+    clearTimeout(minuteurBrouillon);
+    minuteurBrouillon = setTimeout(garderBrouillon, 400);
   }
   function majStatut(texte) {
     const s = $("#statut");
@@ -108,6 +150,7 @@
   const srcImage = (chemin) => apercusLocaux[chemin] || chemin;
   const vignette = (chemin) =>
     chemin ? `<span class="ligne-image"><img src="${echapper(srcImage(chemin))}" alt="" loading="lazy"></span>` : `<span class="ligne-image">Sans photo</span>`;
+  const premiereImage = (p) => p.images?.[0] || p.image || "";
 
   // ---------- Photos : redimensionnement puis envoi dans img/ ----------
   function redimensionner(fichier, max = 1200) {
@@ -164,14 +207,23 @@
       afficherConnexion(msg);
       return;
     }
-    D.produits ||= [];
-    D.categories ||= [];
-    D.galerie ||= [];
-    D.textes ||= {};
-    D.annonce ||= { actif: false, texte: "" };
+    normaliser(D);
+    modifie = false;
+
+    // Brouillon non publié laissé lors d'une session précédente ?
+    try {
+      const b = JSON.parse(localStorage.getItem(CLE_BROUILLON) || "null");
+      if (b && JSON.stringify(b.donnees) !== JSON.stringify(D)) {
+        const quand = new Date(b.date).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+        if (b.sha === sha && confirm(`Des modifications non publiées du ${quand} ont été retrouvées sur cet appareil. Les reprendre ?`)) {
+          D = normaliser(b.donnees);
+          modifie = true;
+        } else oublierBrouillon();
+      }
+    } catch {}
+
     $("#connexion").hidden = true;
     $("#app").hidden = false;
-    modifie = false;
     majStatut();
     rendre();
   }
@@ -188,7 +240,7 @@
     demarrer();
   });
   $("#deconnexion").addEventListener("click", () => {
-    if (modifie && !confirm("Des modifications ne sont pas publiées. Se déconnecter quand même ?")) return;
+    if (modifie && !confirm("Des modifications ne sont pas publiées (elles restent gardées sur cet appareil). Se déconnecter quand même ?")) return;
     cfg.cle = "";
     try {
       localStorage.removeItem(CLE_STOCKAGE);
@@ -201,44 +253,58 @@
     if (modifie) e.preventDefault();
   });
 
-  // ---------- Publication ----------
+  // ---------- Prévisualisation et publication ----------
+  $("#previsualiser").addEventListener("click", () => {
+    garderBrouillon();
+    open("index.html?brouillon=1", "_blank");
+  });
+
   $("#publier").addEventListener("click", async () => {
     const b = $("#publier");
     b.disabled = true;
     majStatut("Publication…");
     try {
+      D.produits.forEach((p) => (p.image = p.images?.[0] || ""));
       const texte = ENTETE + PREFIXE + JSON.stringify(D, null, 2) + ";\n";
       const r = await envoyerFichier(FICHIER, versBase64(texte), "Mise à jour du contenu du site (admin)", sha);
       sha = r.content.sha;
       modifie = false;
+      oublierBrouillon();
       majStatut();
+      if (onglet === "accueil") rendre();
       toast("Publié ! Le site sera à jour d'ici quelques minutes (rechargez la page du site).");
     } catch (e) {
       majStatut();
       b.disabled = false;
       if (e.status === 409 || e.status === 422)
-        toast("Le site a été modifié ailleurs entre-temps. Rechargez la page admin (vos modifications non publiées seront perdues).", true);
+        toast("Le site a été modifié ailleurs entre-temps. Rechargez la page admin : vos modifications vous seront proposées à nouveau.", true);
       else toast(`Échec de la publication (${e.detail || e.message}).`, true);
     }
   });
 
   // ---------- Onglets ----------
+  function allerA(nom) {
+    onglet = nom;
+    document.querySelectorAll(".onglets button").forEach((x) => x.setAttribute("aria-selected", x.dataset.onglet === nom));
+    rendre();
+    scrollTo(0, 0);
+  }
   document.querySelector(".onglets").addEventListener("click", (e) => {
     const b = e.target.closest("[data-onglet]");
-    if (!b) return;
-    onglet = b.dataset.onglet;
-    document.querySelectorAll(".onglets button").forEach((x) => x.setAttribute("aria-selected", x === b));
-    rendre();
+    if (b) allerA(b.dataset.onglet);
   });
 
-  function rendre() {
-    const c = $("#contenu");
-    if (onglet === "produits") c.innerHTML = vueProduits();
-    if (onglet === "categories") c.innerHTML = vueCategories();
-    if (onglet === "boutique") c.innerHTML = vueBoutique();
-    if (onglet === "textes") c.innerHTML = vueTextes();
-    if (onglet === "galerie") c.innerHTML = vueGalerie();
-  }
+  const VUES = {
+    accueil: () => vueAccueil(),
+    produits: () => vueProduits(),
+    categories: () => vueCategories() + vueOccasions(),
+    avis: () => vueAvis(),
+    faq: () => vueFaq(),
+    boutique: () => vueBoutique(),
+    textes: () => vueTextes(),
+    galerie: () => vueGalerie(),
+  };
+  const rendre = () => ($("#contenu").innerHTML = VUES[onglet]());
 
   // Champs simples liés aux données : data-chemin="site.telephone", data-type="nombre|lignes|case"
   const lire = (chemin) => chemin.split(".").reduce((o, k) => o?.[k], D);
@@ -248,7 +314,7 @@
     const cible = cles.reduce((o, k) => (o[k] ??= {}), D);
     cible[dernier] = valeur;
   }
-  function champ(chemin, libelle, { type = "text", aide = "", large = false, lignes = 0 } = {}) {
+  function champ(chemin, libelle, { type = "text", aide = "", large = false, lignes = 0, placeholder = "" } = {}) {
     const v = lire(chemin);
     const id = "f-" + chemin.replace(/\./g, "-");
     let entree;
@@ -258,17 +324,121 @@
       entree = `<textarea id="${id}" data-chemin="${chemin}" data-type="lignes" rows="${lignes || 7}">${echapper((v || []).join("\n"))}</textarea>`;
     else if (type === "zone") entree = `<textarea id="${id}" data-chemin="${chemin}" rows="${lignes || 3}">${echapper(v)}</textarea>`;
     else
-      entree = `<input type="${type === "nombre" ? "number" : type}" ${type === "nombre" ? 'step="0.01" min="0" data-type="nombre"' : ""} id="${id}" data-chemin="${chemin}" value="${echapper(v)}">`;
+      entree = `<input type="${type === "nombre" ? "number" : type}" ${type === "nombre" ? 'step="0.01" min="0" data-type="nombre"' : ""} id="${id}" data-chemin="${chemin}" value="${echapper(v)}" placeholder="${echapper(placeholder)}">`;
     return `<div class="champ ${large ? "large" : ""}"><label for="${id}">${libelle}</label>${entree}${aide ? `<small>${aide}</small>` : ""}</div>`;
   }
+
+  // Saisie dans les onglets : champs simples, listes éditables (avis, FAQ, occasions), prix rapide
   $("#contenu").addEventListener("input", (e) => {
-    const el = e.target.closest("[data-chemin]");
-    if (!el) return;
-    const t = el.dataset.type;
-    const v = t === "case" ? el.checked : t === "nombre" ? Number(el.value || 0) : t === "lignes" ? el.value.split("\n").map((x) => x.trim()).filter(Boolean) : el.value;
-    ecrire(el.dataset.chemin, v);
-    marquerModifie();
+    const el = e.target;
+    if (el.dataset.chemin) {
+      const t = el.dataset.type;
+      const v = t === "case" ? el.checked : t === "nombre" ? Number(el.value || 0) : t === "lignes" ? el.value.split("\n").map((x) => x.trim()).filter(Boolean) : el.value;
+      ecrire(el.dataset.chemin, v);
+      marquerModifie();
+      if (el.dataset.rendre !== undefined) rendre();
+    } else if (el.dataset.liste) {
+      const item = D[el.dataset.liste][el.dataset.i];
+      item[el.dataset.champ] = el.dataset.type === "nombre" ? Number(el.value || 0) : el.value;
+      marquerModifie();
+    } else if (el.dataset.prix !== undefined) {
+      D.produits[el.dataset.prix].prix = Number(el.value || 0);
+      marquerModifie();
+    } else if (el.id === "filtre-q") {
+      filtre.q = el.value;
+      const pos = el.selectionStart;
+      rendre();
+      const q = $("#filtre-q");
+      q.focus();
+      q.setSelectionRange(pos, pos);
+    }
   });
+  $("#contenu").addEventListener("change", async (e) => {
+    const el = e.target;
+    if (el.id === "filtre-cat") {
+      filtre.cat = el.value;
+      rendre();
+    }
+    if (el.id === "g-ajout") {
+      for (const fichier of el.files) {
+        try {
+          D.galerie.push(await envoyerPhoto(fichier, "realisation"));
+          marquerModifie();
+        } catch (err) {
+          toast(`Échec de l'envoi d'une photo (${err.detail || err.message}).`, true);
+        }
+      }
+      rendre();
+    }
+    if (el.id === "restaurer") {
+      const fichier = el.files[0];
+      if (!fichier) return;
+      try {
+        const d = JSON.parse(await fichier.text());
+        if (!Array.isArray(d.produits) || !Array.isArray(d.categories) || !d.site) throw new Error("format");
+        if (!confirm(`Remplacer tout le contenu actuel par la sauvegarde « ${fichier.name} » ? (Rien n'est publié tant que vous ne cliquez pas sur « Publier ».)`)) return;
+        D = normaliser(d);
+        marquerModifie();
+        rendre();
+        toast("Sauvegarde chargée. Vérifiez puis publiez.");
+      } catch {
+        toast("Ce fichier n'est pas une sauvegarde du site.", true);
+      }
+    }
+  });
+
+  // ---------- Vue : Tableau de bord ----------
+  function vueAccueil() {
+    const visibles = D.produits.filter((p) => p.visible !== false);
+    const sansPhoto = D.produits.filter((p) => !premiereImage(p));
+    const emailOk = D.site.email && D.site.email !== EMAIL_PROVISOIRE;
+    const pret = emailOk && D.site.prixVerifies;
+    const etape = (etat, titre, detail, action = "") =>
+      `<li><span class="etat ${etat}">${etat === "ok" ? "✓" : etat === "afaire" ? "!" : "·"}</span><span>${titre}${detail ? `<small>${detail}</small>` : ""}</span>${action}</li>`;
+    const aller = (o, t) => `<button class="mini" data-aller="${o}">${t}</button>`;
+    return `
+      <div class="chiffres-admin">
+        <div class="chiffre"><strong>${visibles.length}</strong><span>produits en ligne</span></div>
+        <div class="chiffre"><strong>${D.produits.filter((p) => p.vedette).length}</strong><span>coups de cœur</span></div>
+        <div class="chiffre"><strong>${D.produits.filter((p) => p.prixBarre > p.prix || p.badge === "promo").length}</strong><span>en promotion</span></div>
+        <div class="chiffre"><strong>${D.avis.length}</strong><span>avis clients affichés</span></div>
+      </div>
+
+      <section class="bloc">
+        <div class="bloc-tete">
+          <h2>Avant d'ouvrir les commandes</h2>
+          ${D.site.apercu ? `<button class="btn" data-action="ouvrir-commandes" ${pret ? "" : "disabled"} title="${pret ? "" : "Complétez d'abord l'email et la vérification des prix"}">Ouvrir les commandes</button>` : `<span class="pastille" style="background:#e3f1e9;color:#1f6b45">Commandes ouvertes</span>`}
+        </div>
+        <ul class="checklist">
+          ${etape(emailOk ? "ok" : "afaire", "Adresse email de la boutique", emailOk ? echapper(D.site.email) : "L'adresse actuelle est provisoire : les commandes s'y perdraient.", emailOk ? "" : aller("boutique", "Corriger"))}
+          ${etape(D.site.prixVerifies ? "ok" : "afaire", "Prix vérifiés", "Les prix de départ sont des exemples.", `<label class="case"><input type="checkbox" data-chemin="site.prixVerifies" data-type="case" data-rendre ${D.site.prixVerifies ? "checked" : ""}> Vérifiés</label>`)}
+          ${etape(sansPhoto.length ? "afaire" : "ok", "Photos des produits", sansPhoto.length ? `${sansPhoto.length} produit(s) sans photo : ${sansPhoto.slice(0, 3).map((p) => echapper(p.nom)).join(", ")}${sansPhoto.length > 3 ? "…" : ""}` : "Tous les produits ont une photo.", sansPhoto.length ? aller("produits", "Voir") : "")}
+          ${etape(D.avis.length >= 3 ? "ok" : "afaire", "Avis clients", D.avis.length >= 3 ? `${D.avis.length} avis affichés sur l'accueil.` : "Recopiez 3 avis de votre page Facebook : ils rassurent les nouveaux clients.", aller("avis", D.avis.length ? "Gérer" : "Ajouter"))}
+          ${etape(D.site.formulaireCommande ? "ok" : "option", "Réception des commandes par email (Formspree)", D.site.formulaireCommande ? "Activée." : "Recommandé : sans cela, le client doit envoyer lui-même l'email depuis sa messagerie.", D.site.formulaireCommande ? "" : aller("boutique", "Régler"))}
+          ${etape(D.site.whatsapp ? "ok" : "option", "Commandes et questions par WhatsApp", D.site.whatsapp ? `Numéro : ${echapper(D.site.whatsapp)}` : "Facultatif : ajoute un bouton « Commander par WhatsApp » et un bouton de contact.", D.site.whatsapp ? "" : aller("boutique", "Ajouter"))}
+          ${etape("option", "Pages légales (CGV, mentions légales)", "À compléter une fois : SIRET, forme juridique, médiateur…", `<a class="mini" style="display:inline-grid;place-items:center;text-decoration:none" href="${lienGithub(`edit/${cfg.branche}/cgv.html`)}" target="_blank" rel="noopener">Modifier sur GitHub</a>`)}
+        </ul>
+      </section>
+
+      <section class="bloc">
+        <div class="bloc-tete"><h2>Raccourcis</h2></div>
+        <div class="raccourcis">
+          <button class="btn" data-action="nouveau-produit">+ Ajouter un produit</button>
+          <button class="btn btn-ligne" data-aller="textes">Écrire une annonce (fermeture, salon…)</button>
+          <a class="btn btn-ligne" href="index.html" target="_blank" rel="noopener">Voir le site en ligne</a>
+        </div>
+      </section>
+
+      <section class="bloc">
+        <div class="bloc-tete"><h2>Sauvegarde et historique</h2></div>
+        <p class="aide">Chaque publication est conservée par GitHub : en cas d'erreur, l'historique permet de retrouver une ancienne version. Vous pouvez aussi garder une copie du contenu sur votre ordinateur.</p>
+        <div class="raccourcis">
+          <button class="btn btn-ligne" data-action="telecharger">Télécharger une sauvegarde</button>
+          <span class="btn btn-ligne bouton-fichier">Restaurer une sauvegarde<input type="file" accept="application/json,.json" id="restaurer" aria-label="Restaurer une sauvegarde"></span>
+          <a class="btn btn-ligne" href="${lienGithub(`commits/${cfg.branche}/${FICHIER}`)}" target="_blank" rel="noopener">Historique des publications</a>
+        </div>
+      </section>`;
+  }
 
   // ---------- Vue : Produits ----------
   function vueProduits() {
@@ -283,6 +453,7 @@
           <h2>Produits <span class="aide">(${D.produits.length})</span></h2>
           <button class="btn" data-action="nouveau-produit">+ Ajouter un produit</button>
         </div>
+        <p class="aide">Modifiez les prix directement dans la liste. ♥ = coup de cœur sur l'accueil, 👁 = visible sur le site.</p>
         <div class="barre">
           <input type="search" id="filtre-q" placeholder="Rechercher…" value="${echapper(filtre.q)}" aria-label="Rechercher un produit">
           <select id="filtre-cat" aria-label="Filtrer par catégorie">
@@ -294,11 +465,16 @@
           ${liste
             .map(
               ({ p, i }) => `
-            <div class="ligne ${p.visible === false ? "masque" : ""}">
-              ${vignette(p.image)}
+            <div class="ligne ligne-produit ${p.visible === false ? "masque" : ""}">
+              ${vignette(premiereImage(p))}
               <div class="ligne-texte">
-                <strong>${echapper(p.nom)}<span class="pastilles">${p.vedette ? '<span class="pastille coeur">Coup de cœur</span>' : ""}${p.visible === false ? '<span class="pastille cache">Masqué</span>' : ""}</span></strong>
-                <span>${echapper(cats[p.categorie] || "Sans catégorie")} · ${euros(p.prix)}</span>
+                <strong>${echapper(p.nom)}<span class="pastilles">${p.badge ? `<span class="pastille">${BADGES[p.badge] || p.badge}</span>` : ""}${p.dispo && p.dispo !== "disponible" ? `<span class="pastille cache">${DISPOS[p.dispo]}</span>` : ""}${p.visible === false ? '<span class="pastille cache">Masqué</span>' : ""}</span></strong>
+                <span>${echapper(cats[p.categorie] || "Sans catégorie")}${p.images?.length > 1 ? ` · ${p.images.length} photos` : ""}</span>
+              </div>
+              <div class="rapide">
+                <input class="prix-rapide" type="number" step="0.01" min="0" value="${Number(p.prix || 0)}" data-prix="${i}" aria-label="Prix de ${echapper(p.nom)}" title="Prix (€)"> €
+                <button class="mini" data-action="basculer-vedette" data-i="${i}" aria-pressed="${!!p.vedette}" title="Coup de cœur" aria-label="Coup de cœur">♥</button>
+                <button class="mini oeil" data-action="basculer-visible" data-i="${i}" aria-pressed="${p.visible !== false}" title="Visible sur le site" aria-label="Visible sur le site">👁</button>
               </div>
               <div class="ligne-boutons">
                 <button class="mini" data-action="monter" data-i="${i}" ${i === 0 ? "disabled" : ""} title="Monter" aria-label="Monter">↑</button>
@@ -313,22 +489,6 @@
         </div>
       </section>`;
   }
-  $("#contenu").addEventListener("input", (e) => {
-    if (e.target.id === "filtre-q") {
-      filtre.q = e.target.value;
-      const pos = e.target.selectionStart;
-      rendre();
-      const champQ = $("#filtre-q");
-      champQ.focus();
-      champQ.setSelectionRange(pos, pos);
-    }
-  });
-  $("#contenu").addEventListener("change", (e) => {
-    if (e.target.id === "filtre-cat") {
-      filtre.cat = e.target.value;
-      rendre();
-    }
-  });
 
   function idUnique(base, liste, sauf = -1) {
     let id = slug(base);
@@ -341,9 +501,11 @@
   function editerProduit(index) {
     const nouveau = index < 0;
     const p = nouveau
-      ? { id: "", nom: "", categorie: D.categories[0]?.id || "", prix: 0, image: "", description: "", options: { texte: true, photo: false }, visible: true, vedette: false }
+      ? { id: "", nom: "", categorie: D.categories[0]?.id || "", prix: 0, images: [], description: "", options: { texte: true, photo: false }, visible: true, vedette: false, occasions: [], dispo: "disponible", badge: "", prixBarre: 0, delai: 0, instructions: "" }
       : structuredClone(D.produits[index]);
     p.options ||= {};
+    p.images ||= p.image ? [p.image] : [];
+    p.occasions ||= [];
     p.variantes ||= { nom: "", choix: [] };
     const f = $("#fenetre");
     const lignesVariantes = () =>
@@ -357,22 +519,38 @@
         </div>`
         )
         .join("");
+    const lignesPhotos = () =>
+      p.images
+        .map(
+          (src, k) => `
+        <div class="photo-edit">
+          <img src="${echapper(srcImage(src))}" alt="Photo ${k + 1}">
+          <div class="ligne-boutons">
+            <button type="button" class="mini" data-ph="gauche" data-k="${k}" ${k === 0 ? "disabled" : ""} aria-label="Avancer">←</button>
+            <button type="button" class="mini" data-ph="droite" data-k="${k}" ${k === p.images.length - 1 ? "disabled" : ""} aria-label="Reculer">→</button>
+            <button type="button" class="mini danger" data-ph="suppr" data-k="${k}" aria-label="Retirer">✕</button>
+          </div>
+        </div>`
+        )
+        .join("") + `<label class="ajout-photo">+ Ajouter<br>des photos<input type="file" accept="image/*" multiple id="p-photos" aria-label="Ajouter des photos"></label>`;
     f.innerHTML = `
       <form method="dialog" id="form-produit">
         <h2 style="font-size:1.35rem">${nouveau ? "Nouveau produit" : "Modifier le produit"}</h2>
-        <div class="image-champ">
-          <span class="ligne-image" id="p-vignette">${p.image ? `<img src="${echapper(srcImage(p.image))}" alt="">` : "Sans photo"}</span>
-          <div class="pile" style="gap:.5rem">
-            <span class="btn btn-ligne bouton-fichier">Choisir une photo<input type="file" accept="image/*" id="p-photo" aria-label="Choisir une photo"></span>
-            <small class="aide">La photo est réduite automatiquement et envoyée sur le site. Format carré conseillé.</small>
-            ${p.image ? `<button type="button" class="mini danger" id="p-sans-photo" style="justify-self:start">Retirer la photo</button>` : ""}
-          </div>
+        <div class="pile" style="gap:.5rem">
+          <span class="label" style="font-weight:600;font-size:.92rem">Photos</span>
+          <div class="photos-edit" id="p-photos-liste">${lignesPhotos()}</div>
+          <small class="aide">La première photo (encadrée) est la photo principale : montrez de préférence un produit déjà personnalisé. Format carré conseillé ; les photos sont réduites automatiquement.</small>
         </div>
         <div class="grille-champs">
           <div class="champ large"><label for="p-nom">Nom du produit *</label><input type="text" id="p-nom" required value="${echapper(p.nom)}"></div>
           <div class="champ"><label for="p-cat">Catégorie</label><select id="p-cat">${D.categories.map((c) => `<option value="${echapper(c.id)}" ${c.id === p.categorie ? "selected" : ""}>${echapper(c.nom)}</option>`).join("")}</select></div>
+          <div class="champ"><label for="p-dispo">Disponibilité</label><select id="p-dispo">${Object.entries(DISPOS).map(([k, v]) => `<option value="${k}" ${k === p.dispo ? "selected" : ""}>${v}</option>`).join("")}</select></div>
           <div class="champ"><label for="p-prix">Prix de base (€) *</label><input type="number" id="p-prix" step="0.01" min="0" required value="${Number(p.prix || 0)}"></div>
+          <div class="champ"><label for="p-prix-barre">Ancien prix barré (€)</label><input type="number" id="p-prix-barre" step="0.01" min="0" value="${Number(p.prixBarre || 0) || ""}" placeholder="Pour une promotion"><small>Laisser vide sans promotion.</small></div>
+          <div class="champ"><label for="p-badge">Badge sur la photo</label><select id="p-badge">${Object.entries(BADGES).map(([k, v]) => `<option value="${k}" ${k === (p.badge || "") ? "selected" : ""}>${v}</option>`).join("")}</select></div>
+          <div class="champ"><label for="p-delai">Délai de fabrication (jours)</label><input type="number" id="p-delai" min="0" step="1" value="${Number(p.delai || 0) || ""}" placeholder="Ex. : 7"><small>Affiche une date indicative sur la fiche.</small></div>
           <div class="champ large"><label for="p-desc">Description</label><textarea id="p-desc" rows="4">${echapper(p.description)}</textarea></div>
+          <div class="champ large"><label for="p-instructions">Consigne de personnalisation pour le client</label><input type="text" id="p-instructions" value="${echapper(p.instructions)}" placeholder="Ex. : Indiquez le prénom, la date de naissance, l'heure, le poids et la taille."></div>
         </div>
         <div class="interrupteurs">
           <label class="case"><input type="checkbox" id="p-visible" ${p.visible !== false ? "checked" : ""}> Visible sur le site</label>
@@ -380,6 +558,11 @@
           <label class="case"><input type="checkbox" id="p-texte" ${p.options.texte ? "checked" : ""}> Le client peut saisir un texte</label>
           <label class="case"><input type="checkbox" id="p-opt-photo" ${p.options.photo ? "checked" : ""}> Le client peut envoyer une photo</label>
         </div>
+        ${D.occasions.length ? `
+        <div class="pile" style="gap:.5rem">
+          <span class="label" style="font-weight:600;font-size:.92rem">Occasions <small class="aide">(page « Idées cadeaux » et filtres)</small></span>
+          <div class="cases-occasions">${D.occasions.map((o) => `<label class="case"><input type="checkbox" data-occasion="${echapper(o.id)}" ${p.occasions.includes(o.id) ? "checked" : ""}> ${echapper(o.nom)}</label>`).join("")}</div>
+        </div>` : ""}
         <div class="pile" style="gap:.6rem">
           <div class="champ"><label for="p-var-nom">Choix proposés au client <small class="aide">(facultatif : taille, couleur, finition…)</small></label>
             <input type="text" id="p-var-nom" value="${echapper(p.variantes.nom)}" placeholder="Intitulé, ex. : Taille"></div>
@@ -392,8 +575,8 @@
           <div class="champ" style="margin-top:.8rem"><label for="p-id">Identifiant (adresse de la page)</label><input type="text" id="p-id" value="${echapper(p.id)}" placeholder="créé automatiquement à partir du nom"><small>Évitez de le changer : les liens déjà partagés ne marcheraient plus.</small></div>
         </details>
         <div class="fenetre-pied">
-          <button type="button" class="btn btn-ligne" value="annuler" id="p-annuler">Annuler</button>
-          <button type="submit" class="btn" value="ok">Valider</button>
+          <button type="button" class="btn btn-ligne" id="p-annuler">Annuler</button>
+          <button type="submit" class="btn">Valider</button>
         </div>
       </form>`;
 
@@ -403,6 +586,7 @@
         c[el.dataset.v] = el.dataset.v === "prix" ? Number(el.value || 0) : el.value;
       });
     };
+    const majPhotos = () => ($("#p-photos-liste", f).innerHTML = lignesPhotos());
     $("#p-var-ajout", f).onclick = () => {
       lireVariantes();
       p.variantes.choix.push({ nom: "", prix: 0 });
@@ -415,33 +599,44 @@
       p.variantes.choix.splice(Number(k), 1);
       $("#p-variantes", f).innerHTML = lignesVariantes();
     };
-    $("#p-photo", f).onchange = async (e) => {
-      const fichier = e.target.files[0];
-      if (!fichier) return;
-      try {
-        p.image = await envoyerPhoto(fichier, $("#p-nom", f).value || "produit");
-        $("#p-vignette", f).innerHTML = `<img src="${echapper(srcImage(p.image))}" alt="">`;
-      } catch (err) {
-        toast(`Échec de l'envoi de la photo (${err.detail || err.message}).`, true);
+    $("#p-photos-liste", f).onclick = (e) => {
+      const b = e.target.closest("[data-ph]");
+      if (!b) return;
+      const k = Number(b.dataset.k);
+      if (b.dataset.ph === "gauche") [p.images[k - 1], p.images[k]] = [p.images[k], p.images[k - 1]];
+      if (b.dataset.ph === "droite") [p.images[k + 1], p.images[k]] = [p.images[k], p.images[k + 1]];
+      if (b.dataset.ph === "suppr") p.images.splice(k, 1);
+      majPhotos();
+    };
+    $("#p-photos-liste", f).onchange = async (e) => {
+      if (e.target.id !== "p-photos") return;
+      for (const fichier of e.target.files) {
+        try {
+          p.images.push(await envoyerPhoto(fichier, $("#p-nom", f).value || "produit"));
+          majPhotos();
+        } catch (err) {
+          toast(`Échec de l'envoi de la photo (${err.detail || err.message}).`, true);
+        }
       }
     };
-    const sansPhoto = $("#p-sans-photo", f);
-    if (sansPhoto)
-      sansPhoto.onclick = () => {
-        p.image = "";
-        $("#p-vignette", f).textContent = "Sans photo";
-      };
     $("#p-annuler", f).onclick = () => f.close();
     $("#form-produit", f).onsubmit = (e) => {
       e.preventDefault();
       lireVariantes();
       p.nom = $("#p-nom", f).value.trim();
       p.categorie = $("#p-cat", f).value;
+      p.dispo = $("#p-dispo", f).value;
       p.prix = Number($("#p-prix", f).value || 0);
+      p.prixBarre = Number($("#p-prix-barre", f).value || 0);
+      p.badge = $("#p-badge", f).value;
+      p.delai = Math.max(0, parseInt($("#p-delai", f).value, 10) || 0);
       p.description = $("#p-desc", f).value.trim();
+      p.instructions = $("#p-instructions", f).value.trim();
       p.visible = $("#p-visible", f).checked;
       p.vedette = $("#p-vedette", f).checked;
       p.options = { texte: $("#p-texte", f).checked, photo: $("#p-opt-photo", f).checked };
+      p.occasions = [...f.querySelectorAll("[data-occasion]:checked")].map((x) => x.dataset.occasion);
+      p.image = p.images[0] || "";
       p.variantes.nom = $("#p-var-nom", f).value.trim();
       p.variantes.choix = p.variantes.choix.filter((c) => c.nom.trim());
       if (!p.variantes.choix.length) delete p.variantes;
@@ -450,13 +645,14 @@
       else D.produits[index] = p;
       f.close();
       marquerModifie();
-      rendre();
+      if (onglet !== "produits") allerA("produits");
+      else rendre();
       toast("Produit enregistré. Pensez à cliquer sur « Publier les modifications ».");
     };
     f.showModal();
   }
 
-  // ---------- Vue : Catégories ----------
+  // ---------- Vue : Catégories et occasions ----------
   function vueCategories() {
     return `
       <section class="bloc">
@@ -477,6 +673,32 @@
                 <button class="mini" data-action="cat-descendre" data-i="${i}" ${i === D.categories.length - 1 ? "disabled" : ""} aria-label="Descendre">↓</button>
                 <button class="mini" data-action="modifier-categorie" data-i="${i}">Modifier</button>
                 <button class="mini danger" data-action="supprimer-categorie" data-i="${i}">Supprimer</button>
+              </div>
+            </div>`;
+            })
+            .join("")}
+        </div>
+      </section>`;
+  }
+  function vueOccasions() {
+    return `
+      <section class="bloc">
+        <div class="bloc-tete">
+          <h2>Occasions</h2>
+          <button class="btn btn-ligne" data-action="nouvelle-occasion">+ Ajouter une occasion</button>
+        </div>
+        <p class="aide">Elles alimentent la page « Idées cadeaux » et les filtres de la boutique. Cochez les occasions de chaque produit dans sa fiche.</p>
+        <div class="liste">
+          ${D.occasions
+            .map((o, i) => {
+              const n = D.produits.filter((p) => (p.occasions || []).includes(o.id)).length;
+              return `
+            <div class="ligne" style="grid-template-columns:1fr auto auto">
+              <input type="text" value="${echapper(o.nom)}" data-liste="occasions" data-i="${i}" data-champ="nom" aria-label="Nom de l'occasion">
+              <span class="aide">${n} produit${n > 1 ? "s" : ""}</span>
+              <div class="ligne-boutons">
+                <button class="mini" data-action="occ-monter" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Monter">↑</button>
+                <button class="mini danger" data-action="supprimer-occasion" data-i="${i}">Supprimer</button>
               </div>
             </div>`;
             })
@@ -531,6 +753,65 @@
     f.showModal();
   }
 
+  // ---------- Vue : Avis clients ----------
+  function vueAvis() {
+    return `
+      <section class="bloc">
+        <div class="bloc-tete">
+          <h2>Avis clients <span class="aide">(${D.avis.length})</span></h2>
+          <button class="btn" data-action="nouvel-avis">+ Ajouter un avis</button>
+        </div>
+        <p class="aide">Recopiez de vrais avis (par exemple ceux de votre page Facebook, avec l'accord des clients). Les 3 premiers s'affichent sur la page d'accueil ; la section reste cachée tant qu'il n'y a aucun avis.</p>
+        <div>
+          ${D.avis
+            .map(
+              (a, i) => `
+            <div class="ligne-edit">
+              <div class="grille-avis">
+                <div class="champ"><label>Prénom / nom</label><input type="text" value="${echapper(a.nom)}" data-liste="avis" data-i="${i}" data-champ="nom" placeholder="Sophie L."></div>
+                <div class="champ"><label>Note</label><select data-liste="avis" data-i="${i}" data-champ="note" data-type="nombre">${[5, 4, 3, 2, 1].map((n) => `<option value="${n}" ${Number(a.note || 5) === n ? "selected" : ""}>${"★".repeat(n)}</option>`).join("")}</select></div>
+                <div class="champ"><label>Date</label><input type="text" value="${echapper(a.date)}" data-liste="avis" data-i="${i}" data-champ="date" placeholder="Septembre 2026"></div>
+                <div class="champ"><label>Source</label><input type="text" value="${echapper(a.source)}" data-liste="avis" data-i="${i}" data-champ="source" placeholder="Facebook"></div>
+              </div>
+              <div class="champ"><label>Texte de l'avis</label><textarea rows="2" data-liste="avis" data-i="${i}" data-champ="texte">${echapper(a.texte)}</textarea></div>
+              <div class="ligne-boutons" style="justify-content:flex-end">
+                <button class="mini" data-action="avis-monter" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Monter">↑</button>
+                <button class="mini danger" data-action="supprimer-avis" data-i="${i}">Supprimer</button>
+              </div>
+            </div>`
+            )
+            .join("") || `<p class="aide" style="padding:1rem 0">Aucun avis pour l'instant.</p>`}
+        </div>
+      </section>`;
+  }
+
+  // ---------- Vue : FAQ ----------
+  function vueFaq() {
+    return `
+      <section class="bloc">
+        <div class="bloc-tete">
+          <h2>Questions fréquentes <span class="aide">(${D.faq.length})</span></h2>
+          <button class="btn" data-action="nouvelle-question">+ Ajouter une question</button>
+        </div>
+        <p class="aide">Affichées sur la page « Questions » du site. Une bonne FAQ évite beaucoup d'appels et de messages.</p>
+        <div>
+          ${D.faq
+            .map(
+              (x, i) => `
+            <div class="ligne-edit">
+              <div class="champ"><label>Question</label><input type="text" value="${echapper(x.q)}" data-liste="faq" data-i="${i}" data-champ="q"></div>
+              <div class="champ"><label>Réponse</label><textarea rows="3" data-liste="faq" data-i="${i}" data-champ="r">${echapper(x.r)}</textarea></div>
+              <div class="ligne-boutons" style="justify-content:flex-end">
+                <button class="mini" data-action="faq-monter" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Monter">↑</button>
+                <button class="mini danger" data-action="supprimer-question" data-i="${i}">Supprimer</button>
+              </div>
+            </div>`
+            )
+            .join("")}
+        </div>
+      </section>`;
+  }
+
   // ---------- Vue : Infos boutique ----------
   function vueBoutique() {
     return `
@@ -544,7 +825,8 @@
           ${champ("site.nom", "Nom de la boutique")}
           ${champ("site.telephone", "Téléphone", { type: "tel" })}
           ${champ("site.email", "Email (reçoit les commandes et devis)", { type: "email" })}
-          ${champ("site.adresse", "Adresse")}
+          ${champ("site.whatsapp", "Numéro WhatsApp (facultatif)", { type: "tel", placeholder: "07 83 39 40 28", aide: "Ajoute « Commander par WhatsApp » au panier et un bouton de contact sur le site." })}
+          ${champ("site.adresse", "Adresse", { large: true })}
           ${champ("site.facebook", "Lien de la page Facebook", { type: "url", large: true })}
           ${champ("site.slogan", "Slogan (pied de page)", { large: true })}
           ${champ("site.avis", "Mention des avis (accueil)", { aide: "Ex. : Recommandé à 100 % · 16 avis" })}
@@ -555,10 +837,12 @@
         ${champ("site.horaires", "Une ligne par jour, au format « Jour : horaires »", { type: "lignes" })}
       </section>
       <section class="bloc">
-        <div class="bloc-tete"><h2>Livraison et commandes</h2></div>
+        <div class="bloc-tete"><h2>Livraison, cadeau et commandes</h2></div>
         <div class="grille-champs">
           ${champ("site.livraison", "Frais de livraison (€)", { type: "nombre" })}
           ${champ("site.livraisonOfferteDes", "Livraison offerte à partir de (€)", { type: "nombre" })}
+          ${champ("site.emballage.actif", "Proposer un emballage cadeau", { type: "case" })}
+          ${champ("site.emballage.prix", "Prix de l'emballage cadeau (€)", { type: "nombre" })}
           ${champ("site.formulaireCommande", "Adresse Formspree (facultatif)", { type: "url", large: true, aide: "Créez un formulaire gratuit sur formspree.io et collez son adresse : les commandes arriveront directement par email. Vide = la messagerie du client s'ouvre." })}
         </div>
       </section>`;
@@ -569,9 +853,10 @@
     return `
       <section class="bloc">
         <div class="bloc-tete"><h2>Annonce en haut du site</h2></div>
-        <p class="aide">Pour prévenir d'une fermeture, d'un salon, d'une promotion…</p>
+        <p class="aide">Pour prévenir d'une fermeture, d'un salon, d'une date limite de commande pour Noël…</p>
         ${champ("annonce.actif", "Afficher l'annonce", { type: "case" })}
-        ${champ("annonce.texte", "Texte de l'annonce", { aide: "Ex. : La boutique sera fermée du 21 au 28 octobre." })}
+        ${champ("annonce.texte", "Texte de l'annonce", { aide: "Ex. : Commandes de Noël : passez commande avant le 10 décembre." })}
+        ${champ("annonce.lien", "Lien au clic (facultatif)", { placeholder: "boutique.html?occasion=noel", aide: "Une page du site (ex. boutique.html?occasion=noel) ou une adresse complète." })}
       </section>
       <section class="bloc">
         <div class="bloc-tete"><h2>Page d'accueil</h2></div>
@@ -611,22 +896,22 @@
         </div>
       </section>`;
   }
-  $("#contenu").addEventListener("change", async (e) => {
-    if (e.target.id !== "g-ajout") return;
-    for (const fichier of e.target.files) {
-      try {
-        D.galerie.push(await envoyerPhoto(fichier, "realisation"));
-        marquerModifie();
-      } catch (err) {
-        toast(`Échec de l'envoi d'une photo (${err.detail || err.message}).`, true);
-      }
-    }
-    rendre();
-  });
 
   // ---------- Actions des boutons ----------
   const echanger = (t, a, b) => ([t[a], t[b]] = [t[b], t[a]]);
+  function telechargerSauvegarde() {
+    const blob = new Blob([JSON.stringify(D, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `sauvegarde-site-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
   $("#contenu").addEventListener("click", (e) => {
+    const vers = e.target.closest("[data-aller]");
+    if (vers) return allerA(vers.dataset.aller);
     const b = e.target.closest("[data-action]");
     if (!b) return;
     const i = Number(b.dataset.i);
@@ -635,6 +920,12 @@
     if (a === "modifier-produit") return editerProduit(i);
     if (a === "nouvelle-categorie") return editerCategorie(-1);
     if (a === "modifier-categorie") return editerCategorie(i);
+    if (a === "telecharger") return telechargerSauvegarde();
+    if (a === "ouvrir-commandes") {
+      if (!confirm("Ouvrir les commandes ? Le bandeau « site en construction » disparaîtra et les clients pourront envoyer leurs commandes.")) return;
+      D.site.apercu = false;
+      toast("Commandes ouvertes : cliquez sur « Publier les modifications » pour l'appliquer au site.");
+    }
     if (a === "dupliquer-produit") {
       const copie = structuredClone(D.produits[i]);
       copie.nom += " (copie)";
@@ -647,6 +938,8 @@
       if (!confirm(`Supprimer « ${D.produits[i].nom} » ?`)) return;
       D.produits.splice(i, 1);
     }
+    if (a === "basculer-vedette") D.produits[i].vedette = !D.produits[i].vedette;
+    if (a === "basculer-visible") D.produits[i].visible = D.produits[i].visible === false;
     if (a === "monter") echanger(D.produits, i, i - 1);
     if (a === "descendre") echanger(D.produits, i, i + 1);
     if (a === "cat-monter") echanger(D.categories, i, i - 1);
@@ -657,6 +950,26 @@
       if (n) return toast(`Impossible : ${n} produit(s) sont dans « ${c.nom} ». Déplacez-les d'abord dans une autre catégorie.`, true);
       if (!confirm(`Supprimer la catégorie « ${c.nom} » ?`)) return;
       D.categories.splice(i, 1);
+    }
+    if (a === "nouvelle-occasion") D.occasions.push({ id: idUnique("occasion", D.occasions), nom: "Nouvelle occasion" });
+    if (a === "occ-monter") echanger(D.occasions, i, i - 1);
+    if (a === "supprimer-occasion") {
+      const o = D.occasions[i];
+      if (!confirm(`Supprimer l'occasion « ${o.nom} » ? Elle sera retirée des produits.`)) return;
+      D.produits.forEach((p) => (p.occasions = (p.occasions || []).filter((x) => x !== o.id)));
+      D.occasions.splice(i, 1);
+    }
+    if (a === "nouvel-avis") D.avis.unshift({ nom: "", note: 5, texte: "", date: "", source: "Facebook" });
+    if (a === "avis-monter") echanger(D.avis, i, i - 1);
+    if (a === "supprimer-avis") {
+      if (!confirm("Supprimer cet avis ?")) return;
+      D.avis.splice(i, 1);
+    }
+    if (a === "nouvelle-question") D.faq.push({ q: "", r: "" });
+    if (a === "faq-monter") echanger(D.faq, i, i - 1);
+    if (a === "supprimer-question") {
+      if (!confirm("Supprimer cette question ?")) return;
+      D.faq.splice(i, 1);
     }
     if (a === "g-gauche") echanger(D.galerie, i, i - 1);
     if (a === "g-droite") echanger(D.galerie, i, i + 1);

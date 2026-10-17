@@ -56,14 +56,17 @@
         </a>
         <div class="admin-actions">
           <span id="statut" class="statut" aria-live="polite"></span>
-          <a class="btn btn-ligne" href="index.html" target="_blank" rel="noopener">Voir le site</a>
+          <button class="btn btn-ligne" id="previsualiser" title="Voir le site avec les modifications pas encore publiées">Prévisualiser</button>
           <button class="btn" id="publier" disabled>Publier les modifications</button>
           <button class="btn btn-ligne" id="deconnexion">Déconnexion</button>
         </div>
       </div>
       <nav class="conteneur onglets" role="tablist" aria-label="Sections">
-        <button role="tab" data-onglet="produits" aria-selected="true">Produits</button>
-        <button role="tab" data-onglet="categories" aria-selected="false">Catégories</button>
+        <button role="tab" data-onglet="accueil" aria-selected="true">Tableau de bord</button>
+        <button role="tab" data-onglet="produits" aria-selected="false">Produits</button>
+        <button role="tab" data-onglet="categories" aria-selected="false">Catégories & occasions</button>
+        <button role="tab" data-onglet="avis" aria-selected="false">Avis clients</button>
+        <button role="tab" data-onglet="faq" aria-selected="false">FAQ</button>
         <button role="tab" data-onglet="boutique" aria-selected="false">Infos boutique</button>
         <button role="tab" data-onglet="textes" aria-selected="false">Textes & annonce</button>
         <button role="tab" data-onglet="galerie" aria-selected="false">Galerie</button>
