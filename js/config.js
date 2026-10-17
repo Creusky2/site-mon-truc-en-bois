@@ -18,7 +18,7 @@ window.SITE = {
     "Dimanche : 10h – 13h",
   ],
   facebook: "https://www.facebook.com/profile.php?id=100094575102607",
-  avis: "Recommandé à 100 % (16 avis Facebook)",
+  avis: "Recommandé à 100 % · 16 avis",
 
   // Adresse d'envoi des commandes.
   // Laisser vide pour envoyer les commandes par email (mailto).
