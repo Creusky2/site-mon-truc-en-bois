@@ -80,7 +80,7 @@
     etoile: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
   };
   const icone = (nom, cls = "ico") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${TRACES[nom] || ""}</svg>`;
-  const LOGO = `<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#a8693a"/><circle cx="20" cy="20" r="14" fill="none" stroke="#f1dcc3" stroke-width="1.6"/><circle cx="20.5" cy="19.5" r="9" fill="none" stroke="#f1dcc3" stroke-width="1.4"/><circle cx="21" cy="19" r="4.2" fill="none" stroke="#f1dcc3" stroke-width="1.2"/><circle cx="21.2" cy="18.8" r="1.1" fill="#f1dcc3"/></svg>`;
+  const LOGO = `<img class="logo-image" src="img/logo-200.webp" alt="" width="200" height="183">`;
 
   // ---------- Stockage navigateur (panier, favoris) ----------
   const lire = (cle, defaut) => {
@@ -290,6 +290,7 @@
       email: S.email,
       url: location.origin + location.pathname.replace(/[^/]*$/, ""),
       image: new URL("img/boutique-auchel.jpg", location.href).href,
+      logo: new URL("img/logo.webp", location.href).href,
       address: { "@type": "PostalAddress", streetAddress: rue.trim(), postalCode: cp, addressLocality: ville.join(",").replace(cp, "").trim(), addressCountry: "FR" },
       openingHoursSpecification: ouvertures,
       sameAs: [S.facebook],

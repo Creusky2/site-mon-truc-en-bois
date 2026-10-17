@@ -90,7 +90,7 @@ p { margin: 0; }
 }
 .entete-int { display: flex; align-items: center; justify-content: space-between; min-height: 68px; gap: 1rem; }
 .logo { display: flex; align-items: center; gap: 0.65rem; color: var(--encre); text-decoration: none; }
-.logo svg { width: 34px; height: 34px; flex: none; }
+
 .logo-nom { font: 700 1.2rem/1 var(--f-titre); letter-spacing: -0.02em; display: block; }
 .logo-lieu { font: 500 0.66rem/1 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--encre-douce); display: block; margin-top: 4px; }
 .nav { display: flex; gap: 0.25rem; align-items: center; }
@@ -447,3 +447,11 @@ input[type="file"] { font: inherit; font-size: 0.9rem; }
 .chiffres strong { color: var(--encre); }
 .logo-lieu { white-space: nowrap; }
 @media (max-width: 400px) { .logo-lieu { display: none; } .logo-nom { font-size: 1.1rem; } }
+
+/* Logo illustré */
+.logo .logo-image { width: 54px; height: auto; flex: none; }
+.pied .logo .logo-image { width: 88px; background: #fbf6ef; border-radius: 14px; padding: 6px; }
+@media (max-width: 400px) { .logo .logo-image { width: 46px; } }
+@media (min-width: 861px) { .entete .logo .logo-image { width: 64px; } }
+.heros-logo { width: 120px; height: auto; margin-bottom: -0.4rem; }
+@media (max-width: 860px) { .heros-logo { display: none; } }
