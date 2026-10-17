@@ -2,10 +2,10 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mon Truc en Bois — Gravure, sérigraphie, photo & bijoux personnalisés</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mon Truc en Bois — Cadeaux personnalisés à Auchel</title>
   <meta name="description" content="Mon Truc en Bois, boutique de personnalisation à Auchel (62) : gravure texte et photo sur bois, sérigraphie, mugs, verres, plaques de naissance, bijoux gravés. Cadeaux uniques.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -13,97 +13,131 @@
 
   <main>
     <section class="heros">
-      <div class="conteneur">
-        <span class="avis">⭐ <span data-site="avis"></span></span>
-        <h1>Offrez un cadeau unique, qui restera gravé dans les mémoires</h1>
-        <p>Gravure texte et photo, sérigraphie, bijoux : nous personnalisons vos idées cadeaux dans notre boutique d'Auchel, pour toutes les occasions.</p>
-        <div class="heros-actions">
-          <a class="btn btn-clair" href="boutique.html">Découvrir la boutique</a>
-          <a class="btn btn-contour" style="color:#fff;box-shadow:inset 0 0 0 2px #fff" href="contact.html">Demander un devis</a>
+      <div class="conteneur heros-grille">
+        <div class="heros-texte">
+          <span class="etiquette">Boutique de personnalisation · Auchel (62)</span>
+          <h1 data-texte="heroTitre"></h1>
+          <p class="chapeau" data-texte="heroTexte"></p>
+          <div class="heros-actions">
+            <a class="btn" href="boutique.html">Découvrir la boutique <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a class="btn btn-ligne" href="contact.html">Demander un devis</a>
+          </div>
+          <p class="preuve"><span class="etoiles" aria-hidden="true">★★★★★</span><span data-site="avis"></span></p>
         </div>
+        <div class="mosaique" id="mosaique"></div>
+      </div>
+    </section>
+
+    <section class="garanties">
+      <div class="conteneur garanties-grille">
+        <div class="garantie" data-icone="main"><span>Fait main à Auchel<small>Chaque pièce est préparée en boutique</small></span></div>
+        <div class="garantie" data-icone="crayon"><span>100 % personnalisé<small>Texte, photo, logo : à votre idée</small></span></div>
+        <div class="garantie" data-icone="coche"><span>Maquette validée<small>Avant toute fabrication</small></span></div>
+        <div class="garantie" data-icone="boutique"><span>Retrait gratuit<small>Ou livraison à domicile</small></span></div>
       </div>
     </section>
 
     <section class="section">
-      <div class="conteneur centre">
-        <h2>Nos savoir-faire</h2>
-        <p class="sous-titre">Un objet, une envie, un message : choisissez votre univers.</p>
-        <div class="grille" id="categories"></div>
+      <div class="conteneur">
+        <div class="titre-section">
+          <div class="pile">
+            <span class="etiquette">Nos univers</span>
+            <h2>Un objet, une envie, un message</h2>
+          </div>
+          <a class="lien-fleche" href="boutique.html">Tout le catalogue <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="categories" id="categories"></div>
       </div>
     </section>
 
-    <section class="section section-claire">
+    <section class="section section-alt">
       <div class="conteneur">
-        <h2 class="centre">Comment ça marche ?</h2>
-        <p class="sous-titre centre">Commander une création personnalisée, c'est simple.</p>
+        <div class="titre-section">
+          <div class="pile">
+            <span class="etiquette">Coups de cœur</span>
+            <h2>Les idées cadeaux qui font mouche</h2>
+          </div>
+          <a class="lien-fleche" href="boutique.html">Voir tous les produits <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="produits" id="vedettes"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="conteneur">
+        <div class="titre-section">
+          <div class="pile">
+            <span class="etiquette">Comment ça marche</span>
+            <h2>De votre idée à l'objet gravé</h2>
+          </div>
+        </div>
         <div class="etapes">
-          <div class="etape"><h3>Choisissez</h3><p>Sélectionnez un produit dans la boutique ou décrivez-nous votre projet sur mesure.</p></div>
-          <div class="etape"><h3>Personnalisez</h3><p>Ajoutez votre texte, choisissez la police et envoyez votre photo. L'aperçu s'affiche en direct.</p></div>
-          <div class="etape"><h3>Validez</h3><p>Nous vous recontactons pour confirmer le rendu (avec maquette si besoin) et le paiement.</p></div>
-          <div class="etape"><h3>Recevez</h3><p>Votre création est fabriquée avec soin puis expédiée, ou à retirer à la boutique d'Auchel.</p></div>
+          <div class="etape"><h3>Choisissez</h3><p>Un produit de la boutique, ou décrivez-nous votre projet sur mesure.</p></div>
+          <div class="etape"><h3>Personnalisez</h3><p>Votre texte, la police, votre photo : l'aperçu s'affiche en direct.</p></div>
+          <div class="etape"><h3>Validez</h3><p>Nous vous recontactons pour confirmer le rendu, avec maquette si besoin, et le paiement.</p></div>
+          <div class="etape"><h3>Recevez</h3><p>Votre création est fabriquée avec soin, à retirer en boutique ou livrée chez vous.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="conteneur visite">
+        <img src="img/boutique-auchel.jpg" alt="La boutique Mon Truc en Bois à Auchel" loading="lazy">
+        <div class="pile" style="gap:1.4rem">
+          <span class="etiquette">La boutique</span>
+          <h2>Venez nous voir à Auchel</h2>
+          <div class="infos-contact">
+            <span data-icone="lieu"><span data-site="adresse"></span></span>
+            <a data-tel data-icone="tel"></a>
+          </div>
+          <div data-horaires></div>
+          <div><a class="btn btn-ligne" href="contact.html">Plan d'accès et contact</a></div>
         </div>
       </div>
     </section>
 
     <section class="section">
-      <div class="conteneur centre">
-        <h2>Coups de cœur</h2>
-        <p class="sous-titre">Quelques idées de cadeaux qui font toujours plaisir.</p>
-        <div class="grille" id="vedettes"></div>
-        <p style="margin-top:2rem"><a class="btn" href="boutique.html">Voir tous les produits</a></p>
-      </div>
-    </section>
-
-    <section class="section section-claire">
-      <div class="conteneur deux-colonnes" style="align-items:center">
-        <img class="photo-ronde" src="img/boutique-auchel.jpg" alt="La boutique Mon Truc en Bois à Auchel" loading="lazy">
-        <div>
-          <h2>Venez nous voir à la boutique</h2>
-          <p>📍 <strong data-site="adresse"></strong></p>
-          <p data-site="horaires"></p>
-          <p>📞 <a id="tel-accueil"></a></p>
-          <a class="btn" href="contact.html">Plan d'accès & contact</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="bandeau">
       <div class="conteneur">
-        <h2>Un projet sur mesure ? Une commande pour votre entreprise ou association ?</h2>
-        <p>Mariages, anniversaires, cadeaux d'entreprise, textiles de club… Parlons-en !</p>
-        <a class="btn btn-clair" href="contact.html">Demander un devis gratuit</a>
+        <div class="appel">
+          <div>
+            <h2>Un projet sur mesure, une commande en série ?</h2>
+            <p>Mariages, anniversaires, cadeaux d'entreprise, textiles de club ou d'association : décrivez-nous votre idée, le devis est gratuit.</p>
+          </div>
+          <a class="btn btn-clair" href="contact.html">Demander un devis gratuit</a>
+        </div>
       </div>
     </section>
   </main>
 
   <footer class="pied"></footer>
 
-  <script src="js/config.js"></script>
-  <script src="js/produits.js"></script>
+  <script src="data/donnees.js"></script>
   <script src="js/main.js"></script>
   <script>
-    const { echapper, euros, visuel } = MTB;
-    document.getElementById("categories").innerHTML = Object.entries(CATEGORIES)
-      .map(([id, c]) => `
-        <a class="carte categorie-carte" href="boutique.html?categorie=${id}">
-          <div class="icone">${c.icone}</div>
-          <h3>${echapper(c.nom)}</h3>
-          <p>${echapper(c.description)}</p>
-        </a>`)
+    const { D, echapper, carteProduit } = MTB;
+    const vedettes = PRODUITS.filter((p) => p.vedette);
+
+    const photos = ["img/boutique-interieur.jpg", ...vedettes.filter((p) => p.image).slice(0, 2).map((p) => p.image)];
+    document.getElementById("mosaique").innerHTML = photos
+      .map((src, i) => `<img src="${echapper(src)}" alt="${i ? "Création personnalisée" : "Intérieur de la boutique"}"${i ? ' loading="lazy"' : ""}>`)
       .join("");
 
-    const vedettes = ["planche-aperitif", "photo-gravee-bois", "plaque-naissance-bois", "mug-personnalise", "plaque-voiture", "bracelet-jonc", "verres-graves", "tableau-scrabble"].map(trouverProduit).filter(Boolean);
-    const tel = document.getElementById("tel-accueil");
-    tel.href = "tel:" + SITE.telephone.replace(/\s/g, "");
-    tel.textContent = SITE.telephone;
-
-    document.getElementById("vedettes").innerHTML = vedettes
-      .map((p) => `
-        <a class="carte" href="produit.html?id=${p.id}" style="text-align:left">
-          <div class="carte-visuel">${visuel(p)}</div>
-          <div class="carte-corps"><h3>${echapper(p.nom)}</h3><span class="prix">${p.variantes?.choix.some((c) => c.prix) ? "dès " : ""}${euros(p.prix)}</span></div>
-        </a>`)
+    document.getElementById("categories").innerHTML = D.categories
+      .map((c) => {
+        const n = PRODUITS.filter((p) => p.categorie === c.id).length;
+        return `
+          <a class="categorie" href="boutique.html?categorie=${encodeURIComponent(c.id)}">
+            ${c.image ? `<img src="${echapper(c.image)}" alt="" loading="lazy">` : ""}
+            <div class="categorie-texte">
+              <span class="etiquette">${n} produit${n > 1 ? "s" : ""}</span>
+              <h3>${echapper(c.nom)}</h3>
+              <p>${echapper(c.description)}</p>
+            </div>
+          </a>`;
+      })
       .join("");
+
+    document.getElementById("vedettes").innerHTML = (vedettes.length ? vedettes : PRODUITS).slice(0, 8).map(carteProduit).join("");
   </script>
 </body>
 </html>

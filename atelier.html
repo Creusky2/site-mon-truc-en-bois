@@ -2,10 +2,10 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>La boutique — Mon Truc en Bois, Auchel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Qui sommes-nous ? — Mon Truc en Bois</title>
   <meta name="description" content="Mon Truc en Bois, boutique de personnalisation à Auchel : gravure texte et photo, sérigraphie, bijoux. Découvrez nos réalisations.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -13,61 +13,49 @@
 
   <main>
     <section class="section">
-      <div class="conteneur deux-colonnes" style="align-items:center">
-        <div>
+      <div class="conteneur apropos">
+        <div class="apropos-texte">
+          <span class="etiquette" id="equipe"></span>
           <h1>Qui sommes-nous ?</h1>
-          <p>Depuis 2024, <strong data-site="nom"></strong> vous accueille au cœur d'Auchel, au <span data-site="adresse"></span>. Christophe et Laetitia y imaginent et fabriquent des cadeaux personnalisés pour toutes les occasions : naissance, baptême, mariage, fête des pères et des mères, départ en retraite, Noël…</p>
-          <p>Gravure laser sur bois, verre et ardoise, impression sur mugs, verres et textiles, bijoux gravés : chaque pièce est unique et préparée avec soin. Particuliers, commerçants, associations et entreprises : nous réalisons aussi bien une pièce unique que des séries.</p>
-          <p>Vous nous croiserez aussi sur les salons, marchés et fêtes de la région !</p>
-          <a class="btn" href="contact.html">Parlons de votre projet</a>
+          <div class="pile" id="apropos"></div>
+          <div><a class="btn" href="contact.html">Parlons de votre projet</a></div>
         </div>
-        <img class="photo-ronde" src="img/boutique-interieur.jpg" alt="Intérieur de la boutique Mon Truc en Bois" loading="lazy">
+        <img class="photo" src="img/boutique-interieur.jpg" alt="Intérieur de la boutique Mon Truc en Bois" style="aspect-ratio:4/5">
       </div>
     </section>
 
-    <section class="section section-claire">
+    <section class="section section-alt">
       <div class="conteneur">
-        <h2 class="centre">Nos savoir-faire</h2>
-        <div class="grille" style="margin-top:2rem">
-          <div class="etape" style="padding-top:28px"><h3>🪵 Gravure texte & photo</h3><p>Gravure laser précise sur bois, verre, ardoise : textes, dessins, logos et même vos photos.</p></div>
-          <div class="etape" style="padding-top:28px"><h3>☕ Sérigraphie & impression</h3><p>Mugs, verres, plaques voiture, tirelires, baskets : vos visuels imprimés à l'unité ou en série.</p></div>
-          <div class="etape" style="padding-top:28px"><h3>🎉 Événements</h3><p>Plaques de naissance, panneaux de bienvenue, urnes et souvenirs de mariage assortis à votre thème.</p></div>
-          <div class="etape" style="padding-top:28px"><h3>💍 Bijoux</h3><p>Bracelets gravés, boîtes à bijoux et porte-clés : des petites attentions qui ont du sens.</p></div>
+        <div class="titre-section"><div class="pile"><span class="etiquette">Savoir-faire</span><h2>Ce que nous fabriquons</h2></div></div>
+        <div class="savoirs">
+          <div class="savoir" data-icone="gravure"><h3>Gravure texte et photo</h3><p>Gravure laser précise sur bois, verre et ardoise : textes, dessins, logos et même vos photos.</p></div>
+          <div class="savoir" data-icone="tshirt"><h3>Sérigraphie et impression</h3><p>Mugs, verres, plaques voiture, tirelires, baskets : vos visuels imprimés à l'unité ou en série.</p></div>
+          <div class="savoir" data-icone="fete"><h3>Événements</h3><p>Plaques de naissance, panneaux de bienvenue, urnes et souvenirs de mariage assortis à votre thème.</p></div>
+          <div class="savoir" data-icone="bijou"><h3>Bijoux</h3><p>Bracelets gravés, boîtes à bijoux et porte-clés : des petites attentions qui ont du sens.</p></div>
         </div>
       </div>
     </section>
 
     <section class="section">
       <div class="conteneur">
-        <h2 class="centre">Quelques réalisations</h2>
-        <p class="sous-titre centre">Retrouvez toutes nos nouveautés chaque semaine sur notre page Facebook.</p>
-        <div class="galerie">
-          <img src="img/decor-hiboux.jpg" alt="Décor hiboux découpé au laser" loading="lazy">
-          <img src="img/cadre-mariage.jpg" alt="Cadre souvenir de mariage gravé" loading="lazy">
-          <img src="img/plaque-naissance-bois.jpg" alt="Plaque de naissance en bois" loading="lazy">
-          <img src="img/photo-gravee-bois.jpg" alt="Photo de chevaux gravée sur bois" loading="lazy">
-          <img src="img/tableau-scrabble.jpg" alt="Tableau famille façon Scrabble" loading="lazy">
-          <img src="img/baskets-personnalisees.jpg" alt="Baskets personnalisées pour un mariage" loading="lazy">
-          <img src="img/verres-graves.jpg" alt="Flûtes à champagne gravées" loading="lazy">
-          <img src="img/salon-stand.jpg" alt="Notre stand sur un salon" loading="lazy">
+        <div class="titre-section">
+          <div class="pile"><span class="etiquette">Réalisations</span><h2>Quelques pièces sorties de la boutique</h2></div>
+          <a class="lien-fleche" data-facebook target="_blank" rel="noopener">Toutes nos nouveautés sur Facebook <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
-      </div>
-    </section>
-
-    <section class="bandeau">
-      <div class="conteneur">
-        <h2>Suivez nos dernières créations</h2>
-        <p>Nouveautés, coulisses de la boutique, dates de fermeture et idées cadeaux sont publiées régulièrement sur notre page.</p>
-        <a class="btn btn-clair" id="fb" target="_blank" rel="noopener">Voir notre page Facebook</a>
+        <div class="galerie" id="galerie"></div>
       </div>
     </section>
   </main>
 
   <footer class="pied"></footer>
 
-  <script src="js/config.js"></script>
-  <script src="js/produits.js"></script>
+  <script src="data/donnees.js"></script>
   <script src="js/main.js"></script>
-  <script>document.getElementById("fb").href = SITE.facebook;</script>
+  <script>
+    const { D, echapper } = MTB;
+    document.getElementById("equipe").textContent = D.textes.equipe ? `${D.textes.equipe} · depuis 2024` : "Depuis 2024";
+    document.getElementById("apropos").innerHTML = (D.textes.aPropos || []).map((p) => `<p>${echapper(p)}</p>`).join("");
+    document.getElementById("galerie").innerHTML = (D.galerie || []).map((src) => `<img src="${echapper(src)}" alt="Réalisation Mon Truc en Bois" loading="lazy">`).join("");
+  </script>
 </body>
 </html>

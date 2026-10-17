@@ -2,62 +2,78 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Boutique — Mon Truc en Bois</title>
-  <meta name="description" content="Boutique en ligne : objets gravés, textiles personnalisés, photos sur bois et verre, bijoux gravés.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <meta name="description" content="Tous nos produits personnalisables : gravure bois, mugs et verres, plaques de naissance, souvenirs de mariage, bijoux gravés.">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="entete"></header>
 
-  <main class="section">
-    <div class="conteneur">
-      <h1 class="centre">La boutique</h1>
-      <p class="sous-titre centre">Tous nos produits sont personnalisables. Vous ne trouvez pas votre bonheur ? <a href="contact.html">Demandez-nous un devis sur mesure</a>.</p>
-      <div class="filtres" id="filtres" role="group" aria-label="Filtrer par catégorie"></div>
-      <div class="grille" id="produits"></div>
+  <main class="conteneur">
+    <div class="page-tete">
+      <span class="etiquette">Catalogue</span>
+      <h1>La boutique</h1>
+      <p class="chapeau">Tous nos produits se personnalisent. Vous ne trouvez pas votre bonheur ? <a href="contact.html">Demandez-nous un devis sur mesure</a>.</p>
     </div>
+
+    <div class="outils">
+      <div class="filtres" id="filtres" role="group" aria-label="Filtrer par catégorie"></div>
+      <div class="recherche">
+        <input type="search" id="q" placeholder="Rechercher un produit…" aria-label="Rechercher un produit">
+        <select id="tri" aria-label="Trier">
+          <option value="">Trier : pertinence</option>
+          <option value="prix-asc">Prix croissant</option>
+          <option value="prix-desc">Prix décroissant</option>
+          <option value="nom">Nom (A → Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="resultats" id="resultats" aria-live="polite"></p>
+    <div class="produits" id="produits" style="margin-bottom:5rem"></div>
   </main>
 
   <footer class="pied"></footer>
 
-  <script src="js/config.js"></script>
-  <script src="js/produits.js"></script>
+  <script src="data/donnees.js"></script>
   <script src="js/main.js"></script>
   <script>
-    const { echapper, euros, visuel } = MTB;
+    const { D, echapper, carteProduit } = MTB;
     const params = new URLSearchParams(location.search);
     const demande = params.get("categorie") || location.hash.slice(1);
     let actif = CATEGORIES[demande] ? demande : "tout";
+    const sansAccent = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
     function afficher() {
-      const boutons = [["tout", "Tout"], ...Object.entries(CATEGORIES).map(([id, c]) => [id, `${c.icone} ${c.nom}`])];
+      const boutons = [["tout", "Tout"], ...D.categories.map((c) => [c.id, c.nom])];
       document.getElementById("filtres").innerHTML = boutons
-        .map(([id, nom]) => `<button class="filtre" data-cat="${id}" aria-pressed="${id === actif}">${echapper(nom)}</button>`)
+        .map(([id, nom]) => `<button class="filtre" data-cat="${echapper(id)}" aria-pressed="${id === actif}">${echapper(nom)}</button>`)
         .join("");
 
-      const liste = PRODUITS.filter((p) => actif === "tout" || p.categorie === actif);
-      document.getElementById("produits").innerHTML = liste
-        .map((p) => `
-          <a class="carte" href="produit.html?id=${p.id}">
-            <div class="carte-visuel">${visuel(p)}</div>
-            <div class="carte-corps">
-              <h3>${echapper(p.nom)}</h3>
-              <p>${echapper(p.description)}</p>
-              <span class="prix">${p.variantes?.choix.some((c) => c.prix) ? "dès " : ""}${euros(p.prix)}</span>
-            </div>
-          </a>`)
-        .join("");
+      const q = sansAccent(document.getElementById("q").value.trim());
+      let liste = PRODUITS.filter((p) => (actif === "tout" || p.categorie === actif) && (!q || sansAccent(p.nom + " " + p.description).includes(q)));
+      const tri = document.getElementById("tri").value;
+      if (tri === "prix-asc") liste = [...liste].sort((a, b) => a.prix - b.prix);
+      if (tri === "prix-desc") liste = [...liste].sort((a, b) => b.prix - a.prix);
+      if (tri === "nom") liste = [...liste].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+
+      document.getElementById("resultats").textContent = `${liste.length} produit${liste.length > 1 ? "s" : ""}`;
+      document.getElementById("produits").innerHTML = liste.length
+        ? liste.map(carteProduit).join("")
+        : `<p class="aucun" style="grid-column:1/-1">Aucun produit ne correspond. <a href="contact.html">Demandez-nous un devis sur mesure</a> !</p>`;
     }
 
     document.getElementById("filtres").addEventListener("click", (e) => {
       const b = e.target.closest("[data-cat]");
       if (!b) return;
       actif = b.dataset.cat;
-      history.replaceState(null, "", actif === "tout" ? "boutique.html" : `boutique.html?categorie=${actif}`);
+      history.replaceState(null, "", actif === "tout" ? "boutique.html" : `boutique.html?categorie=${encodeURIComponent(actif)}`);
       afficher();
     });
+    document.getElementById("q").addEventListener("input", afficher);
+    document.getElementById("tri").addEventListener("change", afficher);
     afficher();
   </script>
 </body>

@@ -2,30 +2,27 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Produit — Mon Truc en Bois</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="entete"></header>
 
-  <main class="section">
-    <div class="conteneur" id="contenu"></div>
-  </main>
+  <main class="conteneur" id="contenu" style="padding-bottom:5rem"></main>
 
   <footer class="pied"></footer>
 
-  <script src="js/config.js"></script>
-  <script src="js/produits.js"></script>
+  <script src="data/donnees.js"></script>
   <script src="js/main.js"></script>
   <script>
-    const { echapper, euros, visuel, ajouterAuPanier } = MTB;
+    const { echapper, euros, visuel, icone, ajouterAuPanier, carteProduit } = MTB;
     const POLICES = [
-      { nom: "Classique", css: "'Playfair Display', Georgia, serif" },
+      { nom: "Classique", css: "Georgia, 'Times New Roman', serif" },
       { nom: "Manuscrite", css: "'Dancing Script', cursive" },
-      { nom: "Moderne", css: "'Nunito', Arial, sans-serif" },
-      { nom: "Machine à écrire", css: "'Courier New', monospace" },
+      { nom: "Moderne", css: "'Figtree', Arial, sans-serif" },
+      { nom: "Machine à écrire", css: "'IBM Plex Mono', 'Courier New', monospace" },
     ];
     const produit = trouverProduit(new URLSearchParams(location.search).get("id") || location.hash.slice(1));
     const zone = document.getElementById("contenu");
@@ -34,31 +31,37 @@
     let averti = false;
 
     if (!produit) {
-      zone.innerHTML = `<div class="vide"><h1>Produit introuvable</h1><p><a class="btn" href="boutique.html">Retour à la boutique</a></p></div>`;
+      zone.innerHTML = `<div class="vide"><h1>Produit introuvable</h1><p class="chapeau">Il a peut-être été retiré du catalogue.</p><a class="btn" href="boutique.html">Retour à la boutique</a></div>`;
     } else {
       document.title = `${produit.nom} — ${SITE.nom}`;
-      const cat = CATEGORIES[produit.categorie];
-      const v = produit.variantes;
+      const cat = CATEGORIES[produit.categorie] || { nom: "" };
+      const v = produit.variantes?.choix?.length ? produit.variantes : null;
+      const opt = produit.options || {};
+      const autres = PRODUITS.filter((p) => p.categorie === produit.categorie && p.id !== produit.id).slice(0, 4);
       zone.innerHTML = `
-        <p class="fil-ariane"><a href="boutique.html">Boutique</a> › <a href="boutique.html?categorie=${produit.categorie}">${echapper(cat.nom)}</a> › ${echapper(produit.nom)}</p>
+        <nav class="fil" aria-label="Fil d'Ariane" style="padding-block:1.5rem"><a href="boutique.html">Boutique</a><span>/</span><a href="boutique.html?categorie=${encodeURIComponent(produit.categorie)}">${echapper(cat.nom)}</a><span>/</span><span>${echapper(produit.nom)}</span></nav>
         <div class="fiche">
-          <div>
+          <div class="fiche-visuel">
             <div class="apercu" id="apercu">
               ${visuel(produit)}
               <img class="apercu-photo" id="apercu-photo" alt="Votre photo" hidden>
               <div class="apercu-texte" id="apercu-texte"></div>
             </div>
-            <p class="centre" style="color:var(--texte-doux);font-size:.9rem">Aperçu indicatif — une maquette vous est envoyée avant fabrication si besoin.</p>
+            <p class="aide">Aperçu indicatif : une maquette vous est envoyée avant fabrication si besoin.</p>
           </div>
-          <form id="form">
-            <h1>${echapper(produit.nom)}</h1>
-            <p>${echapper(produit.description)}</p>
+          <form class="fiche-form" id="form">
+            <div class="pile" style="gap:.7rem">
+              <span class="etiquette">${echapper(cat.nom)}</span>
+              <h1 style="font-size:clamp(1.8rem,3.6vw,2.6rem)">${echapper(produit.nom)}</h1>
+              <span class="prix-grand" id="prix"></span>
+              <p class="chapeau" style="font-size:1rem">${echapper(produit.description)}</p>
+            </div>
             ${v ? `
               <div class="champ">
-                <label for="variante">${echapper(v.nom)}</label>
+                <label for="variante">${echapper(v.nom || "Option")}</label>
                 <select id="variante">${v.choix.map((c, i) => `<option value="${i}">${echapper(c.nom)}${c.prix ? ` (+${euros(c.prix)})` : ""}</option>`).join("")}</select>
               </div>` : ""}
-            ${produit.options.texte ? `
+            ${opt.texte ? `
               <div class="champ">
                 <label for="texte">Votre texte</label>
                 <textarea id="texte" maxlength="200" placeholder="Ex. : Marie & Paul — 14.06.2026"></textarea>
@@ -66,36 +69,45 @@
               </div>
               <div class="champ">
                 <span class="label">Police d'écriture</span>
-                <div class="choix-police">
+                <div class="choix">
                   ${POLICES.map((p, i) => `<label><input type="radio" name="police" value="${i}" ${i === 0 ? "checked" : ""}><span style="font-family:${p.css}">${p.nom}</span></label>`).join("")}
                 </div>
               </div>` : ""}
-            ${produit.options.photo ? `
+            ${opt.photo ? `
               <div class="champ">
-                <label for="photo">Votre photo / logo <small>(facultatif)</small></label>
+                <label for="photo">Votre photo ou logo <small>(facultatif)</small></label>
                 <input type="file" id="photo" accept="image/*">
-                <small>Pour un rendu optimal, envoyez une image de bonne qualité. Vous pourrez aussi nous la transmettre après la commande.</small>
+                <small>Envoyez une image de bonne qualité. Vous pourrez aussi nous la transmettre après la commande.</small>
               </div>` : ""}
             <div class="champ">
               <label for="remarque">Précisions <small>(facultatif)</small></label>
-              <textarea id="remarque" maxlength="500" placeholder="Couleur, emplacement, date souhaitée…" style="min-height:70px"></textarea>
+              <textarea id="remarque" maxlength="500" placeholder="Couleur, emplacement, date souhaitée…" style="min-height:76px"></textarea>
             </div>
-            <div class="ligne-achat">
-              <span class="prix-grand" id="prix"></span>
+            <div class="achat">
               <input type="number" id="qte" min="1" max="99" value="1" aria-label="Quantité">
-              <button class="btn" type="submit">Ajouter au panier</button>
+              <button class="btn" type="submit">${icone("panier")} Ajouter au panier</button>
             </div>
-            <div id="confirmation"></div>
+            <div id="confirmation" aria-live="polite"></div>
+            <ul class="rassurance">
+              <li>${icone("crayon")} Maquette envoyée pour validation si besoin</li>
+              <li>${icone("boutique")} Retrait gratuit à la boutique d'Auchel</li>
+              <li>${icone("camion")} Livraison offerte dès ${euros(SITE.livraisonOfferteDes)}</li>
+            </ul>
           </form>
-        </div>`;
+        </div>
+        ${autres.length ? `
+          <section style="padding-top:5rem">
+            <div class="titre-section"><div class="pile"><span class="etiquette">Dans la même catégorie</span><h2>Vous aimerez aussi</h2></div></div>
+            <div class="produits">${autres.map(carteProduit).join("")}</div>
+          </section>` : ""}`;
 
       const $ = (id) => document.getElementById(id);
-      const prixUnitaire = () => produit.prix + (v ? v.choix[$("variante").value].prix : 0);
+      const prixUnitaire = () => Number(produit.prix) + (v ? Number(v.choix[$("variante").value].prix || 0) : 0);
       const police = () => POLICES[document.querySelector("[name=police]:checked")?.value ?? 0];
 
       function maj() {
         $("prix").textContent = euros(prixUnitaire() * Math.max(1, +$("qte").value || 1));
-        if (produit.options.texte) {
+        if (opt.texte) {
           $("apercu-texte").textContent = $("texte").value;
           $("apercu-texte").style.fontFamily = police().css;
           $("nb").textContent = $("texte").value.length;
@@ -109,6 +121,8 @@
       $("photo")?.addEventListener("change", (e) => {
         const fichier = e.target.files[0];
         if (!fichier) return;
+        photo = "";
+        photoNom = fichier.name;
         const img = new Image();
         img.onload = () => {
           const r = Math.min(1, 900 / Math.max(img.width, img.height));
@@ -122,15 +136,13 @@
           URL.revokeObjectURL(img.src);
         };
         img.src = URL.createObjectURL(fichier);
-        photo = "";
-        photoNom = fichier.name;
       });
 
       $("form").addEventListener("submit", (e) => {
         e.preventDefault();
-        if (produit.options.texte && !$("texte").value.trim() && !photo && !$("remarque").value.trim() && !averti) {
+        if (opt.texte && !$("texte").value.trim() && !photo && !$("remarque").value.trim() && !averti) {
           averti = true;
-          $("confirmation").innerHTML = `<p class="message">Vous n'avez saisi aucun texte de personnalisation. Cliquez à nouveau sur « Ajouter au panier » pour continuer quand même.</p>`;
+          $("confirmation").innerHTML = `<p class="message message-alerte">Vous n'avez saisi aucun texte de personnalisation. Cliquez à nouveau sur « Ajouter au panier » pour continuer quand même.</p>`;
           return;
         }
         ajouterAuPanier({
@@ -138,14 +150,14 @@
           nom: produit.nom,
           prix: prixUnitaire(),
           quantite: Math.min(99, Math.max(1, parseInt($("qte").value, 10) || 1)),
-          variante: v ? `${v.nom} : ${v.choix[$("variante").value].nom}` : "",
-          texte: produit.options.texte ? $("texte").value.trim() : "",
-          police: produit.options.texte ? police().nom : "",
+          variante: v ? `${v.nom || "Option"} : ${v.choix[$("variante").value].nom}` : "",
+          texte: opt.texte ? $("texte").value.trim() : "",
+          police: opt.texte ? police().nom : "",
           photo,
           photoNom,
           remarque: $("remarque").value.trim(),
         });
-        $("confirmation").innerHTML = `<p class="message">✓ Ajouté au panier ! <a href="panier.html">Voir le panier</a> ou <a href="boutique.html">continuer mes achats</a>.</p>`;
+        $("confirmation").innerHTML = `<p class="message">✓ Ajouté au panier. <a href="panier.html">Voir le panier</a> ou <a href="boutique.html">continuer mes achats</a>.</p>`;
       });
     }
   </script>

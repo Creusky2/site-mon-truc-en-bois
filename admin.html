@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Administration — Mon Truc en Bois</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin">
+  <!-- Écran de connexion -->
+  <main id="connexion" class="connexion" hidden>
+    <form class="carte" id="form-connexion">
+      <div class="pile" style="gap:.5rem">
+        <span class="etiquette">Mon Truc en Bois</span>
+        <h1 style="font-size:1.8rem">Administration du site</h1>
+        <p class="aide">Pour modifier le site, collez votre clé d'accès GitHub. Elle reste enregistrée uniquement sur cet appareil.</p>
+      </div>
+      <div class="champ">
+        <label for="cle">Clé d'accès GitHub</label>
+        <input type="password" id="cle" autocomplete="off" required placeholder="github_pat_…">
+      </div>
+      <label class="case"><input type="checkbox" id="souvenir" checked> Rester connecté sur cet appareil</label>
+      <details>
+        <summary>Réglages avancés</summary>
+        <div class="pile" style="margin-top:1rem">
+          <div class="champ"><label for="cfg-proprio">Compte GitHub</label><input type="text" id="cfg-proprio"></div>
+          <div class="champ"><label for="cfg-depot">Dépôt</label><input type="text" id="cfg-depot"></div>
+          <div class="champ"><label for="cfg-branche">Branche publiée</label><input type="text" id="cfg-branche"></div>
+        </div>
+      </details>
+      <button class="btn btn-plein" type="submit">Se connecter</button>
+      <div id="erreur-connexion" aria-live="polite"></div>
+      <details class="aide-cle">
+        <summary>Comment obtenir une clé d'accès ?</summary>
+        <ol>
+          <li>Ouvrez <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a> (connecté à votre compte GitHub).</li>
+          <li><strong>Token name</strong> : « Admin site » — <strong>Expiration</strong> : 1 an (ou plus).</li>
+          <li><strong>Repository access</strong> : <em>Only select repositories</em> → choisissez <code>site-mon-truc-en-bois</code>.</li>
+          <li><strong>Permissions</strong> → <em>Repository permissions</em> → <strong>Contents</strong> : <em>Read and write</em>.</li>
+          <li>Cliquez sur <strong>Generate token</strong>, copiez la clé (elle commence par <code>github_pat_</code>) et collez-la ici.</li>
+        </ol>
+      </details>
+    </form>
+  </main>
+
+  <!-- Interface d'administration -->
+  <div id="app" hidden>
+    <header class="admin-tete">
+      <div class="conteneur admin-tete-int">
+        <a class="logo" href="index.html" target="_blank" rel="noopener" title="Voir le site">
+          <img src="img/favicon.svg" alt="" width="30" height="30">
+          <span><span class="logo-nom">Administration</span><span class="logo-lieu">Mon Truc en Bois</span></span>
+        </a>
+        <div class="admin-actions">
+          <span id="statut" class="statut" aria-live="polite"></span>
+          <a class="btn btn-ligne" href="index.html" target="_blank" rel="noopener">Voir le site</a>
+          <button class="btn" id="publier" disabled>Publier les modifications</button>
+          <button class="btn btn-ligne" id="deconnexion">Déconnexion</button>
+        </div>
+      </div>
+      <nav class="conteneur onglets" role="tablist" aria-label="Sections">
+        <button role="tab" data-onglet="produits" aria-selected="true">Produits</button>
+        <button role="tab" data-onglet="categories" aria-selected="false">Catégories</button>
+        <button role="tab" data-onglet="boutique" aria-selected="false">Infos boutique</button>
+        <button role="tab" data-onglet="textes" aria-selected="false">Textes & annonce</button>
+        <button role="tab" data-onglet="galerie" aria-selected="false">Galerie</button>
+      </nav>
+    </header>
+    <main class="conteneur admin-contenu" id="contenu"></main>
+  </div>
+
+  <!-- Fenêtre d'édition (produit / catégorie) -->
+  <dialog id="fenetre" class="fenetre"></dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>
