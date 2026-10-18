@@ -205,29 +205,45 @@ export async function chercherCodePromo(code: string | undefined, sousTotal: num
   if (sousTotal < Number(promo.minimum || 0)) throw new ErreurClient(`Ce code promo s'applique dès ${euros(promo.minimum)} d'achat.`);
   return promo;
 }
+/** Compte une utilisation en une seule opération côté base (pas de double comptage ni de dépassement du maximum). */
 export async function compterUtilisation(promo: any) {
-  if (promo) await db(`codes_promo?code=eq.${encodeURIComponent(promo.code)}`, { method: "PATCH", body: JSON.stringify({ utilisations: Number(promo.utilisations || 0) + 1 }) });
+  if (!promo) return;
+  const ok = await db<boolean>("rpc/utiliser_code_promo", { method: "POST", body: JSON.stringify({ p_code: promo.code }) });
+  if (ok === false) throw new ErreurClient("Ce code promo a déjà été utilisé le nombre maximum de fois.");
 }
 
 // ---------- Fiches clients (CRM) ----------
-/** Crée ou complète la fiche client (clé : l'email). Le consentement n'est jamais retiré ici. */
-export async function enregistrerClient(c: { nom: string; email?: string; tel?: string; adresse?: string; source?: string; consentement?: boolean }) {
+/** Crée ou complète la fiche client (clé : l'email). Le consentement n'est jamais retiré ici,
+ *  et un nom vide (inscription à la newsletter sans prénom) ne remplace jamais le nom déjà connu. */
+export async function enregistrerClient(c: { nom?: string; email?: string; tel?: string; adresse?: string; source?: string; consentement?: boolean }) {
   const email = (c.email ?? "").trim().toLowerCase();
-  const fiche: Record<string, unknown> = { nom: c.nom };
+  const nom = String(c.nom ?? "").trim();
+  const fiche: Record<string, unknown> = {};
+  if (nom) fiche.nom = nom;
   if (c.tel) fiche.tel = c.tel;
   if (c.adresse) fiche.adresse = c.adresse;
   if (c.consentement) Object.assign(fiche, { consentement_marketing: true, consentement_le: new Date().toISOString() });
   if (!email) {
-    const [cree] = await db<any[]>("clients", { method: "POST", body: JSON.stringify({ ...fiche, source: c.source ?? "boutique" }) });
+    const [cree] = await db<any[]>("clients", { method: "POST", body: JSON.stringify({ nom: nom || "Client", ...fiche, source: c.source ?? "boutique" }) });
     return cree;
   }
-  const [existant] = await db<any[]>(`clients?email=eq.${encodeURIComponent(email)}&select=id`);
+  const [existant] = await db<any[]>(`clients?email=eq.${encodeURIComponent(email)}&select=id,nom`);
   if (existant) {
+    if (!Object.keys(fiche).length) return existant;
     const [maj] = await db<any[]>(`clients?id=eq.${existant.id}`, { method: "PATCH", body: JSON.stringify(fiche) });
     return maj;
   }
-  const [cree] = await db<any[]>("clients", { method: "POST", body: JSON.stringify({ ...fiche, email, source: c.source ?? "site" }) });
+  const [cree] = await db<any[]>("clients", { method: "POST", body: JSON.stringify({ nom: nom || email.split("@")[0], ...fiche, email, source: c.source ?? "site" }) });
   return cree;
+}
+
+// ---------- Désinscription de la newsletter ----------
+/** Clé personnelle du lien de désinscription : seul le destinataire de l'email peut se désinscrire en un clic. */
+export async function cleDesinscription(email: string) {
+  const secret = env("DESINSCRIPTION_SECRET") || env("SUPABASE_SERVICE_ROLE_KEY");
+  const cle = await crypto.subtle.importKey("raw", new TextEncoder().encode(`desinscription:${secret}`), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", cle, new TextEncoder().encode(email.trim().toLowerCase())));
+  return [...mac.slice(0, 16)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function validerClient(demande: DemandeCommande) {

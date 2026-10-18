@@ -8,6 +8,12 @@
   <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <!-- Raccourci sur l'écran d'accueil du téléphone : s'ouvre en plein écran, comme une application -->
+  <link rel="manifest" href="admin.webmanifest">
+  <meta name="theme-color" content="#24453a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="MTB Admin">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/admin.css">
 </head>
@@ -100,6 +106,7 @@
         <button role="tab" data-onglet="installation" aria-selected="false">Installation</button>
       </nav>
     </header>
+    <p class="conteneur message message-alerte" id="bandeau-publication" role="alert" hidden></p>
     <main class="conteneur admin-contenu" id="contenu"></main>
   </div>
 

@@ -1,7 +1,7 @@
 // POST /functions/v1/stripe-webhook — Stripe prévient ici quand un paiement est réussi.
 // À déclarer dans Stripe (Développeurs → Webhooks) avec l'événement checkout.session.completed.
 import { catalogue, db, env, json, servir, signatureStripeValide } from "../_shared/outils.ts";
-import { emailPaiementRecu, emailPaiementRecuBoutique, envoyerEmail } from "../_shared/emails.ts";
+import { emailPaiementInattendu, emailPaiementRecu, emailPaiementRecuBoutique, envoyerEmail } from "../_shared/emails.ts";
 
 export const traiter = servir(async (req) => {
   const corps = await req.text();
@@ -14,9 +14,15 @@ export const traiter = servir(async (req) => {
   const id = session.metadata?.commande_id;
   if (!payee || !id) return json(req, { recu: true });
 
-  const [avant] = await db<any[]>(`commandes?id=eq.${encodeURIComponent(id)}&select=paiement_statut`);
+  const [avant] = await db<any[]>(`commandes?id=eq.${encodeURIComponent(id)}&select=paiement_statut,statut,numero,client_nom,total`);
   if (!avant) return json(req, { recu: true, inconnue: true });
   if (avant.paiement_statut === "paye") return json(req, { recu: true, deja: true }); // Stripe peut renvoyer le même événement
+  // Paiement arrivé sur une commande remboursée ou annulée (ancien lien resté ouvert) : on ne la remet pas « payée »,
+  // la boutique est prévenue pour rembourser ou reprendre la commande.
+  if (avant.paiement_statut === "rembourse" || avant.statut === "annulee") {
+    await envoyerEmail({ a: env("BOUTIQUE_EMAIL") || (await catalogue()).site?.email, ...emailPaiementInattendu(avant) });
+    return json(req, { recu: true, a_verifier: true });
+  }
 
   const [commande] = await db<any[]>(`commandes?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",

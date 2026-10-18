@@ -15,7 +15,6 @@
   const DEFAUT = { proprio: "Creusky2", depot: "site-mon-truc-en-bois", branche: "site-vitrine-boutique" };
   const CLE_STOCKAGE = "admin-mtb";
   const CLE_BROUILLON = "brouillon-mtb"; // aussi lu par le site pour la prévisualisation
-  const EMAIL_PROVISOIRE = "contact@montrucenbois.fr";
   const BADGES = { "": "Aucun", nouveau: "Nouveau", promo: "Promo", best: "Best-seller", edition: "Édition limitée" };
   const DISPOS = { disponible: "Disponible", commande: "Fabriqué sur commande", epuise: "Épuisé" };
 
@@ -103,6 +102,9 @@
   let D = null; // données en cours d'édition
   let sha = null;
   let modifie = false;
+  // Publication impossible côté serveur (clé de publication expirée, GitHub injoignable…) : l'admin reste ouvert
+  // pour les commandes, la caisse et les clients ; seule la modification du site est suspendue.
+  let publicationBloquee = "";
   let onglet = "accueil";
   let filtre = { q: "", cat: "" };
   const apercusLocaux = {}; // chemin image → dataURL (photos envoyées mais pas encore en ligne)
@@ -160,7 +162,8 @@
     const s = $("#statut");
     s.textContent = texte || (modifie ? "Modifications non publiées" : "À jour");
     s.classList.toggle("modifie", modifie && !texte);
-    $("#publier").disabled = !modifie;
+    $("#publier").disabled = !modifie || !!publicationBloquee;
+    if (publicationBloquee && !texte) s.textContent = "Publication indisponible";
   }
   let minuteurToast;
   function toast(msg, erreur = false) {
@@ -227,25 +230,34 @@
         const depot = await api("");
         if (!depot.permissions?.push) throw Object.assign(new Error("droits"), { status: 403 });
       }
+      publicationBloquee = "";
       ({ donnees: D, sha } = await chargerDonnees());
     } catch (e) {
-      if (mode === "serveur") {
+      if (mode === "serveur" && e.status >= 500 && window.DONNEES) {
+        // Le compte est valide mais le site ne peut pas être lu sur GitHub : on travaille sur le contenu en ligne.
+        D = structuredClone(window.DONNEES);
+        sha = null;
+        publicationBloquee =
+          e.status === 503
+            ? "La modification du site depuis ce compte n'est pas encore activée : prévenez votre agence. Commandes, caisse, clients et demandes fonctionnent normalement."
+            : `${e.message.replace(/\.$/, "")}. En attendant, commandes, caisse, clients et demandes fonctionnent normalement ; les modifications du site ne peuvent pas être publiées.`;
+      } else if (mode === "serveur") {
         afficherConnexion(
-          e.status === 503 ? "La modification du site depuis ce compte n'est pas encore activée : prévenez votre agence."
-          : e.status === 403 ? "Ce compte n'a pas accès à l'administration."
+          e.status === 403 ? "Ce compte n'a pas accès à l'administration."
           : e.status === 401 ? "Session expirée : reconnectez-vous."
           : e.message,
           "commercant"
         );
         return;
+      } else {
+        const msg =
+          e.status === 401 ? "Clé refusée par GitHub : vérifiez qu'elle est complète et pas expirée."
+          : e.status === 403 ? "Cette clé n'a pas le droit de modifier le dépôt : donnez-lui la permission « Contents : Read and write »."
+          : e.status === 404 ? "Dépôt, branche ou fichier introuvable : vérifiez les réglages avancés et que la clé donne accès au dépôt."
+          : `Connexion impossible (${e.message}).`;
+        afficherConnexion(msg, "agence");
+        return;
       }
-      const msg =
-        e.status === 401 ? "Clé refusée par GitHub : vérifiez qu'elle est complète et pas expirée."
-        : e.status === 403 ? "Cette clé n'a pas le droit de modifier le dépôt : donnez-lui la permission « Contents : Read and write »."
-        : e.status === 404 ? "Dépôt, branche ou fichier introuvable : vérifiez les réglages avancés et que la clé donne accès au dépôt."
-        : `Connexion impossible (${e.message}).`;
-      afficherConnexion(msg, "agence");
-      return;
     }
     normaliser(D);
     modifie = false;
@@ -255,22 +267,56 @@
       const b = JSON.parse(localStorage.getItem(CLE_BROUILLON) || "null");
       if (b && JSON.stringify(b.donnees) !== JSON.stringify(D)) {
         const quand = new Date(b.date).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-        if (b.sha === sha && confirm(`Des modifications non publiées du ${quand} ont été retrouvées sur cet appareil. Les reprendre ?`)) {
+        // Si le site a été publié ailleurs depuis (par l'agence, ou depuis un autre appareil), reprendre le brouillon
+        // remplace ces changements-là : on le dit avant de demander.
+        const question =
+          b.sha === sha
+            ? `Des modifications non publiées du ${quand} ont été retrouvées sur cet appareil. Les reprendre ?`
+            : `Des modifications non publiées du ${quand} ont été retrouvées sur cet appareil, mais le site a été modifié ailleurs depuis.
+
+OK : reprendre vos modifications (elles remplaceront celles faites ailleurs une fois publiées).
+Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
+        if (confirm(question)) {
           D = normaliser(b.donnees);
           modifie = true;
+          garderBrouillon(); // le brouillon repart de la version en ligne : la publication ne sera plus refusée
         } else oublierBrouillon();
       }
     } catch {}
 
     $("#connexion").hidden = true;
     $("#app").hidden = false;
+    const bandeau = $("#bandeau-publication");
+    bandeau.hidden = !publicationBloquee;
+    bandeau.textContent = publicationBloquee;
     // Le commerçant ne voit pas l'onglet réservé à l'agence
     document.querySelector('[data-onglet="installation"]').hidden = mode === "serveur";
     majStatut();
+    majCompteurs().catch(() => {});
     const ancre = location.hash.slice(1);
     if (VUES[ancre]) return allerA(ancre);
     rendre();
   }
+
+  // Pastilles des onglets Commandes et Demandes : dès l'arrivée sur l'admin, puis à chaque retour sur la page
+  // et toutes les 5 minutes (les onglets les recalculent aussi quand on les ouvre).
+  async function majCompteurs() {
+    const S = window.AdminServeur;
+    if (!D || !S?.client(dServeur()) || !(await S.connecte(dServeur()).catch(() => false))) return;
+    const c = S.client(dServeur());
+    const [cmd, dem] = await Promise.all([
+      c.from("commandes").select("id", { count: "exact", head: true }).eq("statut", "nouvelle"),
+      c.from("demandes").select("id", { count: "exact", head: true }).eq("statut", "nouvelle").neq("type", "newsletter"),
+    ]);
+    const pastille = (o, nom, n) => {
+      const b = document.querySelector(`[data-onglet="${o}"]`);
+      if (b && typeof n === "number") b.innerHTML = `${nom}${n ? ` <span class="compteur">${n}</span>` : ""}`;
+    };
+    pastille("commandes", "Commandes", cmd.count);
+    pastille("demandes", "Demandes", dem.count);
+  }
+  setInterval(() => majCompteurs().catch(() => {}), 5 * 60_000);
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && majCompteurs().catch(() => {}));
 
   $("#form-commercant").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -341,8 +387,10 @@
     } catch (e) {
       majStatut();
       b.disabled = false;
-      if (e.status === 409 || e.status === 422)
+      if (e.status === 409 || e.status === 422) {
+        garderBrouillon();
         toast("Le site a été modifié ailleurs entre-temps. Rechargez la page admin : vos modifications vous seront proposées à nouveau.", true);
+      }
       else toast(`Échec de la publication (${e.detail || e.message}).`, true);
       return false;
     }
@@ -355,6 +403,7 @@
 
   // ---------- Onglets ----------
   function allerA(nom) {
+    if (nom === "installation" && mode === "serveur") nom = "accueil"; // réservé à l'agence
     onglet = nom;
     document.querySelectorAll(".onglets button").forEach((x) => x.setAttribute("aria-selected", x.dataset.onglet === nom));
     rendre();
@@ -403,7 +452,7 @@
     const r = await window.AdminCommandes?.resume(contexte());
     if (!el || !r) return;
     el.innerHTML = r.connecte
-      ? `<div class="bloc-tete"><h2>Commandes</h2><button class="btn" data-aller="commandes">Ouvrir les commandes</button></div>
+      ? `<div class="bloc-tete"><h2>Commandes</h2><button class="btn" data-aller="commandes">Voir les commandes</button></div>
          <p>${r.nouvelles ? `<strong>${r.nouvelles} nouvelle${r.nouvelles > 1 ? "s" : ""} commande${r.nouvelles > 1 ? "s" : ""}</strong> · ` : "Aucune nouvelle commande · "}${r.aTraiter} à traiter en tout.</p>`
       : `<div class="bloc-tete"><h2>Commandes</h2><button class="btn btn-ligne" data-aller="commandes">Se connecter aux commandes</button></div>`;
     el.hidden = false;
@@ -438,6 +487,7 @@
       const t = el.dataset.type;
       const v = t === "case" ? el.checked : t === "nombre" ? Number(el.value || 0) : t === "lignes" ? el.value.split("\n").map((x) => x.trim()).filter(Boolean) : el.value;
       ecrire(el.dataset.chemin, v);
+      if (el.dataset.chemin === "site.email") D.site.emailVerifie = false; // nouvelle adresse : à vérifier de nouveau
       marquerModifie();
       if (el.dataset.rendre !== undefined) rendre();
     } else if (el.dataset.liste) {
@@ -494,7 +544,9 @@
   function vueAccueil() {
     const visibles = D.produits.filter((p) => p.visible !== false);
     const sansPhoto = D.produits.filter((p) => !premiereImage(p));
-    const emailOk = D.site.email && D.site.email !== EMAIL_PROVISOIRE;
+    // L'email de la boutique doit être vérifié une fois (un message envoyé à cette adresse arrive bien) : commandes et devis y arrivent.
+    const emailValide = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(D.site.email || "");
+    const emailOk = emailValide && !!D.site.emailVerifie;
     const L = D.site.legal;
     const legalOk = !!(L.exploitant && L.formeJuridique && D.site.siret && L.regimeTva);
     const mediateurOk = !!L.mediateur.nom;
@@ -520,12 +572,12 @@
           ${D.site.apercu ? `<button class="btn" data-action="ouvrir-commandes" ${pret ? "" : "disabled"} title="${pret ? "" : "Complétez d'abord l'email de la boutique et la vérification des prix"}">Ouvrir les commandes</button>` : `<span class="pastille" style="background:#e3f1e9;color:#1f6b45">Commandes ouvertes</span>`}
         </div>
         <ul class="checklist">
-          ${etape(emailOk ? "ok" : "afaire", "Adresse email de la boutique", emailOk ? echapper(D.site.email) : "L'adresse actuelle est provisoire : les commandes s'y perdraient.", emailOk ? "" : aller("boutique", "Corriger"))}
+          ${etape(emailOk ? "ok" : "afaire", "Adresse email de la boutique", emailOk ? echapper(D.site.email) : emailValide ? `${echapper(D.site.email)} : envoyez-y un message depuis une autre adresse et vérifiez qu'il arrive, sinon commandes et devis s'y perdraient.` : "Indiquez l'adresse où arrivent les commandes et les devis.", emailValide ? `<label class="case"><input type="checkbox" data-chemin="site.emailVerifie" data-type="case" data-rendre ${D.site.emailVerifie ? "checked" : ""}> Vérifiée</label>` : aller("boutique", "Corriger"))}
           ${etape(D.site.prixVerifies ? "ok" : "afaire", "Prix vérifiés", "Les prix de départ sont des exemples.", `<label class="case"><input type="checkbox" data-chemin="site.prixVerifies" data-type="case" data-rendre ${D.site.prixVerifies ? "checked" : ""}> Vérifiés</label>`)}
           ${etape(sansPhoto.length ? "afaire" : "ok", "Photos des produits", sansPhoto.length ? `${sansPhoto.length} produit(s) sans photo : ${sansPhoto.slice(0, 3).map((p) => echapper(p.nom)).join(", ")}${sansPhoto.length > 3 ? "…" : ""}` : "Tous les produits ont une photo.", sansPhoto.length ? aller("produits", "Voir") : "")}
           ${etape(D.avis.length >= 3 ? "ok" : "afaire", "Avis clients", D.avis.length >= 3 ? `${D.avis.length} avis affichés sur l'accueil.` : "Recopiez 3 avis de votre page Facebook : ils rassurent les nouveaux clients.", aller("avis", D.avis.length ? "Gérer" : "Ajouter"))}
           ${etape(D.site.plateformesAvis.google.lienAvis || D.site.plateformesAvis.google.lien ? "ok" : "option", "Avis Google reliés au site", D.site.plateformesAvis.google.lienAvis || D.site.plateformesAvis.google.lien ? "Les boutons « Laisser un avis Google » et la carte QR sont actifs." : "Ajoutez le lien de votre fiche Google : bouton « Laisser un avis » et carte QR à imprimer.", aller("avis", "Régler"))}
-          ${etape(D.site.commandes?.supabaseUrl ? "ok" : "option", "Commandes en ligne et paiement par carte", D.site.commandes?.supabaseUrl ? `Reliées à Supabase${D.site.commandes?.paiement?.enLigne ? " · paiement par carte activé" : " · paiement par carte désactivé"}.` : "Recommandé : commandes enregistrées ici avec les photos, paiement par carte, fichier clients, suivi pour le client.", aller("installation", D.site.commandes?.supabaseUrl ? "Vérifier" : "Installer"))}
+          ${etape(D.site.commandes?.supabaseUrl ? "ok" : "option", "Commandes en ligne et paiement par carte", D.site.commandes?.supabaseUrl ? `Reliées à Supabase${D.site.commandes?.paiement?.enLigne ? " · paiement par carte activé" : " · paiement par carte désactivé"}.` : "Recommandé : commandes enregistrées ici avec les photos, paiement par carte, fichier clients, suivi pour le client.", mode === "serveur" ? "" : aller("installation", D.site.commandes?.supabaseUrl ? "Vérifier" : "Installer"))}
           ${etape(D.site.formulaireCommande ? "ok" : "option", "Réception des commandes par email (Formspree)", D.site.formulaireCommande ? "Activée." : "Recommandé : sans cela, le client doit envoyer lui-même l'email depuis sa messagerie.", D.site.formulaireCommande ? "" : aller("boutique", "Régler"))}
           ${etape(D.site.whatsapp ? "ok" : "option", "Commandes et questions par WhatsApp", D.site.whatsapp ? `Numéro : ${echapper(D.site.whatsapp)}` : "Facultatif : ajoute un bouton « Commander par WhatsApp » et un bouton de contact.", D.site.whatsapp ? "" : aller("boutique", "Ajouter"))}
           ${etape(legalOk ? "ok" : "afaire", "Informations légales", legalOk ? `${echapper(L.formeJuridique)} · SIRET ${echapper(D.site.siret)} · ${L.regimeTva === "franchise" ? "franchise de TVA" : "assujetti à la TVA"} — reprises dans les CGV, les mentions légales et les factures.` : "Exploitant, forme juridique, SIRET et régime de TVA : obligatoires dans les CGV, les mentions légales et sur les factures.", legalOk ? "" : aller("boutique", "Compléter"))}
@@ -934,7 +986,17 @@
       </section>`;
   }
 
-  // Carte A6 avec QR code vers la page d'avis (dessinée sur un canvas, téléchargeable en PNG)
+  // Carte A6 avec QR code vers la page d'avis (dessinée sur un canvas, à imprimer ou télécharger en PNG)
+  let carteQR = "";
+  function imprimerCarteQR() {
+    const w = open("", "_blank");
+    if (!w) return toast("Autorisez l'ouverture de fenêtres pour imprimer la carte.", true);
+    w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Carte avis — Mon Truc en Bois</title>
+      <style>@page{size:A6;margin:0}html,body{margin:0}img{display:block;width:105mm;height:148mm}</style></head>
+      <body><img src="${carteQR}" alt="Carte « Laissez-nous un avis »"></body></html>`);
+    w.document.close();
+    w.onload = () => (w.focus(), w.print());
+  }
   async function creerCarteQR() {
     const pg = D.site.plateformesAvis;
     const google = pg.google.lienAvis || pg.google.lien;
@@ -983,10 +1045,11 @@
     g.font = "400 38px Figtree, sans-serif";
     g.fillText(`${D.site.adresse} · ${D.site.telephone}`, W / 2, H - 110);
     const url = c.toDataURL("image/png");
+    carteQR = url;
     $("#carte-qr").innerHTML = `
       <div class="pile" style="gap:.8rem;justify-items:start">
         <img src="${url}" alt="Aperçu de la carte" style="width:min(280px,100%);border-radius:8px;box-shadow:var(--ombre)">
-        <a class="btn" href="${url}" download="carte-avis-mon-truc-en-bois.png">Télécharger la carte (PNG)</a>
+        <span class="raccourcis"><button class="btn" type="button" data-action="imprimer-carte-qr">Imprimer la carte</button><a class="btn btn-ligne" href="${url}" download="carte-avis-mon-truc-en-bois.png">Télécharger (PNG)</a></span>
         <small class="aide">Le QR code mène à : ${echapper(lien)}</small>
       </div>`;
   }
@@ -1076,7 +1139,7 @@
       </section>
       <section class="bloc">
         <div class="bloc-tete"><h2>Commandes en ligne et paiement</h2></div>
-        <p class="aide">${D.site.commandes.supabaseUrl ? "Serveur installé : les commandes arrivent dans l'onglet Commandes." : "Le serveur des commandes n'est pas encore installé : les commandes arrivent par email ou WhatsApp."} Clés, emails automatiques et paiement par carte se règlent dans l'onglet <button class="mini" data-aller="installation">Installation</button>.</p>
+        <p class="aide">${D.site.commandes.supabaseUrl ? "Serveur installé : les commandes arrivent dans l'onglet Commandes." : "Le serveur des commandes n'est pas encore installé : les commandes arrivent par email ou WhatsApp."} ${mode === "serveur" ? "Clés, emails automatiques et paiement par carte sont réglés par votre agence." : `Clés, emails automatiques et paiement par carte se règlent dans l'onglet <button class="mini" data-aller="installation">Installation</button>.`}</p>
         <div class="grille-champs">
           ${champ("site.commandes.paiement.enLigne", "Proposer le paiement par carte à la commande (Stripe)", { type: "case", large: true, aide: "Nécessite la clé Stripe (onglet Installation)." })}
           ${champ("site.commandes.paiement.apresValidation", "Proposer « payer après validation de la maquette » (lien envoyé depuis l'admin)", { type: "case", large: true })}
@@ -1175,6 +1238,7 @@
     if (a === "modifier-categorie") return editerCategorie(i);
     if (a === "telecharger") return telechargerSauvegarde();
     if (a === "carte-qr") return creerCarteQR();
+    if (a === "imprimer-carte-qr") return imprimerCarteQR();
     if (a === "ouvrir-commandes") {
       if (!confirm("Ouvrir les commandes ? Le bandeau « site en construction » disparaîtra et les clients pourront envoyer leurs commandes.")) return;
       D.site.apercu = false;
@@ -1213,7 +1277,7 @@
       D.produits.forEach((p) => (p.occasions = (p.occasions || []).filter((x) => x !== o.id)));
       D.occasions.splice(i, 1);
     }
-    if (a === "nouvel-avis") D.avis.unshift({ nom: "", note: 5, texte: "", date: "", source: "Facebook" });
+    if (a === "nouvel-avis") D.avis.unshift({ nom: "", note: 5, texte: "", date: "", source: "facebook" });
     if (a === "avis-monter") echanger(D.avis, i, i - 1);
     if (a === "supprimer-avis") {
       if (!confirm("Supprimer cet avis ?")) return;

@@ -66,7 +66,7 @@ async function github(chemin: string, init: RequestInit = {}) {
   const d = await r.json().catch(() => ({}));
   if (r.status === 409 || r.status === 422) throw new ErreurClient("Le site a été modifié ailleurs entre-temps : rechargez la page.", 409);
   if (r.status === 401) throw new ErreurClient("La clé de publication a expiré ou a été révoquée : prévenez votre agence.", 502);
-  if (!r.ok) throw new ErreurClient(`Publication impossible (GitHub ${r.status}).`, 502);
+  if (!r.ok) throw new ErreurClient(`Publication impossible (GitHub ${r.status}) : prévenez votre agence.`, 502);
   return { d, expiration: r.headers.get("github-authentication-token-expiration") };
 }
 const branche = () => env("CONTENU_BRANCHE", "main");
@@ -111,9 +111,14 @@ async function creerVente(v: NonNullable<Demande["vente"]>) {
   const remise = arrondi(Math.min(sous_total, Math.max(0, Number(v.remise ?? 0))));
 
   const c = v.client ?? {};
+  const nomSaisi = texte(c.nom, 120);
+  const emailSaisi = texte(c.email, 160).toLowerCase();
+  if (nomSaisi && nomSaisi.length < 2) throw new ErreurClient("Le nom du client doit faire au moins 2 lettres.");
+  if (emailSaisi && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailSaisi)) throw new ErreurClient("Adresse email du client invalide.");
   let fiche: any = null;
   if (c.id) [fiche] = await db<any[]>(`clients?id=eq.${encodeURIComponent(c.id)}`);
-  else if (texte(c.nom, 120) || texte(c.email, 160)) fiche = await enregistrerClient({ nom: texte(c.nom, 120) || "Client", email: texte(c.email, 160), tel: texte(c.tel, 30), adresse: texte(c.adresse, 400), source: v.canal ?? "boutique", consentement: !!c.consentement });
+  // Une fiche n'est créée que si l'on sait qui est le client (nom, email ou téléphone), jamais pour une simple adresse.
+  else if (nomSaisi || emailSaisi || texte(c.tel, 30)) fiche = await enregistrerClient({ nom: nomSaisi, email: emailSaisi, tel: texte(c.tel, 30), adresse: texte(c.adresse, 400), source: v.canal ?? "boutique", consentement: !!c.consentement });
 
   const canal = ["boutique", "telephone", "salon"].includes(v.canal ?? "") ? v.canal : "boutique";
   const paye = v.paiement_statut === "paye";
@@ -122,8 +127,8 @@ async function creerVente(v: NonNullable<Demande["vente"]>) {
     body: JSON.stringify({
       client_id: fiche?.id ?? null,
       canal,
-      client_nom: fiche?.nom || texte(c.nom, 120) || "Client en boutique",
-      client_email: fiche?.email || texte(c.email, 160).toLowerCase() || "sans-email@boutique.invalid",
+      client_nom: (fiche?.nom && fiche.nom.length >= 2 ? fiche.nom : "") || nomSaisi || "Client en boutique",
+      client_email: fiche?.email || emailSaisi || "sans-email@boutique.invalid",
       client_tel: fiche?.tel || texte(c.tel, 30),
       adresse: v.mode_reception === "livraison" ? fiche?.adresse || texte(c.adresse, 400) : "",
       mode_reception: v.mode_reception === "livraison" ? "livraison" : "retrait",
@@ -133,10 +138,11 @@ async function creerVente(v: NonNullable<Demande["vente"]>) {
       emballage: 0,
       remise,
       total: arrondi(Math.max(0, sous_total + port - remise)),
-      paiement_mode: canal === "boutique" ? "boutique" : "apres_validation",
+      paiement_mode: paye || canal === "boutique" ? "boutique" : "apres_validation", // réglée sur place, ou à régler plus tard
       paiement_statut: paye ? "paye" : "en_attente",
       paiement_moyen: texte(v.paiement_moyen, 30),
-      statut: ["nouvelle", "confirmee", "en_fabrication", "prete", "expediee", "terminee"].includes(v.statut ?? "") ? v.statut : paye && canal === "boutique" ? "terminee" : "nouvelle",
+      // Réglée et remise sur place (boutique, salon) : terminée. Commande par téléphone ou à livrer : à traiter.
+      statut: ["nouvelle", "confirmee", "en_fabrication", "prete", "expediee", "terminee"].includes(v.statut ?? "") ? v.statut : paye && canal !== "telephone" && v.mode_reception !== "livraison" ? "terminee" : "nouvelle",
       notes: texte(v.notes, 2000),
       cadeau: /^\d{4}-\d{2}-\d{2}$/.test(v.date_souhaitee ?? "") ? { date: v.date_souhaitee } : {},
     }),
@@ -205,15 +211,15 @@ export const traiter = servir(async (req) => {
     const contenu = { sujet, message, lien, texte_lien: texte(d.texte_lien, 60) };
     const boutique = env("BOUTIQUE_EMAIL") || (await catalogue()).site?.email;
     if (d.essai) {
-      const r = await envoyerEmail({ ...emailCampagne({ ...contenu, email: boutique, nom: "" }), a: boutique });
+      const r = await envoyerEmail({ ...(await emailCampagne({ ...contenu, email: boutique, nom: "" })), a: boutique });
       if (!r.envoye) throw new ErreurClient(`Email d'essai non envoyé (${r.raison}).`);
       return json(req, { essai: true, a: boutique });
     }
     const abonnes = await db<any[]>("clients?consentement_marketing=eq.true&email=not.is.null&select=nom,email&limit=5000");
     if (!abonnes.length) throw new ErreurClient("Aucun client abonné pour l'instant.");
-    const r = await envoyerLot(abonnes.map((c) => emailCampagne({ ...contenu, email: c.email, nom: c.nom })), boutique);
-    await db("campagnes", { method: "POST", body: JSON.stringify({ sujet, message, lien, destinataires: r.envoyes }) });
+    const r = await envoyerLot(await Promise.all(abonnes.map((c) => emailCampagne({ ...contenu, email: c.email, nom: c.nom }))), boutique);
     if (r.raison && !r.envoyes) throw new ErreurClient(`Envoi impossible (${r.raison}).`);
+    await db("campagnes", { method: "POST", body: JSON.stringify({ sujet, message, lien, texte_lien: contenu.texte_lien, destinataires: r.envoyes }) });
     return json(req, { envoyes: r.envoyes, total: abonnes.length, raison: r.raison ?? "" });
   }
 
@@ -224,10 +230,12 @@ export const traiter = servir(async (req) => {
   if (d.action === "lien_paiement") {
     if (!env("STRIPE_SECRET_KEY")) throw new ErreurClient("Le paiement en ligne n'est pas configuré (clé Stripe manquante).");
     if (commande.paiement_statut === "paye") throw new ErreurClient("Cette commande est déjà payée.");
+    if (commande.paiement_statut === "rembourse") throw new ErreurClient("Cette commande a été remboursée : créez une nouvelle vente si le client doit payer à nouveau.");
+    if (commande.statut === "annulee") throw new ErreurClient("Cette commande est annulée.");
     const site = env("SITE_URL").replace(/\/$/, "");
     const url = await creerPaiementStripe(commande, `${site}/suivi.html`);
-    const email = d.envoyer && !commande.client_email.endsWith(".invalid") ? await envoyerEmail({ a: commande.client_email, ...emailLienPaiement(commande, url, d.message) }) : null;
-    return json(req, { url, email_envoye: !!email?.envoye });
+    const email = d.envoyer && !commande.client_email.endsWith(".invalid") ? await envoyerEmail({ a: commande.client_email, ...emailLienPaiement(commande, d.message) }) : null;
+    return json(req, { url, lien: `${site}/suivi.html?jeton=${commande.jeton_suivi}&payer=1`, email_envoye: !!email?.envoye });
   }
   if (d.action === "notifier") {
     if (commande.client_email.endsWith(".invalid")) throw new ErreurClient("Ce client n'a pas d'adresse email.");

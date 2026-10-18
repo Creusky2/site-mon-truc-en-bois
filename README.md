@@ -8,7 +8,15 @@ Site de la boutique de personnalisation **Mon Truc en Bois** — 3 rue Salengro,
 
 Site **statique** (HTML / CSS / JavaScript), destiné à Cloudflare Pages en production (GitHub Pages pendant la mise en place),
 avec un serveur (Supabase + Stripe + Brevo) pour les commandes en ligne, le paiement par carte, le fichier clients, la caisse
-et le marketing. Installation et utilisation : [`docs/mise-en-ligne.md`](docs/mise-en-ligne.md).
+et le marketing.
+
+| Document | Pour qui |
+|---|---|
+| [`docs/guide-commercant.md`](docs/guide-commercant.md) | Le commerçant : tout gérer depuis l'admin, page « Au quotidien » à imprimer |
+| [`docs/guide-mise-en-ligne.md`](docs/guide-mise-en-ligne.md) | L'agence : mise en ligne en douze phases, tests, ouverture, dépannage |
+| [`docs/technique.md`](docs/technique.md) | L'agence et les développeurs : services, régime de TVA, fonctions serveur, workflows |
+| [`docs/benchmark-plateformes.md`](docs/benchmark-plateformes.md) | Choix des plateformes, coûts, obligations légales |
+| [`docs/benchmark.md`](docs/benchmark.md) | Bonnes pratiques des sites de cadeaux personnalisés reprises sur le site |
 
 ## Gérer le site : la page admin
 
@@ -41,6 +49,7 @@ Les modifications en cours sont gardées automatiquement sur l'appareil en cas d
 **Connexion** :
 - **le commerçant** : son email et son mot de passe, rien d'autre. Le serveur publie ses modifications avec une clé GitHub
   limitée au contenu (*Contents* seulement), gardée dans les secrets du serveur. L'onglet Installation lui est caché.
+  Sur le téléphone, l'admin s'ajoute à l'écran d'accueil et s'ouvre comme une application.
 - **l'agence** (« Accès agence ») : une clé GitHub (*fine-grained personal access token*) limitée à ce dépôt, avec
   **Contents**, **Secrets** et **Variables** en *Read and write* et **Actions** en *Read-only*. La marche à suivre est rappelée sur l'écran de connexion.
 La clé reste enregistrée uniquement dans le navigateur de l'appareil utilisé.
@@ -79,7 +88,7 @@ Le benchmark qui a guidé ces choix est dans [`docs/benchmark.md`](docs/benchmar
 
 ## Fonctionnement des commandes
 
-**Avec les commandes en ligne activées** (Supabase + Stripe + Brevo, guide pas à pas : [`docs/mise-en-ligne.md`](docs/mise-en-ligne.md)) :
+**Avec les commandes en ligne activées** (Supabase + Stripe + Brevo, guide pas à pas : [`docs/guide-mise-en-ligne.md`](docs/guide-mise-en-ligne.md)) :
 
 1. Le client valide son panier et choisit son paiement : **carte en ligne**, **après validation de la maquette**
    (lien envoyé depuis l'admin) ou **à la boutique** au retrait.
@@ -115,4 +124,7 @@ python3 -m http.server 8000
 
 ## Mise en ligne
 
-Publié avec GitHub Pages depuis la branche `site-vitrine-boutique` (Settings → Pages).
+Pendant la mise en place : GitHub Pages depuis la branche `site-vitrine-boutique` (Settings → Pages). En production :
+Cloudflare Pages sur montrucenbois.fr (build `node outils/construire.mjs`, dossier `dist`), voir
+[`docs/guide-mise-en-ligne.md`](docs/guide-mise-en-ligne.md). La branche `site-vitrine-boutique` doit être la branche par
+défaut du dépôt (tâches planifiées).

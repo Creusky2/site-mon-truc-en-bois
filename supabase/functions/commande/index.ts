@@ -35,11 +35,17 @@ export const traiter = servir(async (req) => {
   if (mode === "boutique" && demande.mode_reception !== "retrait") throw new ErreurClient("Le paiement en boutique est réservé au retrait à la boutique.");
   if (calcul.total <= 0 && mode === "en_ligne") throw new ErreurClient("Le montant à payer est nul : choisissez un autre mode de paiement.");
 
-  // Chemins des photos envoyées par le client (le navigateur les dépose ensuite avec les adresses fournies)
+  // Chemins des photos envoyées par le client (le navigateur les dépose ensuite avec les adresses fournies).
+  // Les adresses d'envoi sont préparées avant d'enregistrer quoi que ce soit : si le stockage ne répond pas,
+  // le client peut réessayer sans créer de commande en double.
   const id = crypto.randomUUID();
   calcul.lignes.forEach((l, i) => {
     if (l.photo_nom) l.photo_chemin = `${id}/${i + 1}-${nomFichier(l.photo_nom)}`;
   });
+  const envois = await Promise.all(
+    calcul.lignes.map(async (l, i) => (l.photo_chemin ? { ligne: i, url: await urlEnvoiPhoto(l.photo_chemin) } : null))
+  );
+  await compterUtilisation(promo);
 
   const fiche = await enregistrerClient({ ...client, source: "site", consentement: !!demande.consentement_marketing });
   const cadeau = {
@@ -64,16 +70,19 @@ export const traiter = servir(async (req) => {
       ...calcul,
     }),
   });
-  await compterUtilisation(promo);
-
-  const envois = await Promise.all(
-    calcul.lignes.map(async (l, i) => (l.photo_chemin ? { ligne: i, url: await urlEnvoiPhoto(l.photo_chemin) } : null))
-  );
-
-  // Adresse de retour après paiement : uniquement une page du site
+  // Adresse de retour après paiement : uniquement une page du site.
+  // Si Stripe ne répond pas, la commande reste enregistrée et les emails partent quand même :
+  // le client paiera depuis sa page de suivi (bouton « Payer »).
   const site = env("SITE_URL").replace(/\/$/, "");
   const retour = demande.retour && demande.retour.startsWith(site + "/") ? demande.retour.split("?")[0] : `${site}/suivi.html`;
-  const paiementUrl = mode === "en_ligne" ? await creerPaiementStripe(commande, retour) : undefined;
+  let paiementUrl: string | undefined;
+  if (mode === "en_ligne") {
+    try {
+      paiementUrl = await creerPaiementStripe(commande, retour);
+    } catch (e) {
+      console.error("Paiement Stripe non créé", commande.numero, e);
+    }
+  }
 
   const boutique = env("BOUTIQUE_EMAIL", D.site?.email ?? "");
   await Promise.allSettled([

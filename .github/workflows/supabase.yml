@@ -14,7 +14,7 @@ on:
         type: boolean
         default: false
   push:
-    branches: [site-vitrine-boutique, main]
+    branches: [site-vitrine-boutique] # la branche mise en ligne : un envoi sur une autre branche ne touche pas au serveur
     paths: ["supabase/functions/**", "supabase/migrations/**", "supabase/config.toml", "supabase/installation.json"]
 
 permissions:
@@ -75,12 +75,16 @@ jobs:
           BREVO_SMTP_LOGIN: ${{ vars.BREVO_SMTP_LOGIN }}
           BREVO_SMTP_CLE: ${{ secrets.BREVO_SMTP_CLE }}
           BOUTIQUE_EMAIL: ${{ vars.BOUTIQUE_EMAIL }}
+          EMAIL_EXPEDITEUR: ${{ vars.EMAIL_EXPEDITEUR }}
         run: |
           [ -n "$SITE_URL" ] || { echo "::error::Variable SITE_URL manquante."; exit 1; }
+          # Expéditeur validé chez Brevo : l'adresse de « Nom <adresse> », sinon l'email de la boutique
+          exp=$(printf '%s' "$EMAIL_EXPEDITEUR" | sed -n 's/.*<\([^>]*\)>.*/\1/p')
+          exp=${exp:-$BOUTIQUE_EMAIL}
           # Email « mot de passe oublié » en français ; envoyé par Brevo si sa connexion SMTP est fournie
           # (le service d'email intégré de Supabase n'écrit qu'aux membres du projet Supabase).
           jq -n --arg site "$SITE_URL" --rawfile modele supabase/emails/mot-de-passe.html \
-            --arg login "$BREVO_SMTP_LOGIN" --arg cle "$BREVO_SMTP_CLE" --arg exp "$BOUTIQUE_EMAIL" '
+            --arg login "$BREVO_SMTP_LOGIN" --arg cle "$BREVO_SMTP_CLE" --arg exp "$exp" '
             {site_url: $site, uri_allow_list: ($site + "/**"), disable_signup: true,
              mailer_subjects_recovery: "Mon Truc en Bois : choisir un nouveau mot de passe",
              mailer_templates_recovery_content: ($modele | gsub("__SITE__"; $site))}
@@ -147,7 +151,7 @@ jobs:
             echo "BREVO_API_KEY=$BREVO_API_KEY"
             echo "CONTENU_GITHUB_TOKEN=$CONTENU_GITHUB_TOKEN"
             echo "CONTENU_DEPOT=${{ github.repository }}"
-            echo "CONTENU_BRANCHE=${{ github.ref_name }}"
+            echo "CONTENU_BRANCHE=${{ vars.BRANCHE_SITE || 'site-vitrine-boutique' }}"
           } | grep -v '=$' > secrets.env
           supabase secrets set --project-ref "$PROJET" --env-file secrets.env
           rm secrets.env

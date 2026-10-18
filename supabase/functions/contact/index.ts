@@ -1,11 +1,12 @@
 // POST /functions/v1/contact — demandes envoyées depuis le site : devis, message, inscription ou désinscription newsletter.
 // Chaque demande arrive dans l'admin (onglet Demandes) et crée ou complète la fiche client.
-import { catalogue, db, enregistrerClient, env, ErreurClient, json, lireJson, servir } from "../_shared/outils.ts";
-import { emailAccuseDemande, emailDemandeBoutique, envoyerEmail } from "../_shared/emails.ts";
+import { catalogue, cleDesinscription, db, enregistrerClient, env, ErreurClient, json, lireJson, servir } from "../_shared/outils.ts";
+import { emailAccuseDemande, emailConfirmerDesinscription, emailDemandeBoutique, envoyerEmail } from "../_shared/emails.ts";
 
 type Demande = {
   type?: "devis" | "contact" | "newsletter";
   action?: "desinscription";
+  cle?: string; // clé personnelle du lien de désinscription reçu par email
   nom?: string;
   email?: string;
   tel?: string;
@@ -25,18 +26,26 @@ export const traiter = servir(async (req) => {
   if (d.site_web) return json(req, { recu: true }); // robot : on fait comme si de rien n'était
 
   if (d.action === "desinscription") {
-    await db(`clients?email=eq.${encodeURIComponent(email)}`, { method: "PATCH", body: JSON.stringify({ consentement_marketing: false, consentement_le: new Date().toISOString() }) });
-    return json(req, { desinscrit: true });
+    // Avec la clé du lien personnel : désinscription immédiate. Sans elle (formulaire du site), on écrit à l'adresse
+    // pour confirmer : personne ne peut désinscrire quelqu'un d'autre.
+    if (d.cle && d.cle === (await cleDesinscription(email))) {
+      await db(`clients?email=eq.${encodeURIComponent(email)}`, { method: "PATCH", body: JSON.stringify({ consentement_marketing: false, consentement_le: new Date().toISOString() }) });
+      return json(req, { desinscrit: true });
+    }
+    const [abonne] = await db<any[]>(`clients?email=eq.${encodeURIComponent(email)}&consentement_marketing=eq.true&select=id`);
+    if (abonne) await envoyerEmail({ a: email, ...(await emailConfirmerDesinscription(email)) });
+    return json(req, { confirmation_envoyee: true }); // même réponse que l'adresse soit abonnée ou non
   }
 
   const type = (["devis", "contact", "newsletter"] as const).includes(d.type as never) ? d.type! : "contact";
-  const nom = texte(d.nom, 120) || (type === "newsletter" ? email.split("@")[0] : "");
+  const nomSaisi = texte(d.nom, 120);
+  const nom = nomSaisi || (type === "newsletter" ? email.split("@")[0] : "");
   const message = texte(d.message, 4000);
   if (type !== "newsletter" && nom.length < 2) throw new ErreurClient("Indiquez votre nom.");
   if (type !== "newsletter" && message.length < 5) throw new ErreurClient("Décrivez votre demande en quelques mots.");
 
   const fiche = await enregistrerClient({
-    nom,
+    nom: nomSaisi, // vide : le nom déjà connu de la fiche est gardé
     email,
     tel: texte(d.tel, 30),
     source: type === "newsletter" ? "newsletter" : "site",
@@ -60,7 +69,7 @@ export const traiter = servir(async (req) => {
   const boutique = env("BOUTIQUE_EMAIL") || (await catalogue()).site?.email;
   await Promise.allSettled([
     type !== "newsletter" ? envoyerEmail({ a: boutique, ...emailDemandeBoutique(demande), repondreA: email }) : null,
-    envoyerEmail({ a: email, ...emailAccuseDemande(demande), repondreA: boutique }),
+    envoyerEmail({ a: email, ...(await emailAccuseDemande(demande)), repondreA: boutique }),
   ]);
   return json(req, { recu: true }, 201);
 });

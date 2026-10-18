@@ -1,7 +1,7 @@
 // Emails envoyés par le site, par Brevo (recommandé : société française, 300 emails/jour gratuits)
 // ou par Resend. Sans clé, rien n'est envoyé et la commande reste visible dans l'admin :
 // un email raté ne bloque jamais une commande.
-import { env, euros, STATUTS } from "./outils.ts";
+import { cleDesinscription, env, euros, STATUTS } from "./outils.ts";
 
 const echapper = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -113,6 +113,9 @@ function recapitulatif(c: any) {
   </table>`;
 }
 const lienSuivi = (c: any) => `${site()}/suivi.html?jeton=${c.jeton_suivi}`;
+// Les boutons « Payer » passent par la page de suivi, qui crée un paiement Stripe neuf à chaque clic :
+// un lien Stripe direct expire au bout de 24 h, celui-ci marche tant que la commande attend son paiement.
+const lienPayer = (c: any) => `${lienSuivi(c)}&payer=1`;
 const MODES_PAIEMENT: Record<string, string> = {
   en_ligne: "Paiement en ligne par carte",
   apres_validation: "Paiement après validation de la maquette (nous vous envoyons un lien de paiement)",
@@ -142,7 +145,7 @@ export function emailConfirmationClient(c: any, paiementUrl?: string) {
       <p>Bonjour ${echapper(c.client_nom.split(" ")[0])},</p>
       <p>Nous avons bien reçu votre commande <strong>${c.numero}</strong>. Nous revenons vers vous rapidement pour valider la personnalisation (avec une maquette si besoin).</p>
       <p><strong>${echapper(MODES_PAIEMENT[c.paiement_mode] ?? "")}</strong></p>
-      ${paiementUrl ? bouton(paiementUrl, "Payer ma commande") : ""}
+      ${paiementUrl || (c.paiement_mode === "en_ligne" && c.paiement_statut !== "paye") ? bouton(lienPayer(c), "Payer ma commande") : ""}
       ${recapitulatif(c)}
       ${bouton(lienSuivi(c), "Suivre ma commande")}
       <p style="color:#5f5a52;font-size:14px">Une question ? Répondez simplement à cet email.</p>`),
@@ -166,6 +169,17 @@ export function emailPaiementRecuBoutique(c: any) {
   };
 }
 
+export function emailPaiementInattendu(c: any) {
+  const etat = c.paiement_statut === "rembourse" ? "déjà remboursée" : "annulée";
+  return {
+    sujet: `À vérifier : paiement reçu pour la commande ${c.numero} (${etat})`,
+    html: gabarit(`Paiement reçu pour une commande ${etat}`, `
+      <p>${echapper(c.client_nom)} vient de payer ${euros(c.total)} par carte pour la commande <strong>${c.numero}</strong>, qui est ${etat}.</p>
+      <p>La commande n'a pas été modifiée. Ouvrez l'application Stripe pour rembourser ce paiement, ou reprenez la commande avec le client.</p>
+      ${bouton(`${site()}/admin.html#commandes`, "Ouvrir dans l'admin")}`),
+  };
+}
+
 export function emailStatut(c: any, message = "") {
   const textes: Record<string, string> = {
     confirmee: "Votre maquette est validée : nous lançons la fabrication très bientôt.",
@@ -185,14 +199,14 @@ export function emailStatut(c: any, message = "") {
   };
 }
 
-export function emailLienPaiement(c: any, url: string, message = "") {
+export function emailLienPaiement(c: any, message = "") {
   return {
     sujet: `Commande ${c.numero} : votre lien de paiement`,
     html: gabarit("Votre commande est prête à être réglée", `
       <p>Bonjour ${echapper(c.client_nom.split(" ")[0])},</p>
       <p>Voici le lien pour régler votre commande <strong>${c.numero}</strong> (${euros(c.total)}) en toute sécurité par carte bancaire.</p>
       ${message ? `<p style="background:#f4f2ee;border-radius:10px;padding:12px 14px">${echapper(message).replace(/\n/g, "<br>")}</p>` : ""}
-      ${bouton(url, `Payer ${euros(c.total)}`)}
+      ${bouton(lienPayer(c), `Payer ${euros(c.total)}`)}
       ${recapitulatif(c)}`),
   };
 }
@@ -209,7 +223,7 @@ export function emailDemandeBoutique(d: any) {
       ${bouton(`${site()}/admin.html#demandes`, "Ouvrir dans l'admin")}`),
   };
 }
-export function emailAccuseDemande(d: any) {
+export async function emailAccuseDemande(d: any) {
   const texte =
     d.type === "newsletter"
       ? "Merci, vous êtes bien inscrit(e) : vous recevrez nos nouveautés et idées cadeaux. Vous pouvez vous désinscrire à tout moment depuis notre site."
@@ -218,7 +232,7 @@ export function emailAccuseDemande(d: any) {
     sujet: d.type === "newsletter" ? "Inscription confirmée — Mon Truc en Bois" : "Votre demande a bien été reçue — Mon Truc en Bois",
     html: gabarit(d.type === "newsletter" ? "Bienvenue !" : "Merci pour votre message", `
       <p>Bonjour ${echapper(String(d.nom || "").split(" ")[0])},</p><p>${texte}</p>
-      ${d.type === "newsletter" ? `<p style="font-size:13px;color:#5f5a52"><a href="${site()}/newsletter.html?desinscription=1" style="color:#5f5a52">Se désinscrire</a></p>` : ""}`),
+      ${d.type === "newsletter" ? `<p style="font-size:13px;color:#5f5a52"><a href="${await lienDesinscription(d.email)}" style="color:#5f5a52">Se désinscrire</a></p>` : ""}`),
   };
 }
 export function emailLibre(nom: string, sujet: string, message: string) {
@@ -231,17 +245,31 @@ export function emailLibre(nom: string, sujet: string, message: string) {
 }
 
 // ---------- Newsletter / promotion envoyée aux clients abonnés ----------
-export const lienDesinscription = (email: string) => `${site()}/newsletter.html?desinscription=1&email=${encodeURIComponent(email)}`;
-export function emailCampagne(c: { nom?: string; email: string; sujet: string; message: string; lien?: string; texte_lien?: string }) {
+export const lienDesinscription = async (email: string) =>
+  `${site()}/newsletter.html?desinscription=1&email=${encodeURIComponent(email)}&cle=${await cleDesinscription(email)}`;
+export async function emailCampagne(c: { nom?: string; email: string; sujet: string; message: string; lien?: string; texte_lien?: string }) {
+  const desinscription = await lienDesinscription(c.email);
   return {
     a: c.email,
     sujet: c.sujet,
-    desinscription: lienDesinscription(c.email),
+    desinscription,
     html: gabarit(c.sujet, `${c.nom ? `<p>Bonjour ${echapper(String(c.nom).split(" ")[0])},</p>` : ""}
       <p style="white-space:pre-line">${echapper(c.message)}</p>
       ${c.lien ? bouton(c.lien, c.texte_lien || "Découvrir") : ""}
       <p>À bientôt,<br>L'équipe Mon Truc en Bois</p>
       <p style="font-size:12px;color:#5f5a52;margin-top:24px">Vous recevez cet email car vous êtes inscrit(e) aux nouveautés de Mon Truc en Bois.
-      <a href="${lienDesinscription(c.email)}" style="color:#5f5a52">Se désinscrire</a></p>`),
+      <a href="${desinscription}" style="color:#5f5a52">Se désinscrire</a></p>`),
+  };
+}
+
+/** Demande de désinscription sans le lien personnel (formulaire du site) : on écrit à l'adresse pour confirmer. */
+export async function emailConfirmerDesinscription(email: string) {
+  return {
+    sujet: "Confirmez votre désinscription — Mon Truc en Bois",
+    html: gabarit("Ne plus recevoir nos emails", `
+      <p>Bonjour,</p>
+      <p>Vous avez demandé à ne plus recevoir nos nouveautés et promotions. Cliquez sur le bouton pour confirmer.</p>
+      ${bouton(await lienDesinscription(email), "Confirmer ma désinscription")}
+      <p style="color:#5f5a52;font-size:14px">Ce n'est pas vous ? Ignorez simplement cet email : rien ne change.</p>`),
   };
 }

@@ -12,7 +12,7 @@ await import("./generer-pages.mjs");
 const DIST = join(RACINE, "dist");
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(DIST);
-const PUBLICS = ["css", "js", "img", "data", "p", "sitemap.xml", "robots.txt", "_headers"];
+const PUBLICS = ["css", "js", "img", "data", "p", "sitemap.xml", "robots.txt", "_headers", "admin.webmanifest"];
 for (const f of readdirSync(RACINE)) if (f.endsWith(".html")) PUBLICS.push(f);
 for (const f of PUBLICS) if (existsSync(join(RACINE, f))) cpSync(join(RACINE, f), join(DIST, f), { recursive: true });
 console.log(`Site construit dans dist/ (${PUBLICS.length} éléments).`);

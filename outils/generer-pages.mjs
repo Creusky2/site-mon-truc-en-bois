@@ -13,7 +13,7 @@ const brut = lire("data/donnees.js");
 const D = JSON.parse(brut.slice(brut.search(/^window\.DONNEES = /m) + "window.DONNEES = ".length).trim().replace(/;\s*$/, ""));
 const S = D.site;
 const SITE = (S.url || "https://creusky2.github.io/site-mon-truc-en-bois").replace(/\/+$/, "");
-const PAGES = ["", "boutique.html", "idees-cadeaux.html", "atelier.html", "avis.html", "faq.html", "contact.html", "newsletter.html", "suivi.html", "cgv.html", "mentions-legales.html"];
+const PAGES = ["", "boutique.html", "idees-cadeaux.html", "atelier.html", "avis.html", "faq.html", "contact.html", "newsletter.html", "cgv.html", "mentions-legales.html"];
 
 const attr = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const absolu = (chemin) => (/^https?:/.test(chemin) ? chemin : `${SITE}/${String(chemin).replace(/^\.?\//, "")}`);
@@ -125,6 +125,7 @@ writeFileSync(
   join(RACINE, "sitemap.xml"),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${attr(u)}</loc></url>`).join("\n")}\n</urlset>\n`
 );
-// robots.txt : pris en compte quand le site est à la racine d'un domaine (montrucenbois.fr), ignoré sinon
-writeFileSync(join(RACINE, "robots.txt"), `User-agent: *\nDisallow: /admin.html\nDisallow: /panier.html\nDisallow: /suivi.html\nDisallow: /favoris.html\n\nSitemap: ${SITE}/sitemap.xml\n`);
+// robots.txt : pris en compte quand le site est à la racine d'un domaine (montrucenbois.fr), ignoré sinon.
+// Règles sans « .html » : elles couvrent aussi les adresses courtes servies par Cloudflare Pages (/admin, /panier…).
+writeFileSync(join(RACINE, "robots.txt"), `User-agent: *\nDisallow: /admin\nDisallow: /panier\nDisallow: /suivi\nDisallow: /favoris\n\nSitemap: ${SITE}/sitemap.xml\n`);
 console.log(`${produits.length} pages produits, sitemap de ${urls.length} adresses (${SITE}).`);

@@ -10,7 +10,7 @@
     "Accès au projet Supabase",
     "Tests des fonctions",
     "Base de données (tables, droits, stockage des photos)",
-    "Réglages de connexion (adresse du site, inscriptions fermées)",
+    "Réglages de connexion (adresse du site, inscriptions fermées, email de mot de passe)",
     "Compte administrateur",
     "Réglages secrets des fonctions",
     "Déploiement des fonctions",

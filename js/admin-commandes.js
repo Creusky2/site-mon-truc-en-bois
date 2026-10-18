@@ -11,7 +11,7 @@
     annulee: "Annulée",
   };
   const PAIEMENTS = { en_attente: "À payer", paye: "Payée", rembourse: "Remboursée" };
-  const MODES = { en_ligne: "En ligne", apres_validation: "Après validation", boutique: "En boutique" };
+  const MODES = { en_ligne: "En ligne", apres_validation: "Après validation", boutique: "Sur place" };
   const CANAUX = { boutique: "Vente en boutique", telephone: "Par téléphone", salon: "Salon / marché" };
   const MOYENS = { carte: "carte bancaire", especes: "espèces", cheque: "chèque", virement: "virement", paypal: "PayPal", autre: "autre moyen" };
   const FILTRES = {
@@ -108,6 +108,7 @@
     const f = document.getElementById("fenetre");
     const tel = String(c.client_tel || "").replace(/[^\d+]/g, "");
     const wa = tel ? `https://wa.me/${tel.startsWith("0") ? "33" + tel.slice(1) : tel.replace("+", "")}` : "";
+    const sansEmail = c.client_email.endsWith(".invalid");
     f.innerHTML = `
       <form method="dialog" id="form-commande">
         <div class="bloc-tete">
@@ -144,6 +145,8 @@
             .join("")}
         </div>
         <div class="pile" style="gap:.3rem">
+          ${Number(c.remise) || Number(c.port) || Number(c.emballage) ? `<div class="recap-ligne"><span>Sous-total</span><span>${ctx.euros(c.sous_total)}</span></div>` : ""}
+          ${Number(c.remise) ? `<div class="recap-ligne"><span>Remise${c.code_promo ? ` (code ${e(c.code_promo)})` : ""}</span><span>− ${ctx.euros(c.remise)}</span></div>` : ""}
           ${Number(c.port) ? `<div class="recap-ligne"><span>Livraison</span><span>${ctx.euros(c.port)}</span></div>` : ""}
           ${Number(c.emballage) ? `<div class="recap-ligne"><span>Emballage cadeau</span><span>${ctx.euros(c.emballage)}</span></div>` : ""}
           <div class="recap-ligne recap-total"><span>Total</span><span>${ctx.euros(c.total)}</span></div>
@@ -158,15 +161,17 @@
             <div class="champ"><label for="cmd-statut">Statut</label><select id="cmd-statut">${Object.entries(STATUTS).map(([k, v]) => `<option value="${k}" ${k === c.statut ? "selected" : ""}>${v}</option>`).join("")}</select></div>
             <div class="champ"><label for="cmd-colis">N° de suivi du colis</label><input type="text" id="cmd-colis" value="${e(c.suivi_colis)}" placeholder="Colissimo, Mondial Relay…"></div>
           </div>
-          <label class="case"><input type="checkbox" id="cmd-prevenir" checked> Prévenir le client par email du changement de statut</label>
-          <div class="champ"><label for="cmd-message">Message au client (facultatif)</label><textarea id="cmd-message" rows="2" placeholder="Ex. : votre maquette est en pièce jointe de notre précédent email…"></textarea></div>
+          ${sansEmail ? `<p class="aide">Pas d'email pour ce client : prévenez-le par téléphone.</p>` : `<label class="case"><input type="checkbox" id="cmd-prevenir" checked> Prévenir le client par email du changement de statut</label>`}
+          ${sansEmail ? "" : `<div class="champ"><label for="cmd-message">Message au client (facultatif)</label><textarea id="cmd-message" rows="2" placeholder="Ex. : votre maquette est en pièce jointe de notre précédent email…"></textarea></div>`}
           <div class="champ"><label for="cmd-notes">Notes internes (jamais visibles par le client)</label><textarea id="cmd-notes" rows="2">${e(c.notes)}</textarea></div>
         </section>
 
         <section class="pile" style="gap:.6rem;border-top:1px solid var(--trait);padding-top:1rem">
           <h3>Paiement : ${PAIEMENTS[c.paiement_statut]}${c.paye_le ? ` le ${date(c.paye_le)}` : ""}</h3>
           <div class="raccourcis">
-            ${c.paiement_statut !== "paye" ? `<button type="button" class="btn btn-ligne" data-action-cmd="lien">Envoyer un lien de paiement par carte</button>
+            ${c.paiement_statut === "rembourse" ? `<p class="aide">Commande remboursée. Si le client doit payer à nouveau, faites une nouvelle vente depuis la caisse.</p>` : ""}
+            ${c.paiement_statut === "en_attente" && c.statut === "annulee" ? `<p class="aide">Commande annulée : rien à encaisser.</p>` : ""}
+            ${c.paiement_statut === "en_attente" && c.statut !== "annulee" ? `<button type="button" class="btn btn-ligne" data-action-cmd="lien">${sansEmail ? "Créer un lien de paiement par carte" : "Envoyer un lien de paiement par carte"}</button>
             <span class="raccourcis"><select id="cmd-moyen" aria-label="Moyen de paiement" style="width:auto">${Object.entries(MOYENS).filter(([k]) => k !== "paypal").map(([k, v]) => `<option value="${k}">${v[0].toUpperCase() + v.slice(1)}</option>`).join("")}</select><button type="button" class="btn btn-ligne" data-action-cmd="paye">Marquer comme payée</button></span>` : ""}
             ${c.paiement_statut === "paye" ? `<button type="button" class="btn btn-ligne" data-action-cmd="rembourse">Marquer comme remboursée</button>` : ""}
           </div>
@@ -192,8 +197,8 @@
       const { data, error } = await client.from("commandes").update(modif).eq("id", c.id).select().single();
       if (error) return ctx.toast(`Enregistrement impossible (${error.message}).`, true);
       majLocale(data);
-      const message = f.querySelector("#cmd-message").value.trim();
-      if (f.querySelector("#cmd-prevenir").checked && (data.statut !== avant || message)) {
+      const message = f.querySelector("#cmd-message")?.value.trim() || "";
+      if (f.querySelector("#cmd-prevenir")?.checked && (data.statut !== avant || message)) {
         try {
           await appelAdmin("notifier", { commande_id: c.id, message });
           ctx.toast("Enregistré. Le client a été prévenu par email.");
@@ -227,11 +232,15 @@
       if (a === "lien") {
         b.disabled = true;
         try {
-          const r = await appelAdmin("lien_paiement", { commande_id: c.id, envoyer: true, message: f.querySelector("#cmd-message").value.trim() });
+          const champMessage = f.querySelector("#cmd-message");
+          const r = await appelAdmin("lien_paiement", { commande_id: c.id, envoyer: !sansEmail, message: champMessage?.value.trim() || "" });
+          if (champMessage && r.email_envoye) champMessage.value = ""; // déjà parti avec le lien : pas une deuxième fois avec le statut
+          c.stripe_url = r.url;
+          const lien = r.lien || r.url; // lien durable (page de suivi), le lien Stripe direct expire en 24 h
           f.querySelector("#cmd-lien").innerHTML = `
-            <p class="message">${r.email_envoye ? "Lien envoyé au client par email." : "Lien créé (email non envoyé) : transmettez-le au client."}</p>
-            <div class="barre"><input type="text" readonly value="${e(r.url)}" aria-label="Lien de paiement"><button type="button" class="mini" id="copier-lien">Copier</button></div>`;
-          f.querySelector("#copier-lien").onclick = () => navigator.clipboard.writeText(r.url).then(() => ctx.toast("Lien copié."));
+            <p class="message">${r.email_envoye ? "Lien envoyé au client par email." : "Lien créé : transmettez-le au client (SMS, WhatsApp…)."}</p>
+            <div class="barre"><input type="text" readonly value="${e(lien)}" aria-label="Lien de paiement"><button type="button" class="mini" id="copier-lien">Copier</button></div>`;
+          f.querySelector("#copier-lien").onclick = () => navigator.clipboard.writeText(lien).then(() => ctx.toast("Lien copié."));
         } catch (err) {
           ctx.toast(err.message, true);
         }
@@ -291,13 +300,15 @@
   // ---------- Export tableur (CSV, s'ouvre dans Excel ou LibreOffice) ----------
   function exporter() {
     const champ = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const montant = (n) => String(Number(n || 0)).replace(".", ","); // virgule décimale pour Excel
     const lignes = [
-      ["Numéro", "Date", "Client", "Email", "Téléphone", "Réception", "Adresse", "Articles", "Total", "Statut", "Paiement", "Mode de paiement", "Facture"].map(champ).join(";"),
+      ["Numéro", "Date", "Canal", "Client", "Email", "Téléphone", "Réception", "Adresse", "Articles", "Sous-total", "Remise", "Code promo", "Livraison", "Emballage", "Total", "Statut", "Paiement", "Payée le", "Moyen de paiement", "Mode de paiement", "Facture"].map(champ).join(";"),
       ...commandes.filter(FILTRES[filtre][1]).map((c) =>
         [
-          c.numero, date(c.cree_le, true), c.client_nom, c.client_email, c.client_tel, c.mode_reception, c.adresse,
+          c.numero, date(c.cree_le, true), CANAUX[c.canal] || "Site internet", c.client_nom, c.client_email.endsWith(".invalid") ? "" : c.client_email, c.client_tel, c.mode_reception, c.adresse,
           c.lignes.map((l) => `${l.quantite} × ${l.nom}${l.texte ? ` (« ${l.texte} »)` : ""}`).join(" | "),
-          String(c.total).replace(".", ","), STATUTS[c.statut], PAIEMENTS[c.paiement_statut], MODES[c.paiement_mode], c.facture_numero || "",
+          ...[c.sous_total, c.remise].map(montant), c.code_promo || "", ...[c.port, c.emballage, c.total].map(montant),
+          STATUTS[c.statut], PAIEMENTS[c.paiement_statut], c.paye_le ? date(c.paye_le) : "", MOYENS[c.paiement_moyen] || c.paiement_moyen || "", MODES[c.paiement_mode], c.facture_numero || "",
         ].map(champ).join(";")
       ),
     ];

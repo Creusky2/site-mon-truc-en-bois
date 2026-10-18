@@ -6,7 +6,7 @@ import { traiter as webhook } from "../functions/stripe-webhook/index.ts";
 import { traiter as suivi } from "../functions/suivi/index.ts";
 import { traiter as admin } from "../functions/admin/index.ts";
 import { traiter as contact } from "../functions/contact/index.ts";
-import { viderCacheCatalogue } from "../functions/_shared/outils.ts";
+import { cleDesinscription, viderCacheCatalogue } from "../functions/_shared/outils.ts";
 
 const SITE = "https://boutique.test";
 const SUPA = "https://projet.supabase.test";
@@ -42,10 +42,16 @@ const ADMIN = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const JETONS: Record<string, string> = { "jeton-admin": ADMIN, "jeton-client": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" };
 
 const reponse = (corps: unknown, status = 200) => new Response(JSON.stringify(corps), { status, headers: { "Content-Type": "application/json" } });
+// Filtres de l'API REST de Supabase : « colonne=eq.valeur » et « colonne=not.is.null » (les autres paramètres sont ignorés)
 function filtre(url: URL) {
-  const [[cle, valeur]] = [...url.searchParams].filter(([k]) => k !== "select");
-  return (c: any) => String(c[cle]) === decodeURIComponent(valeur.replace(/^eq\./, ""));
+  const conditions = [...url.searchParams].filter(([k]) => !["select", "limit", "order"].includes(k));
+  return (c: any) =>
+    conditions.every(([cle, valeur]) =>
+      valeur === "not.is.null" ? c[cle] !== null && c[cle] !== undefined : String(c[cle]) === decodeURIComponent(valeur.replace(/^eq\./, ""))
+    );
 }
+let stripeEnPanne = false;
+let stockageEnPanne = false;
 globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}) => {
   const url = new URL(entree instanceof Request ? entree.url : String(entree));
   const methode = (init.method ?? "GET").toUpperCase();
@@ -72,6 +78,12 @@ globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}
     }
     return reponse(trouvees);
   }
+  if (url.href === `${SUPA}/rest/v1/rpc/utiliser_code_promo`) {
+    const promo = tables.codes_promo.find((p) => p.code === corps.p_code);
+    if (!promo || !promo.actif || (promo.utilisations_max && promo.utilisations >= promo.utilisations_max)) return reponse(false);
+    promo.utilisations++;
+    return reponse(true);
+  }
   if (url.href.startsWith(`${SUPA}/rest/v1/admins`)) return reponse(url.searchParams.get("user_id") === `eq.${ADMIN}` ? [{ user_id: ADMIN }] : []);
   const t = url.pathname.match(/^\/rest\/v1\/(clients|demandes|codes_promo|campagnes)$/)?.[1];
   if (t) {
@@ -90,8 +102,10 @@ globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}
     const id = JETONS[(new Headers(init.headers).get("Authorization") ?? "").replace("Bearer ", "")];
     return id ? reponse({ id, email: id === ADMIN ? "boutique@test.fr" : "client@test.fr" }) : reponse({ msg: "invalid" }, 401);
   }
+  if (url.href.startsWith(`${SUPA}/storage/v1/`) && stockageEnPanne) return reponse({ message: "indisponible" }, 503);
   if (url.href.startsWith(`${SUPA}/storage/v1/object/upload/sign/`)) return reponse({ url: url.pathname.replace("/storage/v1", "") + "?token=envoi" });
   if (url.href.startsWith(`${SUPA}/storage/v1/object/sign/`)) return reponse({ signedURL: url.pathname.replace("/storage/v1", "") + "?token=lecture" });
+  if (url.href.startsWith("https://api.stripe.com/") && stripeEnPanne) return reponse({ error: { message: "API indisponible" } }, 503);
   if (url.href === "https://api.stripe.com/v1/checkout/sessions") return reponse({ id: "cs_test_1", url: "https://checkout.stripe.test/cs_test_1" });
   if (url.href === "https://api.stripe.com/v1/coupons") return reponse({ id: "coupon_1" });
   if (url.href === "https://api.resend.com/emails") return reponse({ id: "email_1" });
@@ -111,6 +125,8 @@ function reinitialiser() {
   tables = { clients: [], demandes: [], codes_promo: [{ code: "NOEL10", type: "pourcentage", valeur: 10, minimum: 20, actif: true, utilisations: 0, utilisations_max: 2, description: "10 % pour Noël" }, { code: "VIEUX", type: "montant", valeur: 5, minimum: 0, actif: true, utilisations: 0, fin: "2020-01-01" }] };
   appels = [];
   numero = 0;
+  stripeEnPanne = false;
+  stockageEnPanne = false;
   catalogueOuvert();
 }
 const post = (fn: (r: Request) => Promise<Response>, corps: unknown, entetes: Record<string, string> = {}) =>
@@ -250,8 +266,12 @@ Deno.test("admin : accès refusé sans compte admin, lien de paiement, email, ph
   appels = [];
   const lien = await (await post(admin, { action: "lien_paiement", commande_id: id, envoyer: true, message: "Maquette validée, merci !" }, auth)).json();
   assertEquals(lien.url, "https://checkout.stripe.test/cs_test_1");
+  assertEquals(lien.lien, `${SITE}/suivi.html?jeton=${commandes[0].jeton_suivi}&payer=1`);
   assertEquals(lien.email_envoye, true);
   assertMatch(emails()[0].subject, /votre lien de paiement/);
+  // Le bouton passe par la page de suivi (paiement neuf à chaque clic), pas par la session Stripe qui expire
+  assert(emails()[0].html.includes(`${SITE}/suivi.html?jeton=${commandes[0].jeton_suivi}&amp;payer=1`));
+  assert(!emails()[0].html.includes("checkout.stripe.test"));
   assertEquals((await (await post(suivi, { jeton: commandes[0].jeton_suivi })).json()).paiement_possible, true);
   commandes[0].statut = "prete";
   const notif = await (await post(admin, { action: "notifier", commande_id: id }, auth)).json();
@@ -325,8 +345,22 @@ Deno.test("contact : devis, newsletter, désinscription, robot ignoré", async (
   assertEquals(fan.consentement_marketing, true);
   assertEquals(fan.source, "newsletter");
   assertEquals(emails().length, 1); // seulement la confirmation au client
-  await post(contact, { action: "desinscription", email: "fan@test.fr" });
+  // Sans la clé du lien personnel : un email de confirmation, pas de désinscription
+  appels = [];
+  const sansCle = await (await post(contact, { action: "desinscription", email: "fan@test.fr" })).json();
+  assertEquals(sansCle.confirmation_envoyee, true);
+  assertEquals(fan.consentement_marketing, true);
+  assertEquals(emails().length, 1);
+  assertMatch(emails()[0].html, /cle=[0-9a-f]{32}/);
+  assertEquals((await (await post(contact, { action: "desinscription", email: "fan@test.fr", cle: "0".repeat(32) })).json()).desinscrit, undefined);
+  // Avec la clé : désinscription immédiate
+  const avecCle = await (await post(contact, { action: "desinscription", email: "fan@test.fr", cle: await cleDesinscription("fan@test.fr") })).json();
+  assertEquals(avecCle.desinscrit, true);
   assertEquals(fan.consentement_marketing, false);
+  // Adresse inconnue : même réponse, aucun email
+  appels = [];
+  assertEquals((await (await post(contact, { action: "desinscription", email: "inconnu@test.fr" })).json()).confirmation_envoyee, true);
+  assertEquals(emails().length, 0);
   const avant = tables.demandes.length;
   await post(contact, { type: "contact", nom: "Robot", email: "r@r.fr", message: "spam spam", site_web: "http://spam" });
   assertEquals(tables.demandes.length, avant);
@@ -387,7 +421,7 @@ Deno.test("admin : email aux abonnés (essai, puis envoi avec lien de désinscri
   assertEquals(lot.length, 1);
   assertEquals(lot[0].to, ["marie@test.fr"]);
   assertMatch(lot[0].html, /Bonjour Marie/);
-  assertMatch(lot[0].html, /newsletter\.html\?desinscription=1&email=marie%40test\.fr/);
+  assertMatch(lot[0].html, /newsletter\.html\?desinscription=1&email=marie%40test\.fr&cle=[0-9a-f]{32}/);
   assertMatch(lot[0].headers["List-Unsubscribe"], /desinscription/);
   assertEquals(tables.campagnes[0].destinataires, 1);
 });
@@ -496,4 +530,118 @@ Deno.test("contrôle de santé pour la surveillance : 200 si la base répond, 50
     globalThis.fetch = avant;
   }
   assertEquals((await suivi(new Request("https://f.test/suivi"))).status, 405);
+});
+
+// ---------- Corrections avant l'ouverture ----------
+Deno.test("commande : Stripe en panne → commande gardée, emails envoyés, paiement depuis le suivi", async () => {
+  reinitialiser();
+  stripeEnPanne = true;
+  const r = await post(commande, demande({ paiement_mode: "en_ligne" }));
+  assertEquals(r.status, 201);
+  assertEquals((await r.json()).paiement_url, null);
+  assertEquals(commandes.length, 1);
+  const e = emails();
+  assertEquals(e.length, 2);
+  const confirmation = e.find((x) => x.to[0] === "marie@test.fr");
+  assert(confirmation.html.includes(`suivi.html?jeton=${commandes[0].jeton_suivi}&amp;payer=1`));
+  stripeEnPanne = false;
+  assertEquals((await (await post(suivi, { jeton: commandes[0].jeton_suivi })).json()).paiement_possible, true);
+});
+
+Deno.test("commande : stockage des photos en panne → rien n'est enregistré (pas de doublon au nouvel essai)", async () => {
+  reinitialiser();
+  stockageEnPanne = true;
+  assertEquals((await post(commande, demande({ code_promo: "NOEL10" }))).status, 500);
+  assertEquals(commandes.length, 0);
+  assertEquals(tables.clients.length, 0);
+  assertEquals(tables.codes_promo[0].utilisations, 0);
+});
+
+Deno.test("code promo : le maximum d'utilisations n'est jamais dépassé", async () => {
+  reinitialiser();
+  tables.codes_promo[0].utilisations_max = 1;
+  assertEquals((await post(commande, demande({ code_promo: "NOEL10" }))).status, 201);
+  // Deuxième commande lue « valable » puis refusée au moment de compter (commande simultanée)
+  tables.codes_promo[0].utilisations_max = 2;
+  const r1 = post(commande, demande({ code_promo: "NOEL10" }));
+  const r2 = post(commande, demande({ code_promo: "NOEL10" }));
+  const statuts = [(await r1).status, (await r2).status].sort();
+  assertEquals(statuts, [201, 400]);
+  assertEquals(tables.codes_promo[0].utilisations, 2);
+  assertEquals(commandes.length, 2);
+});
+
+Deno.test("fiche client : une inscription à la newsletter sans prénom garde le nom connu", async () => {
+  reinitialiser();
+  await post(commande, demande());
+  assertEquals(tables.clients[0].nom, "Marie Test");
+  await post(contact, { type: "newsletter", email: "marie@test.fr" });
+  assertEquals(tables.clients.length, 1);
+  assertEquals(tables.clients[0].nom, "Marie Test");
+  assertEquals(tables.clients[0].consentement_marketing, true);
+  await post(contact, { type: "newsletter", email: "nouveau@test.fr" });
+  assertEquals(tables.clients[1].nom, "nouveau");
+});
+
+Deno.test("paiement : pas de lien pour une commande remboursée ou annulée, et un paiement tardif ne la remet pas « payée »", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  await post(commande, demande({ paiement_mode: "en_ligne" }));
+  const c = commandes[0];
+  c.paiement_statut = "rembourse";
+  assertEquals((await post(admin, { action: "lien_paiement", commande_id: c.id }, auth)).status, 400);
+  appels = [];
+  const evenement = JSON.stringify({ type: "checkout.session.completed", data: { object: { id: "cs_test_1", payment_status: "paid", metadata: { commande_id: c.id } } } });
+  const r = await (await post(webhook, evenement, { "Stripe-Signature": await signer(evenement) })).json();
+  assertEquals(r.a_verifier, true);
+  assertEquals(c.paiement_statut, "rembourse");
+  assertEquals(emails().length, 1);
+  assertEquals(emails()[0].to, ["boutique@test.fr"]);
+  assertMatch(emails()[0].subject, /À vérifier/);
+  c.paiement_statut = "en_attente";
+  c.statut = "annulee";
+  assertEquals((await post(admin, { action: "lien_paiement", commande_id: c.id }, auth)).status, 400);
+});
+
+Deno.test("caisse : nom trop court refusé sans fiche orpheline, pas de fiche pour une simple adresse, accord gardé avec le téléphone seul", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  const vente = (client: Record<string, unknown>, modif: Record<string, unknown> = {}) =>
+    post(admin, { action: "creer_commande", vente: { client, lignes: [{ id: "mug-personnalise", quantite: 1 }], canal: "boutique", paiement_statut: "paye", paiement_moyen: "carte", ...modif } }, auth);
+  assertEquals((await vente({ nom: "A" })).status, 400);
+  assertEquals(tables.clients.length, 0);
+  assertEquals(commandes.length, 0);
+  assertEquals((await vente({ adresse: "3 rue des Lilas, Auchel" }, { mode_reception: "livraison", port: 5.9 })).status, 201);
+  assertEquals(tables.clients.length, 0);
+  assertEquals(commandes[0].client_nom, "Client en boutique");
+  assertEquals((await vente({ tel: "0611223344", consentement: true })).status, 201);
+  assertEquals(tables.clients.length, 1);
+  assertEquals(tables.clients[0].consentement_marketing, true);
+  assertEquals(commandes[1].client_id, tables.clients[0].id);
+});
+
+Deno.test("email aux abonnés : un envoi entièrement raté n'est pas gardé dans l'historique", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  tables.clients.push({ id: "c1", nom: "Marie", email: "marie@test.fr", consentement_marketing: true });
+  Deno.env.set("BREVO_API_KEY", "xkeysib-refusee");
+  try {
+    assertEquals((await post(admin, { action: "campagne", sujet: "Noël", message: "Nos idées cadeaux" }, auth)).status, 400);
+    assertEquals(tables.campagnes?.length ?? 0, 0);
+  } finally {
+    Deno.env.delete("BREVO_API_KEY");
+  }
+  await post(admin, { action: "campagne", sujet: "Noël", message: "Nos idées cadeaux", lien: "https://boutique.test/", texte_lien: "Voir" }, auth);
+  assertEquals(tables.campagnes[0].texte_lien, "Voir");
+});
+
+Deno.test("caisse : vente réglée sur un salon terminée, commande par téléphone réglée encore à traiter", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  const vente = (canal: string, paiement_statut: string) =>
+    post(admin, { action: "creer_commande", vente: { lignes: [{ id: "mug-personnalise", quantite: 1 }], canal, paiement_statut, paiement_moyen: paiement_statut === "paye" ? "carte" : "" } }, auth);
+  await vente("salon", "paye");
+  await vente("telephone", "paye");
+  await vente("salon", "en_attente");
+  assertEquals(commandes.map((c) => [c.statut, c.paiement_mode]), [["terminee", "boutique"], ["nouvelle", "boutique"], ["nouvelle", "apres_validation"]]);
 });

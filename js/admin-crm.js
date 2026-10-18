@@ -31,7 +31,7 @@
   let vue = "";
   const donnees = { clients: [], commandes: [], demandes: [], promos: [], campagnes: [] };
   const etat = { q: "", segment: "tous", etiquette: "", demandes: "a_traiter" };
-  const caisseVide = () => ({ lignes: [], recherche: "", clientId: "", nouveau: { nom: "", email: "", tel: "" }, consentement: false, canal: "boutique", paye: true, moyen: "carte", remise: 0, remiseType: "euros", reception: "retrait", port: 0, adresse: "", date: "", notes: "", demandeId: "", fini: null });
+  const caisseVide = () => ({ lignes: [], recherche: "", clientId: "", saisieClient: "", nouveau: { nom: "", email: "", tel: "" }, consentement: false, canal: "boutique", paye: true, moyen: "carte", remise: 0, remiseType: "euros", reception: "retrait", port: 0, adresse: "", date: "", notes: "", demandeId: "", fini: null });
   let caisse = caisseVide();
 
   const S = () => window.AdminServeur;
@@ -43,6 +43,9 @@
   const fenetre = () => document.getElementById("fenetre");
   const lien = (tel) => String(tel || "").replace(/[^\d+]/g, "");
   const sansEmail = (email) => !email || email.endsWith(".invalid");
+  // Adresse du site pour les liens envoyés aux clients : l'adresse publique réglée dans Infos boutique, sinon le dossier
+  // de cette page (Cloudflare Pages sert l'admin à « /admin » sans « .html » : on ne peut pas se fier au nom de la page).
+  const adresseSite = () => (ctx.D.site.url ? ctx.D.site.url.replace(/\/*$/, "/") : location.origin + location.pathname.replace(/[^/]*$/, ""));
 
   async function lire(table, select = "*", ordre = "cree_le") {
     const { data, error } = await sb().from(table).select(select).order(ordre, { ascending: false }).limit(5000);
@@ -227,6 +230,14 @@
   }
   async function encaisser() {
     const t = totauxCaisse();
+    // Nom tapé dans « Client existant » sans choisir dans la liste : on retrouve la fiche si elle est unique,
+    // sinon on demande de choisir (la vente ne doit pas partir sans client par erreur).
+    const saisie = String(caisse.saisieClient || "").trim().toLowerCase();
+    if (!caisse.clientId && saisie) {
+      const trouves = donnees.clients.filter((c) => `${c.nom} ${c.email ?? ""} ${c.tel}`.toLowerCase().includes(saisie.split(" — ")[0]));
+      if (trouves.length !== 1) return ctx.toast(trouves.length ? "Plusieurs clients correspondent : choisissez le bon dans la liste proposée." : "Ce client n'est pas dans le fichier : videz le champ « Client existant » et remplissez « Nouveau client ».", true);
+      caisse.clientId = trouves[0].id;
+    }
     const client = donnees.clients.find((c) => c.id === caisse.clientId);
     const n = caisse.nouveau;
     if (n.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(n.email)) return ctx.toast("Email du client invalide.", true);
@@ -252,7 +263,7 @@
       await sb().from("clients").update({ consentement_marketing: true, consentement_le: new Date().toISOString() }).eq("id", client.id);
     if (caisse.reception === "livraison" && caisse.adresse.trim()) {
       if (client) await sb().from("clients").update({ adresse: caisse.adresse.trim() }).eq("id", client.id);
-      else vente.client = { ...(vente.client || { nom: "Client" }), adresse: caisse.adresse.trim() };
+      else vente.client = { ...(vente.client || {}), adresse: caisse.adresse.trim() };
     }
     const bouton = zone.querySelector('[data-crm="encaisser"]');
     bouton.disabled = true;
@@ -286,11 +297,12 @@
   function vueClients() {
     const st = statsClients();
     const q = etat.q.trim().toLowerCase();
+    const chiffresQ = q.replace(/\D/g, ""); // « 06 12 » ou « 0612 » retrouvent le même numéro
     const etiquettes = [...new Set(donnees.clients.flatMap((c) => c.etiquettes || []))].sort();
     const liste = donnees.clients
       .filter((c) => SEGMENTS[etat.segment][1](c, st(c.id)))
       .filter((c) => !etat.etiquette || (c.etiquettes || []).includes(etat.etiquette))
-      .filter((c) => !q || `${c.nom} ${c.email ?? ""} ${c.tel} ${(c.etiquettes || []).join(" ")}`.toLowerCase().includes(q));
+      .filter((c) => !q || `${c.nom} ${c.email ?? ""} ${c.tel} ${(c.etiquettes || []).join(" ")}`.toLowerCase().includes(q) || (chiffresQ.length >= 4 && lien(c.tel).replace(/^\+33/, "0").includes(chiffresQ)));
     const abonnes = donnees.clients.filter((c) => c.consentement_marketing).length;
     const recurrents = donnees.clients.filter((c) => st(c.id).n >= 2).length;
     const acheteurs = donnees.clients.filter((c) => st(c.id).n).length;
@@ -439,6 +451,15 @@
         </div>
       </section>`;
   }
+  // Statut et notes tapés dans la fiche d'une demande, gardés avant d'ouvrir l'email de réponse ou la caisse
+  async function garderSaisieDemande(id) {
+    const d = donnees.demandes.find((x) => x.id === id);
+    const statut = fenetre().querySelector("#dm-statut")?.value;
+    const notes = fenetre().querySelector("#dm-notes")?.value.trim();
+    if (!d || statut === undefined || (statut === d.statut && notes === d.notes)) return;
+    const { error } = await sb().from("demandes").update({ statut, notes }).eq("id", d.id);
+    if (!error) Object.assign(d, { statut, notes });
+  }
   function ficheDemande(id) {
     const d = donnees.demandes.find((x) => x.id === id);
     if (!d) return;
@@ -493,7 +514,7 @@
   };
   function vueMarketing() {
     const abonnes = donnees.clients.filter((c) => c.consentement_marketing && c.email).length;
-    const site = location.href.replace(/admin\.html.*$/, "");
+    const site = adresseSite();
     return `
       <section class="bloc">
         <div class="bloc-tete"><h2>Codes promo</h2><button class="btn" data-crm="nouveau-code">+ Nouveau code</button></div>
@@ -519,7 +540,7 @@
 
       <section class="bloc">
         <div class="bloc-tete"><h2>Email aux abonnés <span class="aide">(${abonnes} abonné${abonnes > 1 ? "s" : ""})</span></h2></div>
-        <p class="aide">Nouveautés, idées cadeaux avant une fête, code promo… Envoyé uniquement aux clients qui l'ont accepté, avec un lien de désinscription. Offre gratuite Resend : 100 emails par jour.</p>
+        <p class="aide">Nouveautés, idées cadeaux avant une fête, code promo… Envoyé uniquement aux clients qui l'ont accepté, avec un lien de désinscription. Offre gratuite Brevo : 300 emails par jour (emails des commandes compris).</p>
         <form class="pile" data-crm-form="campagne">
           <div class="champ"><label for="ca-sujet">Sujet</label><input id="ca-sujet" name="sujet" required placeholder="Fête des mères : nos idées cadeaux personnalisées 🎁"></div>
           <div class="champ"><label for="ca-message">Message</label><textarea id="ca-message" name="message" rows="7" required placeholder="Pour la fête des mères, offrez un cadeau unique…&#10;&#10;Avec le code MAMAN10, profitez de 10 % de remise jusqu'au 25 mai."></textarea></div>
@@ -615,7 +636,8 @@
     const [stats, nbClients, nbDemandes] = await Promise.all([
       sb().from("stats_ventes").select("*"),
       sb().from("clients").select("id", { count: "exact", head: true }),
-      sb().from("demandes").select("id", { count: "exact", head: true }).eq("statut", "nouvelle").neq("type", "newsletter"),
+      // « À traiter » comme dans l'onglet Demandes : nouvelles et en cours
+      sb().from("demandes").select("id", { count: "exact", head: true }).in("statut", ["nouvelle", "en_cours"]).neq("type", "newsletter"),
     ]);
     if (stats.error) return;
     const mois = (decalage) => {
@@ -635,7 +657,6 @@
     }
     const ce = parMois[mois(0)] || { ca: 0, n: 0, encaisse: 0, canaux: {} };
     const avant = parMois[mois(1)] || { ca: 0 };
-    const evolution = avant.ca ? Math.round(((ce.ca - avant.ca) / avant.ca) * 100) : null;
     const douze = Array.from({ length: 12 }, (_, i) => mois(11 - i));
     const max = Math.max(1, ...douze.map((m) => parMois[m]?.ca || 0));
     const annee = douze.reduce((t, m) => t + (parMois[m]?.ca || 0), 0);
@@ -644,7 +665,7 @@
     el.innerHTML = `
       <div class="bloc-tete"><h2>Ventes</h2>${nbDemandes.count ? `<button class="btn" data-aller="demandes">${nbDemandes.count} demande${nbDemandes.count > 1 ? "s" : ""} à traiter</button>` : ""}</div>
       <div class="chiffres-admin" style="margin:0 0 1rem">
-        <div class="chiffre"><strong>${euros(ce.ca)}</strong><span>chiffre d'affaires ce mois-ci${evolution !== null ? ` <b style="color:${evolution >= 0 ? "var(--succes)" : "#a33"}">${evolution >= 0 ? "+" : ""}${evolution} %</b>` : ""}</span></div>
+        <div class="chiffre"><strong>${euros(ce.ca)}</strong><span>chiffre d'affaires ce mois-ci, dont ${euros(ce.encaisse)} encaissés${avant.ca ? ` · mois dernier : ${euros(avant.ca)}` : ""}</span></div>
         <div class="chiffre"><strong>${ce.n}</strong><span>ventes ce mois-ci</span></div>
         <div class="chiffre"><strong>${euros(ce.n ? ce.ca / ce.n : 0)}</strong><span>panier moyen</span></div>
         <div class="chiffre"><strong>${nbClients.count ?? 0}</strong><span>clients dans le fichier</span></div>
@@ -652,7 +673,7 @@
       <div class="graphe" role="img" aria-label="Chiffre d'affaires des 12 derniers mois">
         ${douze.map((m) => `<div class="barre-mois" title="${new Date(m + "-01").toLocaleDateString("fr-FR", { month: "long", year: "numeric" })} : ${euros(parMois[m]?.ca || 0)}"><span style="height:${Math.round(((parMois[m]?.ca || 0) / max) * 100)}%"></span><small>${new Date(m + "-01").toLocaleDateString("fr-FR", { month: "short" }).replace(".", "")}</small></div>`).join("")}
       </div>
-      <p class="aide">12 derniers mois : <strong>${euros(annee)}</strong>${Object.keys(canauxAnnee).length ? " — " + Object.entries(canauxAnnee).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CANAUX_STATS[k] || k} ${Math.round((v / (annee || 1)) * 100)} %`).join(" · ") : ""}</p>`;
+      <p class="aide">Ventes du site, de la boutique, du téléphone et des salons, hors commandes annulées ou remboursées. 12 derniers mois : <strong>${euros(annee)}</strong>${Object.keys(canauxAnnee).length ? " — " + Object.entries(canauxAnnee).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CANAUX_STATS[k] || k} ${Math.round((v / (annee || 1)) * 100)} %`).join(" · ") : ""}</p>`;
     el.hidden = false;
   }
 
@@ -679,7 +700,7 @@
     if (a === "canal") caisse.canal = v;
     if (a === "paye") caisse.paye = !!v;
     if (a === "moyen") caisse.moyen = v;
-    if (a === "sans-client") caisse.clientId = "";
+    if (a === "sans-client") Object.assign(caisse, { clientId: "", saisieClient: "", consentement: false });
     if (a === "nouvelle-vente") caisse = caisseVide();
     if (a === "encaisser") return encaisser();
     if (a === "imprimer") return window.AdminCommandes.imprimer(caisse.fini, b.dataset.type === "facture" ? "facture" : "bon", ctx);
@@ -701,7 +722,8 @@
     }
     if (a === "vendre") {
       fenetre().close();
-      caisse = { ...caisseVide(), clientId: b.dataset.id };
+      const choisi = donnees.clients.find((x) => x.id === b.dataset.id);
+      caisse = { ...caisseVide(), clientId: b.dataset.id, consentement: !!choisi?.consentement_marketing, adresse: choisi?.adresse || "" };
       return ctx.allerA("caisse");
     }
     if (a === "supprimer-client") {
@@ -721,6 +743,7 @@
         liste.map((c) => { const s = st(c.id); return [c.nom, c.email, c.tel, c.adresse, (c.etiquettes || []).join(", "), c.consentement_marketing ? "oui" : "non", s.n, String(arrondi(s.total)).replace(".", ","), date(s.derniere), date(c.cree_le), SOURCES[c.source] || c.source, c.notes]; }));
     }
     if (a === "demande") return ficheDemande(b.dataset.id);
+    if (a === "repondre" || a === "convertir") await garderSaisieDemande(b.dataset.id);
     if (a === "repondre") {
       const d = donnees.demandes.find((x) => x.id === b.dataset.id);
       return ecrire({
@@ -737,7 +760,8 @@
     if (a === "convertir") {
       const d = donnees.demandes.find((x) => x.id === b.dataset.id);
       fenetre().close();
-      caisse = { ...caisseVide(), clientId: d.client_id || "", nouveau: { nom: d.nom, email: d.email, tel: d.tel }, canal: "telephone", paye: false, notes: [d.sujet, d.message].filter(Boolean).join(" — ").slice(0, 1500), demandeId: d.id };
+      const fiche = donnees.clients.find((x) => x.id === d.client_id);
+      caisse = { ...caisseVide(), clientId: d.client_id || "", consentement: !!fiche?.consentement_marketing, nouveau: { nom: d.nom, email: d.email, tel: d.tel }, canal: "telephone", paye: false, notes: [d.sujet, d.message].filter(Boolean).join(" — ").slice(0, 1500), demandeId: d.id };
       ctx.toast("Ajoutez les articles puis enregistrez : la demande passera en « Devenue commande ».");
       return ctx.allerA("caisse");
     }
@@ -760,7 +784,7 @@
     }
     if (a === "partager-code") {
       const p = donnees.promos.find((x) => x.code === b.dataset.code);
-      const site = location.href.replace(/admin\.html.*$/, "");
+      const site = adresseSite();
       return copier(`🎁 ${p.description || "Offre spéciale"} chez Mon Truc en Bois ! Avec le code ${p.code}, profitez de ${p.type === "pourcentage" ? `${Number(p.valeur)} % de remise` : `${euros(p.valeur)} de remise`}${Number(p.minimum) ? ` dès ${euros(p.minimum)} d'achat` : ""}${p.fin ? ` jusqu'au ${new Date(p.fin).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}` : ""}. Cadeaux personnalisés gravés à Auchel 👉 ${site}boutique.html`);
     }
     if (a === "reprendre-campagne") {
@@ -768,6 +792,7 @@
       zone.querySelector("#ca-sujet").value = c.sujet;
       zone.querySelector("#ca-message").value = c.message;
       zone.querySelector("#ca-lien").value = c.lien;
+      zone.querySelector("#ca-texte").value = c.texte_lien || "";
       zone.querySelector("#ca-sujet").focus();
     }
   });
@@ -801,6 +826,7 @@
       q.setSelectionRange(pos, pos);
       return;
     }
+    if (c === "client") return void (caisse.saisieClient = el.value);
     if (["remise", "port"].includes(c)) caisse[c] = Number(el.value || 0);
     if (["adresse", "notes", "date"].includes(c)) caisse[c] = el.value;
     majTotalCaisse();
@@ -820,6 +846,7 @@
       const choisi = donnees.clients.find((x) => `${x.nom}${x.email ? ` — ${x.email}` : x.tel ? ` — ${x.tel}` : ""}` === el.value);
       if (choisi) {
         caisse.clientId = choisi.id;
+        caisse.saisieClient = "";
         caisse.consentement = !!choisi.consentement_marketing;
         if (choisi.adresse) caisse.adresse = choisi.adresse;
         afficher();

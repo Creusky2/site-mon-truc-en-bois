@@ -14,5 +14,10 @@
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-cache
 
+# Cloudflare Pages sert aussi l'admin à l'adresse courte /admin
+/admin
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache
+
 /img/*
   Cache-Control: public, max-age=604800

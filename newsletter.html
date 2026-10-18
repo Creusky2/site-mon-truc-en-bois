@@ -53,8 +53,13 @@
           return;
         }
         try {
-          await appelServeur("contact", { action: "desinscription", email: e.target.email.value.trim() });
-          retour.innerHTML = `<p class="message">C'est fait : vous êtes désinscrit(e). À bientôt peut-être à la boutique !</p>`;
+          const adresse = e.target.email.value.trim();
+          // La clé du lien reçu par email ne vaut que pour l'adresse de ce lien
+          const cle = adresse.toLowerCase() === email.toLowerCase() ? params.get("cle") || "" : "";
+          const r = await appelServeur("contact", { action: "desinscription", email: adresse, cle });
+          retour.innerHTML = r.desinscrit
+            ? `<p class="message">C'est fait : vous êtes désinscrit(e). À bientôt peut-être à la boutique !</p>`
+            : `<p class="message">Si cette adresse est inscrite, un email vient de lui être envoyé : cliquez sur le bouton qu'il contient pour confirmer la désinscription.</p>`;
           e.target.querySelector("button").disabled = true;
         } catch (err) {
           retour.innerHTML = `<p class="message message-alerte">${echapper(err.message)}</p>`;

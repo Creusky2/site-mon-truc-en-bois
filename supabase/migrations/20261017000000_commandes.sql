@@ -1,6 +1,6 @@
 -- ============================================================
 --  Commandes de la boutique Mon Truc en Bois
---  À exécuter une fois dans Supabase (SQL Editor) — voir docs/mise-en-ligne.md
+--  À exécuter une fois dans Supabase (SQL Editor) — voir docs/technique.md
 -- ============================================================
 
 -- ---------- Administrateurs (comptes Supabase autorisés à gérer les commandes) ----------

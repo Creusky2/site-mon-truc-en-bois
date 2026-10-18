@@ -127,6 +127,12 @@
           e.target.disabled = false;
         }
       });
+      // Bouton « Payer » d'un email : la page de paiement s'ouvre directement (une seule fois)
+      if (params.get("payer") && c.paiement_possible) {
+        history.replaceState(null, "", `suivi.html?jeton=${c.jeton}`);
+        params.delete("payer");
+        document.getElementById("payer").click();
+      }
     }
 
     async function charger(critere) {
