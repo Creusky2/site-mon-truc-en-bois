@@ -26,14 +26,14 @@ Ouvrez `admin.html` → **Accès agence** (clé GitHub de l'agence), puis l'ongl
 2. **Créer le serveur Supabase** — projet au nom du client, région **Paris** ; copier l'adresse du projet, la clé publique *anon* et un jeton d'accès (*Account → Access Tokens*).
 3. **Compte du commerçant** — son email et son mot de passe (son seul identifiant), et la **clé de publication** : une deuxième clé GitHub limitée à *Contents* sur ce dépôt, qui permet au serveur de publier les modifications du commerçant. Noter sa date d'expiration (l'onglet Installation l'affiche et prévient 30 jours avant).
 4. **Stripe** — clé secrète `sk_test_…` pour commencer. Le webhook de confirmation des paiements est créé tout seul.
-5. **Brevo** — compte créé avec l'email de la boutique, clé `xkeysib-…`. Avec le nom de domaine : authentifier le domaine dans Brevo et indiquer l'expéditeur (ex. `Mon Truc en Bois <bonjour@montrucenbois.fr>`).
+5. **Brevo** — compte créé avec l'email de la boutique, clé API `xkeysib-…`, identifiant et clé SMTP (`xsmtpsib-…`) pour l'email « mot de passe oublié » en français. Avec le nom de domaine : authentifier le domaine dans Brevo et indiquer l'expéditeur (ex. `Mon Truc en Bois <bonjour@montrucenbois.fr>`).
 6. **Installer** — l'assistant range les clés, relie le site au serveur et lance l'installation (2 à 4 minutes), avec la progression en direct et des vérifications vertes à la fin.
 
 L'installation se relance autant de fois que nécessaire (elle ne supprime rien) : c'est aussi par là que l'on change une clé (Stripe en mode réel, nouvelle clé de publication, nouveau mot de passe…).
 
 ### Informations légales (avant l'ouverture)
 
-Dans **Infos boutique → Informations légales** : exploitant, forme juridique, SIRET, **régime de TVA**, médiateur de la consommation. Elles alimentent automatiquement les CGV, les mentions légales et les factures ; le bouton « Ouvrir les commandes » reste bloqué tant qu'elles manquent.
+Dans **Infos boutique → Informations légales** : exploitant, forme juridique, SIRET, **régime de TVA**, médiateur de la consommation. Elles alimentent automatiquement les CGV, les mentions légales et les factures. Tant qu'elles manquent, le tableau de bord les signale (sans bloquer l'ouverture) et les pages légales affichent « [à compléter] ».
 
 - **Franchise en base** : factures avec la mention « TVA non applicable, article 293 B du CGI » ; la caisse accepte les espèces.
 - **Assujetti à la TVA** : factures avec HT, TVA et TTC ; les espèces doivent passer par une caisse certifiée, la caisse de l'admin ne propose donc que carte, chèque et virement.
@@ -48,7 +48,7 @@ Dans **Infos boutique → Informations légales** : exploitant, forme juridique,
 4. Créer la variable de dépôt GitHub `HEBERGEMENT` = `cloudflare` : le robot de génération des pages produits s'arrête (Cloudflare les génère à chaque mise en ligne).
 5. Dans l'admin : **Infos boutique** → adresse publique du site = `https://montrucenbois.fr`, hébergement = Cloudflare Pages, puis **Publier**. Onglet **Installation** → *Adresse du site (avancé)* → même adresse, et relancer l'installation (adresses autorisées du serveur, liens des emails).
 6. Cloudflare : activer *Email Routing* (contact@montrucenbois.fr vers la boîte du commerçant) et *Web Analytics*. Brevo : authentifier le domaine (enregistrements DNS dans Cloudflare).
-7. Better Stack : surveiller `https://montrucenbois.fr` et l'adresse `…supabase.co/functions/v1/suivi` (réponse attendue : 400).
+7. Better Stack : surveiller `https://montrucenbois.fr` et `https://….supabase.co/functions/v1/suivi?sante=1` (200 si la base répond, 503 sinon).
 8. Désactiver GitHub Pages (Settings → Pages) une fois le domaine en ligne ; déclarer le site et `sitemap.xml` dans Google Search Console.
 
 ### Tester avant d'ouvrir
