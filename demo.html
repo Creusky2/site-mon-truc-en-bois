@@ -10,7 +10,9 @@
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
   <style>
-    .demo { display: grid; gap: 2.2rem; padding-bottom: 5rem; }
+    .demo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.2rem; padding-bottom: 5rem; }
+    .demo > *, .demo .pile > * { min-width: 0; }
+    #filtres-boite { flex-wrap: wrap; overflow: visible; }
     .demo-actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
     .demo-compte { display: flex; gap: .5rem 1.2rem; flex-wrap: wrap; font-size: .95rem; }
     .demo-compte code { font: 500 .95rem var(--f-mono); background: var(--fond-alt); border-radius: 6px; padding: 2px 8px; }
@@ -57,8 +59,8 @@
       <section class="demo-colonne">
         <h2>Côté client</h2>
         <ol class="demo-etapes">
-          <li><strong>Commander une création personnalisée</strong><span>Ouvrez par exemple la <a href="p/planche-aperitif.html">planche apéritif</a> : texte, police, aperçu en direct, puis panier. Essayez le code <strong>BIENVENUE10</strong>.</span></li>
-          <li><strong>Payer par carte</strong><span>Choisissez « Payer en ligne » : une page de paiement de démonstration s'ouvre, sans aucun débit.</span></li>
+          <li><strong>Commander une création personnalisée</strong><span>Ouvrez par exemple la <a href="p/planche-aperitif.html">planche apéritif</a> : texte, police, aperçu en direct, puis panier. Dans le panier, tapez le code promo <strong>BIENVENUE10</strong> puis « Appliquer ».</span></li>
+          <li><strong>Payer par carte</strong><span>Choisissez « Payer maintenant par carte » : une page de paiement de démonstration s'ouvre, sans aucun débit.</span></li>
           <li><strong>Lire ses emails et suivre sa commande</strong><span>Confirmation et paiement reçu arrivent dans la <a href="#boite">boîte mail de démo</a>, avec le lien de suivi.</span></li>
           <li><strong>Demander un devis</strong><span>Depuis la page <a href="contact.html">Contact</a> : la boutique le reçoit par email et dans l'admin.</span></li>
           <li><strong>S'inscrire aux nouveautés</strong><span>En bas de n'importe quelle page, puis se désinscrire avec le lien de l'email reçu.</span></li>
@@ -69,7 +71,7 @@
         <ol class="demo-etapes">
           <li><strong>Traiter la commande</strong><span><a href="admin.html#commandes">Admin → Commandes</a> : texte à graver, photos, statut « En fabrication » puis « Prête » : le client est prévenu par email.</span></li>
           <li><strong>Envoyer un lien de paiement</strong><span>Sur une commande « à payer après maquette » : le client paie depuis l'email reçu.</span></li>
-          <li><strong>Vendre en boutique</strong><span><a href="admin.html#caisse">Caisse</a> : quelques produits, un client, le moyen de paiement, puis la facture.</span></li>
+          <li><strong>Vendre en boutique</strong><span><a href="admin.html#caisse">Caisse</a> : quelques produits, un client, un code promo si besoin, le moyen de paiement, puis la facture.</span></li>
           <li><strong>Répondre à un devis</strong><span><a href="admin.html#demandes">Demandes</a> : répondre par email, puis transformer en commande.</span></li>
           <li><strong>Retrouver un client</strong><span><a href="admin.html#clients">Clients</a> : achats, notes, étiquettes, listes toutes prêtes.</span></li>
           <li><strong>Faire une promotion</strong><span><a href="admin.html#marketing">Marketing</a> : un code promo, son texte à partager, un email aux abonnés.</span></li>

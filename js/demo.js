@@ -473,6 +473,7 @@
       document.body.prepend(b);
     }
     const lien = "color:#fff;font-weight:600;text-decoration:underline";
+    if (document.body.firstElementChild !== b) document.body.prepend(b);
     b.innerHTML = `<span><strong>Démo</strong> : rien n'est envoyé ni payé</span>
       <a style="${lien}" href="${BASE}demo.html#boite">Boîte mail${n ? ` (${n})` : ""}</a>
       <a style="${lien}" href="${BASE}demo.html">Guide</a>
@@ -480,7 +481,9 @@
       <a style="${lien}" href="${BASE}index.html?demo=0">Quitter</a>`;
   }
   function pageAdmin() {
-    // Identifiants de démo déjà remplis, et pas d'accès agence (il passerait par le vrai GitHub)
+    // Identifiants de démo déjà remplis, et pas d'accès agence (il passerait par le vrai GitHub).
+    // Seulement sur l'écran de connexion de l'admin : le panier a aussi un champ « c-email ».
+    if (!document.getElementById("form-commercant")) return;
     const email = document.getElementById("c-email");
     const mdp = document.getElementById("c-mdp");
     if (email && !email.value) email.value = COMPTE.email;
@@ -530,9 +533,12 @@
       charger();
     },
   };
-  document.addEventListener("DOMContentLoaded", () => {
-    bandeau();
-    pageAdmin();
-  });
+  // Après les autres scripts de la page (annonce, bandeaux du site) : le bandeau de démo reste tout en haut
+  document.addEventListener("DOMContentLoaded", () =>
+    setTimeout(() => {
+      bandeau();
+      pageAdmin();
+    })
+  );
   document.addEventListener("mtb-demo-email", () => document.body && bandeau());
 })();

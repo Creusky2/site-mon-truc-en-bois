@@ -55,7 +55,7 @@ export const traiter = servir(async (req) => {
     method: "POST",
     body: JSON.stringify({
       type,
-      nom,
+      nom: nomSaisi || fiche?.nom || nom, // inscription sans prénom : le nom déjà connu du client
       email,
       tel: texte(d.tel, 30),
       sujet: texte(d.sujet, 120),

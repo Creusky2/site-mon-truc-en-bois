@@ -578,6 +578,7 @@ Deno.test("fiche client : une inscription à la newsletter sans prénom garde le
   await post(contact, { type: "newsletter", email: "marie@test.fr" });
   assertEquals(tables.clients.length, 1);
   assertEquals(tables.clients[0].nom, "Marie Test");
+  assertEquals(tables.demandes.at(-1).nom, "Marie Test"); // la demande « newsletter » reprend le nom connu
   assertEquals(tables.clients[0].consentement_marketing, true);
   await post(contact, { type: "newsletter", email: "nouveau@test.fr" });
   assertEquals(tables.clients[1].nom, "nouveau");
@@ -644,4 +645,19 @@ Deno.test("caisse : vente réglée sur un salon terminée, commande par téléph
   await vente("telephone", "paye");
   await vente("salon", "en_attente");
   assertEquals(commandes.map((c) => [c.statut, c.paiement_mode]), [["terminee", "boutique"], ["nouvelle", "boutique"], ["nouvelle", "apres_validation"]]);
+});
+
+Deno.test("caisse : code promo vérifié, compté et enregistré ; code invalide refusé", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  const vente = (code_promo: string, quantite = 2) =>
+    post(admin, { action: "creer_commande", vente: { lignes: [{ id: "mug-personnalise", quantite }], canal: "boutique", paiement_statut: "paye", paiement_moyen: "carte", remise: 1, code_promo } }, auth);
+  assertEquals((await vente("NOEL10")).status, 201); // 2 × 14,90 = 29,80 → −10 % = 2,98 (la remise saisie à la main est ignorée)
+  assertEquals(commandes[0].remise, 2.98);
+  assertEquals(commandes[0].code_promo, "NOEL10");
+  assertEquals(commandes[0].total, 26.82);
+  assertEquals(tables.codes_promo[0].utilisations, 1);
+  assertEquals((await vente("NOEL10", 1)).status, 400); // 14,90 € : sous le minimum de 20 €
+  assertEquals((await vente("VIEUX")).status, 400); // expiré
+  assertEquals(commandes.length, 1);
 });

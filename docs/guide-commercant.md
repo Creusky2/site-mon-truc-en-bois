@@ -98,7 +98,7 @@ La **Caisse** enregistre la vente, la facture et le client en une minute ; elle 
 2. Touchez les produits vendus (la recherche aide). Pour un travail sur mesure : *Article sur mesure* → désignation et prix → **Ajouter**.
 3. Dans le *Ticket* : quantité avec − et +, prix modifiable, texte à graver si besoin. Sur téléphone, la barre verte en bas de l'écran descend jusqu'au ticket.
 4. *Client* : tapez son nom et **choisissez-le dans la liste proposée**, ou remplissez nom et téléphone pour un nouveau client (tout vide = client de passage). Cochez la case s'il veut recevoir vos nouveautés.
-5. *Vente* : **En boutique**, **Par téléphone** ou **Salon / marché** ; **Réglée maintenant** avec le moyen de paiement, ou **À régler plus tard**. Remise en euros ou en %, livraison et date souhaitée si besoin.
+5. *Vente* : **En boutique**, **Par téléphone** ou **Salon / marché** ; **Réglée maintenant** avec le moyen de paiement, ou **À régler plus tard**. Remise en euros ou en %, ou le code promo du client (*Code promo* → **Appliquer**), livraison et date souhaitée si besoin.
 6. **Enregistrer la vente**, puis **Imprimer la facture** si le client la demande (vente réglée), et **Nouvelle vente**.
 
 Une vente réglée et remise sur place (boutique, salon) est classée *Terminée* ; une commande prise par téléphone ou à livrer reste *À traiter* jusqu'à ce que vous la fassiez avancer. Une vente « à régler plus tard » se retrouve dans *Commandes* → *À payer* : vous pourrez y envoyer un lien de paiement par carte, et sa facture sera créée au paiement.
@@ -131,7 +131,7 @@ Vérifiez avec **Prévisualiser** avant de publier si vous avez fait beaucoup de
 
 **Une annonce en haut du site** (fermeture, salon, date limite pour Noël) : onglet **Textes & annonce** → cochez *Afficher l'annonce*, écrivez le texte → **Publier les modifications**. Décochez pour la retirer.
 
-**Un code promo** : onglet **Marketing** → **+ Nouveau code** → le code (ex. `NOEL10`), la remise en % ou en euros, les dates, un montant minimum si besoin → *Enregistrer*. Le client le tape dans son panier. Le bouton **Texte à partager** copie un message tout prêt pour Facebook, Instagram ou WhatsApp.
+**Un code promo** : onglet **Marketing** → **+ Nouveau code** → le code (ex. `NOEL10`), la remise en % ou en euros, les dates, un montant minimum si besoin → *Enregistrer*. Le client le tape dans son panier (champ *Code promo*) ; en boutique, tapez-le dans la **Caisse**. Le bouton **Texte à partager** copie un message tout prêt pour Facebook, Instagram ou WhatsApp.
 
 **Un email à vos abonnés** : onglet **Marketing** → *Email aux abonnés* → sujet, message, et si vous voulez un bouton vers la boutique ou un produit → **M'envoyer un essai**, vérifiez-le dans votre boîte, puis **Envoyer**. Seuls les clients qui l'ont accepté le reçoivent, avec un lien personnel pour se désinscrire. Jusqu'à 300 emails par jour, emails des commandes compris.
 

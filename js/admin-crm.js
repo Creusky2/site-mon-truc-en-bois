@@ -31,7 +31,7 @@
   let vue = "";
   const donnees = { clients: [], commandes: [], demandes: [], promos: [], campagnes: [] };
   const etat = { q: "", segment: "tous", etiquette: "", demandes: "a_traiter" };
-  const caisseVide = () => ({ lignes: [], recherche: "", clientId: "", saisieClient: "", nouveau: { nom: "", email: "", tel: "" }, consentement: false, canal: "boutique", paye: true, moyen: "carte", remise: 0, remiseType: "euros", reception: "retrait", port: 0, adresse: "", date: "", notes: "", demandeId: "", fini: null });
+  const caisseVide = () => ({ lignes: [], recherche: "", clientId: "", saisieClient: "", nouveau: { nom: "", email: "", tel: "" }, consentement: false, canal: "boutique", paye: true, moyen: "carte", remise: 0, remiseType: "euros", code: "", promo: null, reception: "retrait", port: 0, adresse: "", date: "", notes: "", demandeId: "", fini: null });
   let caisse = caisseVide();
 
   const S = () => window.AdminServeur;
@@ -54,7 +54,7 @@
   }
   async function charger() {
     const besoins = {
-      caisse: ["clients"],
+      caisse: ["clients", "promos"],
       clients: ["clients", "commandes", "demandes"],
       demandes: ["demandes", "clients"],
       marketing: ["promos", "campagnes", "clients"],
@@ -112,7 +112,11 @@
   const produitsVendables = () => ctx.D.produits.filter((p) => p.visible !== false);
   function totauxCaisse() {
     const sous = arrondi(caisse.lignes.reduce((t, l) => t + arrondi(l.prix) * l.quantite, 0));
-    const remise = arrondi(Math.min(sous, caisse.remiseType === "pourcent" ? (sous * Number(caisse.remise || 0)) / 100 : Number(caisse.remise || 0)));
+    // Un code promo remplace la remise saisie à la main (même calcul que sur le site)
+    const p = caisse.promo;
+    const remise = p
+      ? arrondi(Math.min(sous, p.type === "pourcentage" ? (sous * Number(p.valeur)) / 100 : Number(p.valeur)))
+      : arrondi(Math.min(sous, caisse.remiseType === "pourcent" ? (sous * Number(caisse.remise || 0)) / 100 : Number(caisse.remise || 0)));
     const port = caisse.reception === "livraison" ? arrondi(caisse.port) : 0;
     return { sous, remise, port, total: arrondi(Math.max(0, sous - remise + port)) };
   }
@@ -193,7 +197,10 @@
             </div>
             ${caisse.paye ? `<div class="filtres">${Object.entries(MOYENS).filter(([k]) => k !== "especes" || !especesInterdites()).map(([k, v]) => `<button type="button" class="filtre" data-crm="moyen" data-valeur="${k}" aria-pressed="${caisse.moyen === k}">${v}</button>`).join("")}</div>${especesInterdites() ? `<p class="aide">Espèces : à enregistrer sur une caisse certifiée (obligation pour les commerces assujettis à la TVA). Ici : carte, chèque, virement.</p>` : ""}` : `<p class="aide">La commande sera « à payer » : vous pourrez envoyer un lien de paiement par carte depuis l'onglet Commandes.</p>`}
             <div class="grille-champs">
-              <div class="champ"><label for="cs-remise">Remise</label><span class="avec-unite"><input id="cs-remise" type="number" step="0.01" min="0" data-caisse="remise" value="${caisse.remise || ""}" placeholder="0"><select data-caisse="remiseType" aria-label="Type de remise"><option value="euros" ${caisse.remiseType === "euros" ? "selected" : ""}>€</option><option value="pourcent" ${caisse.remiseType === "pourcent" ? "selected" : ""}>%</option></select></span></div>
+              ${caisse.promo
+                ? `<div class="champ large"><span class="label">Code promo</span><p class="encart" style="margin:0">Code <strong>${e(caisse.promo.code)}</strong> (${libellePromo(caisse.promo)})${caisse.promo.description ? ` : ${e(caisse.promo.description)}` : ""} <button type="button" class="mini" data-crm="retirer-code-caisse">Retirer</button></p></div>`
+                : `<div class="champ"><label for="cs-remise">Remise</label><span class="avec-unite"><input id="cs-remise" type="number" step="0.01" min="0" data-caisse="remise" value="${caisse.remise || ""}" placeholder="0"><select data-caisse="remiseType" aria-label="Type de remise"><option value="euros" ${caisse.remiseType === "euros" ? "selected" : ""}>€</option><option value="pourcent" ${caisse.remiseType === "pourcent" ? "selected" : ""}>%</option></select></span></div>
+              <div class="champ"><label for="cs-code">Code promo</label><span class="code-promo"><input id="cs-code" data-caisse="code" value="${e(caisse.code)}" placeholder="Ex. BIENVENUE10" autocomplete="off" maxlength="30"><button type="button" class="btn btn-ligne" data-crm="appliquer-code-caisse">Appliquer</button></span></div>`}
               <div class="champ"><label for="cs-date">Pour le (facultatif)</label><input id="cs-date" type="date" data-caisse="date" value="${e(caisse.date)}"></div>
               <label class="case large"><input type="checkbox" data-caisse="livraison" ${caisse.reception === "livraison" ? "checked" : ""}> <span>À livrer</span></label>
               ${caisse.reception === "livraison" ? `
@@ -255,6 +262,7 @@
       paiement_statut: caisse.paye ? "paye" : "en_attente",
       paiement_moyen: caisse.paye ? caisse.moyen : "",
       remise: t.remise,
+      code_promo: caisse.promo?.code || "",
       port: t.port,
       notes: caisse.notes,
       date_souhaitee: caisse.date,
@@ -272,6 +280,7 @@
       if (caisse.demandeId) await sb().from("demandes").update({ statut: "convertie", client_id: commande.client_id }).eq("id", caisse.demandeId);
       caisse = { ...caisseVide(), fini: commande };
       donnees.clients = await lire("clients").catch(() => donnees.clients);
+      donnees.promos = await lire("codes_promo").catch(() => donnees.promos); // nombre d'utilisations à jour
       ctx.toast(`Vente ${commande.numero} enregistrée.`);
       afficher();
     } catch (x) {
@@ -701,6 +710,21 @@
     if (a === "paye") caisse.paye = !!v;
     if (a === "moyen") caisse.moyen = v;
     if (a === "sans-client") Object.assign(caisse, { clientId: "", saisieClient: "", consentement: false });
+    if (a === "appliquer-code-caisse") {
+      const code = String(caisse.code || "").trim().toUpperCase();
+      const p = donnees.promos.find((x) => x.code === code);
+      const [valable, etatCode] = p ? promoValide(p) : [false, "Inconnu"];
+      if (!code) return ctx.toast("Tapez le code donné par le client.", true);
+      if (!p) return ctx.toast(`Le code ${code} n'existe pas (onglet Marketing).`, true);
+      if (!valable) return ctx.toast(`Le code ${code} n'est pas utilisable : ${etatCode.toLowerCase()}.`, true);
+      if (totauxCaisse().sous < Number(p.minimum || 0)) return ctx.toast(`Le code ${code} s'applique dès ${euros(p.minimum)} d'achat.`, true);
+      caisse.promo = p;
+      return afficher();
+    }
+    if (a === "retirer-code-caisse") {
+      caisse.promo = null;
+      return afficher();
+    }
     if (a === "nouvelle-vente") caisse = caisseVide();
     if (a === "encaisser") return encaisser();
     if (a === "imprimer") return window.AdminCommandes.imprimer(caisse.fini, b.dataset.type === "facture" ? "facture" : "bon", ctx);
@@ -827,6 +851,7 @@
       return;
     }
     if (c === "client") return void (caisse.saisieClient = el.value);
+    if (c === "code") return void (caisse.code = el.value);
     if (["remise", "port"].includes(c)) caisse[c] = Number(el.value || 0);
     if (["adresse", "notes", "date"].includes(c)) caisse[c] = el.value;
     majTotalCaisse();

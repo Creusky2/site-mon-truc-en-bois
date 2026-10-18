@@ -930,7 +930,7 @@ var traiter3 = servir(async (req) => {
     method: "POST",
     body: JSON.stringify({
       type,
-      nom,
+      nom: nomSaisi || fiche?.nom || nom,
       email,
       tel: texte2(d.tel, 30),
       sujet: texte2(d.sujet, 120),
@@ -1050,7 +1050,8 @@ async function creerVente(v) {
   });
   const sous_total = arrondi2(lignes.reduce((t, l) => t + l.total, 0));
   const port = arrondi2(Math.max(0, Number(v.port ?? 0)));
-  const remise = arrondi2(Math.min(sous_total, Math.max(0, Number(v.remise ?? 0))));
+  const promo = texte3(v.code_promo, 30) ? await chercherCodePromo(v.code_promo, sous_total) : null;
+  const remise = promo ? montantRemise(promo, sous_total) : arrondi2(Math.min(sous_total, Math.max(0, Number(v.remise ?? 0))));
   const c = v.client ?? {};
   const nomSaisi = texte3(c.nom, 120);
   const emailSaisi = texte3(c.email, 160).toLowerCase();
@@ -1066,6 +1067,7 @@ async function creerVente(v) {
     source: v.canal ?? "boutique",
     consentement: !!c.consentement
   });
+  await compterUtilisation(promo);
   const canal = [
     "boutique",
     "telephone",
@@ -1087,6 +1089,7 @@ async function creerVente(v) {
       port,
       emballage: 0,
       remise,
+      code_promo: promo?.code ?? "",
       total: arrondi2(Math.max(0, sous_total + port - remise)),
       paiement_mode: paye || canal === "boutique" ? "boutique" : "apres_validation",
       paiement_statut: paye ? "paye" : "en_attente",

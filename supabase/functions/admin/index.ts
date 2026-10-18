@@ -8,7 +8,9 @@
 //   campagne       : email (nouveautés, promotion) aux clients abonnés, ou essai à la boutique
 //   contenu_lire, contenu_publier, photo_publier : le commerçant modifie le site sans compte GitHub
 //                    (le serveur publie avec une clé GitHub limitée au contenu, gardée dans ses secrets)
-import { catalogue, creerPaiementStripe, db, enregistrerClient, env, ErreurClient, json, lireJson, servir, urlLecturePhoto } from "../_shared/outils.ts";
+import {
+  catalogue, chercherCodePromo, compterUtilisation, creerPaiementStripe, db, enregistrerClient, env, ErreurClient, json, lireJson, montantRemise, servir, urlLecturePhoto,
+} from "../_shared/outils.ts";
 import { emailCampagne, emailLibre, emailLienPaiement, emailStatut, envoyerEmail, envoyerLot, expediteur, fournisseurEmail } from "../_shared/emails.ts";
 
 type LigneSaisie = { id?: string; nom?: string; prix_unitaire?: number; quantite?: number; texte?: string; remarque?: string; variante?: string };
@@ -35,6 +37,7 @@ type Demande = {
     paiement_statut?: "paye" | "en_attente";
     paiement_moyen?: string;
     remise?: number;
+    code_promo?: string;
     port?: number;
     notes?: string;
     date_souhaitee?: string;
@@ -108,7 +111,9 @@ async function creerVente(v: NonNullable<Demande["vente"]>) {
   });
   const sous_total = arrondi(lignes.reduce((t, l) => t + l.total, 0));
   const port = arrondi(Math.max(0, Number(v.port ?? 0)));
-  const remise = arrondi(Math.min(sous_total, Math.max(0, Number(v.remise ?? 0))));
+  // Code promo donné en caisse : vérifié et compté comme sur le site ; il remplace la remise saisie à la main
+  const promo = texte(v.code_promo, 30) ? await chercherCodePromo(v.code_promo, sous_total) : null;
+  const remise = promo ? montantRemise(promo, sous_total) : arrondi(Math.min(sous_total, Math.max(0, Number(v.remise ?? 0))));
 
   const c = v.client ?? {};
   const nomSaisi = texte(c.nom, 120);
@@ -120,6 +125,7 @@ async function creerVente(v: NonNullable<Demande["vente"]>) {
   // Une fiche n'est créée que si l'on sait qui est le client (nom, email ou téléphone), jamais pour une simple adresse.
   else if (nomSaisi || emailSaisi || texte(c.tel, 30)) fiche = await enregistrerClient({ nom: nomSaisi, email: emailSaisi, tel: texte(c.tel, 30), adresse: texte(c.adresse, 400), source: v.canal ?? "boutique", consentement: !!c.consentement });
 
+  await compterUtilisation(promo);
   const canal = ["boutique", "telephone", "salon"].includes(v.canal ?? "") ? v.canal : "boutique";
   const paye = v.paiement_statut === "paye";
   const [commande] = await db<any[]>("commandes", {
@@ -137,6 +143,7 @@ async function creerVente(v: NonNullable<Demande["vente"]>) {
       port,
       emballage: 0,
       remise,
+      code_promo: promo?.code ?? "",
       total: arrondi(Math.max(0, sous_total + port - remise)),
       paiement_mode: paye || canal === "boutique" ? "boutique" : "apres_validation", // réglée sur place, ou à régler plus tard
       paiement_statut: paye ? "paye" : "en_attente",

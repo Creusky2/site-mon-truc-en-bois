@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body data-sans-contact>
   <header class="entete"></header>
 
   <main class="conteneur" id="contenu" style="padding-bottom:5rem"></main>
@@ -168,10 +168,11 @@
               ${t.remise ? `<div class="recap-ligne recap-remise"><span>Code ${echapper(simulation.code_promo)}${simulation.promo_description ? ` — ${echapper(simulation.promo_description)}` : ""} <button type="button" class="supprimer" id="retirer-code">Retirer</button></span><span>−${euros(t.remise)}</span></div>` : ""}
               <div class="recap-ligne recap-total"><span>Total</span><span>${euros(t.total)}</span></div>
               ${serveur() && !t.remise ? `
-              <details class="champ" ${simulation?.erreur_code ? "open" : ""}><summary class="aide">Vous avez un code promo ?</summary>
-                <div class="code-promo" style="margin-top:.5rem"><input type="text" id="c-code" placeholder="Code promo" aria-label="Code promo" autocomplete="off" maxlength="30"><button type="button" class="btn btn-ligne" id="appliquer-code">Appliquer</button></div>
+              <div class="champ">
+                <label for="c-code">Code promo</label>
+                <div class="code-promo"><input type="text" id="c-code" placeholder="Ex. BIENVENUE10" autocomplete="off" maxlength="30"><button type="button" class="btn btn-ligne" id="appliquer-code">Appliquer</button></div>
                 ${simulation?.erreur_code ? `<p class="message message-alerte" style="margin-top:.5rem">${echapper(simulation.erreur_code)}</p>` : ""}
-              </details>` : ""}
+              </div>` : ""}
             </div>
 
             <form id="commande" class="pile" style="gap:1rem">

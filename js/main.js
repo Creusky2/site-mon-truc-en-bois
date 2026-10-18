@@ -23,7 +23,7 @@
             const chemin = img.getAttribute("src") || "";
             if (!chemin.startsWith("img/")) return;
             img.dataset.secours = "1";
-            img.src = `https://raw.githubusercontent.com/${b.depot}/${chemin}`;
+            img.src = window.MTB_DEMO?.photo(chemin) || `https://raw.githubusercontent.com/${b.depot}/${chemin}`;
           },
           true
         );
