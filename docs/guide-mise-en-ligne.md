@@ -38,7 +38,7 @@ Tous les comptes s'ouvrent au nom du client, qui en reste propriétaire ; l'agen
 
 - Un compte GitHub avec une organisation d'agence (gratuite).
 - Un coffre de mots de passe partagé (Bitwarden, 1Password…), avec une fiche « Mon Truc en Bois ».
-- L'admin du site : `https://creusky2.github.io/site-mon-truc-en-bois/admin.html` jusqu'à la phase 3, puis `https://montrucenbois.fr/admin.html`.
+- L'admin du site : `https://noedio.github.io/site-mon-truc-en-bois/admin.html` jusqu'à la phase 3, puis `https://montrucenbois.fr/admin.html`.
 
 | Clé ou identifiant | Où elle est utilisée | À noter dans le coffre |
 | --- | --- | --- |

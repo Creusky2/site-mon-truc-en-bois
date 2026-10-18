@@ -12,7 +12,7 @@ const lire = (f) => readFileSync(join(RACINE, f), "utf8");
 const brut = lire("data/donnees.js");
 const D = JSON.parse(brut.slice(brut.search(/^window\.DONNEES = /m) + "window.DONNEES = ".length).trim().replace(/;\s*$/, ""));
 const S = D.site;
-const SITE = (S.url || "https://creusky2.github.io/site-mon-truc-en-bois").replace(/\/+$/, "");
+const SITE = (S.url || "https://noedio.github.io/site-mon-truc-en-bois").replace(/\/+$/, "");
 const PAGES = ["", "boutique.html", "idees-cadeaux.html", "atelier.html", "avis.html", "faq.html", "contact.html", "newsletter.html", "cgv.html", "mentions-legales.html"];
 
 const attr = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);

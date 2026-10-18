@@ -23,7 +23,7 @@ avec des exemples et une boîte mail simulée ; rien n'est envoyé ni payé. Dé
 
 ## Gérer le site : la page admin
 
-Ouvrir **`/admin.html`** (ex. `https://creusky2.github.io/site-mon-truc-en-bois/admin.html`).
+Ouvrir **`/admin.html`** (ex. `https://noedio.github.io/site-mon-truc-en-bois/admin.html`).
 
 - **Tableau de bord** : chiffre d'affaires, panier moyen, 12 derniers mois, répartition par canal, demandes à traiter,
   liste de vérification avant d'ouvrir les commandes, raccourcis, sauvegarde / restauration, historique des publications.

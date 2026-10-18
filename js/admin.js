@@ -12,7 +12,7 @@
     "//  DONNÉES DU SITE — modifiées depuis la page admin (admin.html).\n" +
     "//  On peut aussi éditer ce fichier à la main : il doit rester du JSON valide après « window.DONNEES = ».\n" +
     "// ============================================================\n";
-  const DEFAUT = { proprio: "Creusky2", depot: "site-mon-truc-en-bois", branche: "site-vitrine-boutique" };
+  const DEFAUT = { proprio: "Noedio", depot: "site-mon-truc-en-bois", branche: "site-vitrine-boutique" };
   const CLE_STOCKAGE = "admin-mtb";
   const CLE_BROUILLON = window.MTB_DEMO ? "brouillon-mtb-demo" : "brouillon-mtb"; // aussi lu par le site pour la prévisualisation
   const BADGES = { "": "Aucun", nouveau: "Nouveau", promo: "Promo", best: "Best-seller", edition: "Édition limitée" };
@@ -1129,7 +1129,7 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
         <div class="bloc-tete"><h2>Référencement Google et statistiques de visite</h2></div>
         <p class="aide">Chaque produit a sa propre page optimisée pour Google et pour le partage sur Facebook/WhatsApp (photo, prix, description), recréée automatiquement à chaque publication. Pensez à déclarer le site dans <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Google Search Console</a> avec le plan du site <code>sitemap.xml</code>, et à mettre le lien du site sur votre fiche Google et votre page Facebook.</p>
         <div class="grille-champs">
-          ${champ("site.url", "Adresse publique du site", { type: "url", large: true, placeholder: "https://creusky2.github.io/site-mon-truc-en-bois", aide: "À changer si vous prenez votre propre nom de domaine (ex. https://www.montrucenbois.fr)." })}
+          ${champ("site.url", "Adresse publique du site", { type: "url", large: true, placeholder: "https://noedio.github.io/site-mon-truc-en-bois", aide: "À changer si vous prenez votre propre nom de domaine (ex. https://www.montrucenbois.fr)." })}
           ${champ("site.mesure.goatcounter", "Statistiques de visite : code GoatCounter (facultatif)", { large: true, placeholder: "montrucenbois", aide: 'Gratuit et sans cookie (pas de bandeau à afficher) : créez un compte sur <a href="https://www.goatcounter.com/signup" target="_blank" rel="noopener">goatcounter.com</a>, puis indiquez ici le code choisi (la partie avant « .goatcounter.com »). Visites, pages vues, ajouts au panier, commandes et demandes de devis apparaissent ensuite sur votre tableau GoatCounter.' })}
         </div>
       </section>

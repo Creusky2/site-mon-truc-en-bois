@@ -5,4 +5,4 @@ Disallow: /suivi
 Disallow: /favoris
 Disallow: /demo
 
-Sitemap: https://creusky2.github.io/site-mon-truc-en-bois/sitemap.xml
+Sitemap: https://noedio.github.io/site-mon-truc-en-bois/sitemap.xml

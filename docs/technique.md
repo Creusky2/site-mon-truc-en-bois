@@ -50,7 +50,7 @@ Dans **Infos boutique → Informations légales** : exploitant, forme juridique,
 
 ## Mode démo (présentation au commerçant)
 
-`demo.html` lance une démonstration complète du site (boutique, paiement, suivi, admin, caisse, clients, devis, marketing) sans aucun compte : sur GitHub Pages, `https://creusky2.github.io/site-mon-truc-en-bois/demo.html`.
+`demo.html` lance une démonstration complète du site (boutique, paiement, suivi, admin, caisse, clients, devis, marketing) sans aucun compte : sur GitHub Pages, `https://noedio.github.io/site-mon-truc-en-bois/demo.html`.
 
 - `js/demo.js`, chargé juste après `data/donnees.js` sur chaque page, ne fait rien tant que la démo n'est pas lancée (`?demo=1` ou le bouton de `demo.html` ; `?demo=0` pour la quitter). Une fois lancée, il simule dans le navigateur la base Supabase (API REST, connexion, stockage des photos), Stripe (page `demo-paiement.html`, webhook signé), Brevo (boîte mail affichée dans `demo.html`) et la publication GitHub du contenu. Tout reste dans le navigateur (localStorage, IndexedDB) ; la démo démarre avec des exemples (clients, commandes sur plusieurs mois, devis, code `BIENVENUE10`).
 - Les **vraies** fonctions serveur tournent dans le navigateur : `js/demo-serveur.js` est compilé depuis `supabase/functions`. Après toute modification de ces fonctions, le recompiler :
