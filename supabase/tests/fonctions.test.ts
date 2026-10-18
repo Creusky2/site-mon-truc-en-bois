@@ -482,3 +482,18 @@ Deno.test("caisse : espèces refusées si la boutique est assujettie à la TVA, 
   assertEquals((await post(admin, { action: "creer_commande", vente }, auth)).status, 201);
   catalogueOuvert();
 });
+
+Deno.test("contrôle de santé pour la surveillance : 200 si la base répond, 503 sinon", async () => {
+  reinitialiser();
+  const r = await suivi(new Request("https://f.test/suivi?sante=1"));
+  assertEquals(r.status, 200);
+  assertEquals((await r.json()).ok, true);
+  const avant = globalThis.fetch;
+  globalThis.fetch = async () => new Response("panne", { status: 500 });
+  try {
+    assertEquals((await suivi(new Request("https://f.test/suivi?sante=1"))).status, 503);
+  } finally {
+    globalThis.fetch = avant;
+  }
+  assertEquals((await suivi(new Request("https://f.test/suivi"))).status, 405);
+});

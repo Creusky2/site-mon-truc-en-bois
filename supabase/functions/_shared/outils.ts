@@ -32,6 +32,15 @@ export const json = (req: Request, donnees: unknown, status = 200) =>
 export function servir(traiter: (req: Request) => Promise<Response>) {
   return async (req: Request): Promise<Response> => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: entetesCors(req) });
+    // Contrôle de santé pour la surveillance (Better Stack) : GET …/suivi?sante=1 → 200 si la base répond
+    if (req.method === "GET" && new URL(req.url).searchParams.has("sante")) {
+      try {
+        await db("admins?select=user_id&limit=1");
+        return json(req, { ok: true });
+      } catch {
+        return json(req, { ok: false }, 503);
+      }
+    }
     if (req.method !== "POST") return json(req, { erreur: "Méthode non autorisée" }, 405);
     try {
       return await traiter(req);
