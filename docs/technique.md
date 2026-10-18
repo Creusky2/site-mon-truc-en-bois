@@ -47,3 +47,14 @@ Dans **Infos boutique → Informations légales** : exploitant, forme juridique,
 - **Garder Supabase gratuit éveillé** : `.github/workflows/supabase-reveil.yml`, deux fois par semaine. GitHub ne lance les tâches planifiées que depuis la **branche par défaut** du dépôt : elle doit être `site-vitrine-boutique`. Inutile en formule Pro.
 - **Pages produits, plan du site, robots.txt** : `node outils/generer-pages.mjs` ; `node outils/construire.mjs` prépare `dist/` pour Cloudflare Pages (avec `_headers` et `admin.webmanifest`). Sur GitHub Pages, `.github/workflows/pages-produits.yml` les régénère à chaque modification de `data/donnees.js` (désactivé par la variable `HEBERGEMENT=cloudflare`).
 - **Adresses courtes** : Cloudflare Pages sert `/admin.html` à l'adresse `/admin`. Les liens envoyés aux clients partent donc de l'adresse publique du site (*Infos boutique → Référencement*), et `robots.txt` comme `_headers` couvrent les deux formes.
+
+## Mode démo (présentation au commerçant)
+
+`demo.html` lance une démonstration complète du site (boutique, paiement, suivi, admin, caisse, clients, devis, marketing) sans aucun compte : sur GitHub Pages, `https://creusky2.github.io/site-mon-truc-en-bois/demo.html`.
+
+- `js/demo.js`, chargé juste après `data/donnees.js` sur chaque page, ne fait rien tant que la démo n'est pas lancée (`?demo=1` ou le bouton de `demo.html` ; `?demo=0` pour la quitter). Une fois lancée, il simule dans le navigateur la base Supabase (API REST, connexion, stockage des photos), Stripe (page `demo-paiement.html`, webhook signé), Brevo (boîte mail affichée dans `demo.html`) et la publication GitHub du contenu. Tout reste dans le navigateur (localStorage, IndexedDB) ; la démo démarre avec des exemples (clients, commandes sur plusieurs mois, devis, code `BIENVENUE10`).
+- Les **vraies** fonctions serveur tournent dans le navigateur : `js/demo-serveur.js` est compilé depuis `supabase/functions`. Après toute modification de ces fonctions, le recompiler :
+  `deno bundle --platform browser --format esm outils/demo-serveur.ts -o js/demo-serveur.js`
+- Identifiants de l'admin en démo : `demo@montrucenbois.fr` / `demo1234` (déjà remplis). La démo utilise ses propres clés de stockage : elle ne se mélange pas avec le vrai admin sur le même appareil.
+- `node outils/construire.mjs` n'emporte pas la démo en production (Cloudflare Pages) : pages et scripts de démo exclus, balise retirée des pages.
+

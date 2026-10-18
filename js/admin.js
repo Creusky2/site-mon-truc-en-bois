@@ -14,7 +14,7 @@
     "// ============================================================\n";
   const DEFAUT = { proprio: "Creusky2", depot: "site-mon-truc-en-bois", branche: "site-vitrine-boutique" };
   const CLE_STOCKAGE = "admin-mtb";
-  const CLE_BROUILLON = "brouillon-mtb"; // aussi lu par le site pour la prévisualisation
+  const CLE_BROUILLON = window.MTB_DEMO ? "brouillon-mtb-demo" : "brouillon-mtb"; // aussi lu par le site pour la prévisualisation
   const BADGES = { "": "Aucun", nouveau: "Nouveau", promo: "Promo", best: "Best-seller", edition: "Édition limitée" };
   const DISPOS = { disponible: "Disponible", commande: "Fabriqué sur commande", epuise: "Épuisé" };
 
@@ -39,7 +39,7 @@
     } catch {}
   }
   const lienGithub = (chemin) => `https://github.com/${cfg.proprio}/${cfg.depot}/${chemin}`;
-  let mode = cfg.cle ? "github" : "serveur";
+  let mode = cfg.cle && !window.MTB_DEMO ? "github" : "serveur"; // en démo : toujours le compte du commerçant
   // Serveur de la boutique : son adresse est dans le contenu publié du site (data/donnees.js, chargé par la page)
   const serveurDispo = () => !!(window.AdminServeur && window.DONNEES?.site?.commandes?.supabaseUrl && window.DONNEES?.site?.commandes?.supabaseCle);
   const dServeur = () => D || window.DONNEES;
@@ -174,7 +174,7 @@
     clearTimeout(minuteurToast);
     minuteurToast = setTimeout(() => (t.hidden = true), erreur ? 7000 : 4000);
   }
-  const srcImage = (chemin) => apercusLocaux[chemin] || chemin;
+  const srcImage = (chemin) => apercusLocaux[chemin] || window.MTB_DEMO?.photo(chemin) || chemin;
   const vignette = (chemin) =>
     chemin ? `<span class="ligne-image"><img src="${echapper(srcImage(chemin))}" alt="" loading="lazy"></span>` : `<span class="ligne-image">Sans photo</span>`;
   const premiereImage = (p) => p.images?.[0] || p.image || "";

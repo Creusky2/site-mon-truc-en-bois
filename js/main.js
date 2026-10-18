@@ -8,7 +8,7 @@
     const params = new URLSearchParams(location.search);
     if (params.has("brouillon")) sessionStorage.setItem("mode-brouillon", "1");
     if (params.has("quitter-brouillon")) sessionStorage.removeItem("mode-brouillon");
-    const brouillon = localStorage.getItem("brouillon-mtb");
+    const brouillon = localStorage.getItem(window.MTB_DEMO ? "brouillon-mtb-demo" : "brouillon-mtb");
     if (sessionStorage.getItem("mode-brouillon") && brouillon) {
       const b = JSON.parse(brouillon);
       D = b.donnees;

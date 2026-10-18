@@ -219,10 +219,11 @@
         b.disabled = true;
         try {
           const { photos } = await appelAdmin("photos", { commande_id: c.id });
-          photos.forEach((p) => {
+          for (const p of photos) {
             const el = f.querySelector(`.photo-lien[data-ligne="${p.ligne}"]`);
-            if (el) el.innerHTML = `— <a href="${e(p.url)}" target="_blank" rel="noopener">ouvrir / télécharger</a>`;
-          });
+            const url = window.MTB_DEMO ? await window.MTB_DEMO.lienPhoto(p.url) : p.url; // démo : photo gardée dans ce navigateur
+            if (el) el.innerHTML = `— <a href="${e(url)}" target="_blank" rel="noopener">ouvrir / télécharger</a>`;
+          }
           if (!photos.length) ctx.toast("Aucune photo trouvée.", true);
         } catch (err) {
           ctx.toast(err.message, true);

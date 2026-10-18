@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Démo du site — Mon Truc en Bois</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
+  <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .demo { display: grid; gap: 2.2rem; padding-bottom: 5rem; }
+    .demo-actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+    .demo-compte { display: flex; gap: .5rem 1.2rem; flex-wrap: wrap; font-size: .95rem; }
+    .demo-compte code { font: 500 .95rem var(--f-mono); background: var(--fond-alt); border-radius: 6px; padding: 2px 8px; }
+    .demo-parcours { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); }
+    .demo-colonne { display: grid; gap: .7rem; align-content: start; }
+    .demo-colonne h2 { font-size: 1.3rem; margin: 0; }
+    .demo-etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; counter-reset: etape; }
+    .demo-etapes li { counter-increment: etape; display: grid; grid-template-columns: 2rem 1fr; gap: .2rem .7rem; background: var(--surface); border: 1px solid var(--trait); border-radius: var(--r-petit); padding: .8rem 1rem; }
+    .demo-etapes li::before { content: counter(etape); grid-row: span 2; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--sable); color: var(--foret); display: grid; place-items: center; font: 600 .9rem var(--f-titre); }
+    .demo-etapes strong { font-weight: 600; }
+    .demo-etapes span { color: var(--encre-douce); font-size: .93rem; }
+    .demo-etapes a { font-weight: 600; }
+    .boite { display: grid; grid-template-columns: minmax(0, 330px) minmax(0, 1fr); gap: 1rem; align-items: start; }
+    @media (max-width: 820px) { .boite { grid-template-columns: minmax(0, 1fr); } }
+    .boite-liste { display: grid; gap: .4rem; max-height: 640px; overflow: auto; }
+    .boite-mail { text-align: left; background: var(--surface); border: 1px solid var(--trait); border-radius: var(--r-petit); padding: .7rem .9rem; display: grid; gap: .15rem; cursor: pointer; font: inherit; color: inherit; }
+    .boite-mail[aria-current="true"] { border-color: var(--foret); box-shadow: 0 0 0 2px var(--foret) inset; }
+    .boite-mail.non-lu strong { color: var(--foret); }
+    .boite-mail small { color: var(--encre-douce); overflow-wrap: anywhere; }
+    .boite-vue { background: var(--surface); border: 1px solid var(--trait); border-radius: var(--r); overflow: hidden; display: grid; min-width: 0; }
+    .boite-vue-tete { padding: .8rem 1rem; border-bottom: 1px solid var(--trait); display: grid; gap: .1rem; font-size: .92rem; overflow-wrap: anywhere; }
+    .boite-vue iframe { width: 100%; height: 640px; border: 0; background: #f4f2ee; }
+    .demo-reel { columns: 2 280px; gap: 2rem; padding-left: 1.2rem; margin: 0; }
+    .demo-reel li { margin-bottom: .4rem; break-inside: avoid; }
+  </style>
+</head>
+<body>
+  <header class="entete"></header>
+
+  <main class="conteneur demo">
+    <div class="page-tete">
+      <span class="etiquette">Démonstration</span>
+      <h1>Essayez le site comme un client, puis comme la boutique</h1>
+      <p class="chapeau">Tout fonctionne comme sur le vrai site : commandes, paiement par carte, suivi, devis, caisse, fichier clients, codes promo et emails. Rien n'est réellement envoyé ni payé : les emails arrivent dans la boîte mail de démo en bas de cette page, et tout reste sur cet appareil.</p>
+      <div class="demo-actions" id="actions"></div>
+    </div>
+
+    <section class="pile" id="identifiants" hidden>
+      <h2 style="margin:0">Connexion à l'administration</h2>
+      <div class="demo-compte"><span>Email : <code id="d-email"></code></span><span>Mot de passe : <code id="d-mdp"></code></span><span class="aide">(déjà remplis sur l'écran de connexion)</span></div>
+    </section>
+
+    <div class="demo-parcours">
+      <section class="demo-colonne">
+        <h2>Côté client</h2>
+        <ol class="demo-etapes">
+          <li><strong>Commander une création personnalisée</strong><span>Ouvrez par exemple la <a href="p/planche-aperitif.html">planche apéritif</a> : texte, police, aperçu en direct, puis panier. Essayez le code <strong>BIENVENUE10</strong>.</span></li>
+          <li><strong>Payer par carte</strong><span>Choisissez « Payer en ligne » : une page de paiement de démonstration s'ouvre, sans aucun débit.</span></li>
+          <li><strong>Lire ses emails et suivre sa commande</strong><span>Confirmation et paiement reçu arrivent dans la <a href="#boite">boîte mail de démo</a>, avec le lien de suivi.</span></li>
+          <li><strong>Demander un devis</strong><span>Depuis la page <a href="contact.html">Contact</a> : la boutique le reçoit par email et dans l'admin.</span></li>
+          <li><strong>S'inscrire aux nouveautés</strong><span>En bas de n'importe quelle page, puis se désinscrire avec le lien de l'email reçu.</span></li>
+        </ol>
+      </section>
+      <section class="demo-colonne">
+        <h2>Côté boutique</h2>
+        <ol class="demo-etapes">
+          <li><strong>Traiter la commande</strong><span><a href="admin.html#commandes">Admin → Commandes</a> : texte à graver, photos, statut « En fabrication » puis « Prête » : le client est prévenu par email.</span></li>
+          <li><strong>Envoyer un lien de paiement</strong><span>Sur une commande « à payer après maquette » : le client paie depuis l'email reçu.</span></li>
+          <li><strong>Vendre en boutique</strong><span><a href="admin.html#caisse">Caisse</a> : quelques produits, un client, le moyen de paiement, puis la facture.</span></li>
+          <li><strong>Répondre à un devis</strong><span><a href="admin.html#demandes">Demandes</a> : répondre par email, puis transformer en commande.</span></li>
+          <li><strong>Retrouver un client</strong><span><a href="admin.html#clients">Clients</a> : achats, notes, étiquettes, listes toutes prêtes.</span></li>
+          <li><strong>Faire une promotion</strong><span><a href="admin.html#marketing">Marketing</a> : un code promo, son texte à partager, un email aux abonnés.</span></li>
+          <li><strong>Changer un prix et publier</strong><span><a href="admin.html#produits">Produits</a> : nouveau prix, « Publier les modifications », puis vérifier sur la boutique.</span></li>
+          <li><strong>Regarder ses chiffres</strong><span><a href="admin.html">Tableau de bord</a> : chiffre d'affaires, panier moyen, 12 derniers mois.</span></li>
+        </ol>
+      </section>
+    </div>
+
+    <section class="pile" id="boite">
+      <div class="bloc-tete" style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center">
+        <h2 style="margin:0">Boîte mail de démo</h2>
+        <div class="filtres" id="filtres-boite">
+          <button class="filtre" data-boite="tous" aria-pressed="true">Tous</button>
+          <button class="filtre" data-boite="clients" aria-pressed="false">Reçus par les clients</button>
+          <button class="filtre" data-boite="boutique" aria-pressed="false">Reçus par la boutique</button>
+        </div>
+      </div>
+      <p class="aide">Chaque email que le site enverrait, exactement tel que le client ou la boutique le recevrait. Les boutons fonctionnent.</p>
+      <div class="boite" id="boite-contenu"></div>
+    </section>
+
+    <section class="pile">
+      <h2 style="margin:0">Ce qui change sur le vrai site</h2>
+      <ul class="demo-reel">
+        <li>Les emails partent vraiment, depuis contact@montrucenbois.fr (Brevo).</li>
+        <li>Le paiement passe par Stripe : carte, Apple Pay, Google Pay, argent versé sur le compte de la boutique.</li>
+        <li>Les commandes, clients et devis sont gardés sur le serveur de la boutique, visibles depuis tous ses appareils.</li>
+        <li>Les modifications publiées depuis l'admin sont visibles par tout le monde en une à deux minutes.</li>
+        <li>Le commerçant se connecte avec son propre email et son mot de passe.</li>
+        <li>Ici, tout reste dans ce navigateur : « Réinitialiser la démo » repart des exemples.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="pied"></footer>
+
+  <script src="data/donnees.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    const { echapper } = MTB;
+    const demo = window.MTB_DEMO;
+    const actions = document.getElementById("actions");
+    if (!demo) {
+      actions.innerHTML = `<a class="btn" href="demo.html?demo=1">Lancer la démo</a><span class="aide">Le site passe en mode démo sur cet appareil, avec une boutique déjà remplie d'exemples.</span>`;
+      document.getElementById("boite").hidden = true;
+    } else {
+      actions.innerHTML = `<a class="btn" href="index.html">Ouvrir la boutique</a><a class="btn btn-ligne" href="admin.html">Ouvrir l'admin</a>
+        <button class="btn btn-ligne" type="button" id="reinit">Réinitialiser la démo</button><span id="reinit-confirm"></span><a class="btn btn-ligne" href="index.html?demo=0">Quitter la démo</a>`;
+      document.getElementById("identifiants").hidden = false;
+      document.getElementById("d-email").textContent = demo.compte.email;
+      document.getElementById("d-mdp").textContent = demo.compte.mdp;
+      document.getElementById("reinit").onclick = () => {
+        document.getElementById("reinit-confirm").innerHTML = `<span class="aide">Effacer commandes, clients et emails de la démo ?</span> <button class="mini" type="button" id="reinit-oui">Oui, effacer</button>`;
+        document.getElementById("reinit-oui").onclick = () => {
+          demo.reinitialiser();
+          location.reload();
+        };
+      };
+
+      let filtre = "tous";
+      let ouvert = null;
+      const quand = (d) => new Date(d).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+      function boite() {
+        const tous = demo.emails();
+        const liste = tous.filter((m) => filtre === "tous" || (filtre === "boutique" ? m.a === demo.boutique : m.a !== demo.boutique));
+        if (!ouvert || !liste.some((m) => m.id === ouvert)) ouvert = liste[0]?.id || null;
+        const m = liste.find((x) => x.id === ouvert);
+        if (m) demo.marquerLu(m.id);
+        document.getElementById("boite-contenu").innerHTML = liste.length
+          ? `<div class="boite-liste">${liste.map((x) => `<button class="boite-mail ${x.lu ? "" : "non-lu"}" type="button" data-email-demo="${x.id}" aria-current="${x.id === ouvert}"><strong>${echapper(x.sujet)}</strong><small>À : ${echapper(x.a === demo.boutique ? "la boutique" : x.a)} · ${quand(x.date)}</small></button>`).join("")}</div>
+             <div class="boite-vue"><div class="boite-vue-tete"><strong>${echapper(m.sujet)}</strong><span class="aide">De : ${echapper(m.de)} · À : ${echapper(m.a)}${m.repondreA ? ` · Réponse à : ${echapper(m.repondreA)}` : ""}</span></div><iframe title="Contenu de l'email" id="vue-mail"></iframe></div>`
+          : `<p class="aide">Aucun email pour l'instant. Passez une commande ou envoyez un devis : les emails apparaîtront ici.</p>`;
+        const cadre = document.getElementById("vue-mail");
+        if (cadre) cadre.srcdoc = `<base target="_top">${m.html}`; // les boutons de l'email ouvrent la page dans cet onglet
+      }
+      document.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-email-demo]");
+        if (b) {
+          ouvert = b.dataset.emailDemo;
+          return boite();
+        }
+        const f = e.target.closest("[data-boite]");
+        if (f) {
+          filtre = f.dataset.boite;
+          document.querySelectorAll("[data-boite]").forEach((x) => x.setAttribute("aria-pressed", x === f));
+          ouvert = null;
+          boite();
+        }
+      });
+      document.addEventListener("mtb-demo-email", boite);
+      boite();
+    }
+  </script>
+</body>
+</html>

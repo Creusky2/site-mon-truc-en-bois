@@ -127,5 +127,5 @@ writeFileSync(
 );
 // robots.txt : pris en compte quand le site est à la racine d'un domaine (montrucenbois.fr), ignoré sinon.
 // Règles sans « .html » : elles couvrent aussi les adresses courtes servies par Cloudflare Pages (/admin, /panier…).
-writeFileSync(join(RACINE, "robots.txt"), `User-agent: *\nDisallow: /admin\nDisallow: /panier\nDisallow: /suivi\nDisallow: /favoris\n\nSitemap: ${SITE}/sitemap.xml\n`);
+writeFileSync(join(RACINE, "robots.txt"), `User-agent: *\nDisallow: /admin\nDisallow: /panier\nDisallow: /suivi\nDisallow: /favoris\nDisallow: /demo\n\nSitemap: ${SITE}/sitemap.xml\n`);
 console.log(`${produits.length} pages produits, sitemap de ${urls.length} adresses (${SITE}).`);

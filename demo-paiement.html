@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Paiement (démo) — Mon Truc en Bois</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Imite la page de paiement Stripe, pour la démonstration seulement */
+    .paiement { max-width: 460px; margin: 2.5rem auto 4rem; display: grid; gap: 1.2rem; }
+    .paiement-carte { background: var(--surface); border: 1px solid var(--trait); border-radius: var(--r); padding: 1.4rem; display: grid; gap: .9rem; box-shadow: var(--ombre); }
+    .paiement-montant { font: 700 2rem/1.1 var(--f-titre); }
+    .paiement-ligne { display: flex; justify-content: space-between; gap: 1rem; font-size: .95rem; }
+    .paiement-ligne span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .faux-champ { border: 1px solid var(--trait); border-radius: var(--r-petit); padding: .7rem .9rem; font: 500 1rem var(--f-mono); color: var(--encre-douce); background: var(--fond-alt); }
+    .paiement-pied { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .paiement-pied .btn { flex: 1 1 auto; justify-content: center; }
+  </style>
+</head>
+<body>
+  <main class="conteneur">
+    <div class="paiement" id="paiement"><p class="aide">Chargement du paiement…</p></div>
+  </main>
+  <script src="data/donnees.js"></script>
+  <script src="js/demo.js"></script>
+  <script>
+    const zone = document.getElementById("paiement");
+    const euros = (c) => (c / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+    const echapper = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    const s = window.MTB_DEMO?.session(new URLSearchParams(location.search).get("session"));
+    if (!s) {
+      zone.innerHTML = `<p class="message message-alerte">Ce paiement de démonstration est introuvable. <a href="demo.html">Revenir au guide de la démo</a></p>`;
+    } else {
+      zone.innerHTML = `
+        <span class="etiquette">Paiement sécurisé · démonstration</span>
+        <div class="paiement-carte">
+          <span class="aide">Mon Truc en Bois · commande ${echapper(s.numero)}</span>
+          <div class="paiement-montant">${euros(s.total)}</div>
+          ${s.articles.map((a) => `<div class="paiement-ligne"><span>${echapper(a.nom)} × ${a.quantite}</span><span>${euros(a.montant)}</span></div>`).join("")}
+          ${s.remise ? `<div class="paiement-ligne"><span>Remise</span><span>− ${euros(s.remise)}</span></div>` : ""}
+        </div>
+        <div class="paiement-carte">
+          <span class="aide">Email</span><div class="faux-champ">${echapper(s.email)}</div>
+          <span class="aide">Carte de démonstration (aucun débit)</span><div class="faux-champ">4242 4242 4242 4242 · 12/34 · 123</div>
+        </div>
+        <p class="message">Sur le vrai site, cette page est celle de Stripe (carte, Apple Pay, Google Pay). Ici, aucun argent ne circule.</p>
+        <div class="paiement-pied">
+          <button class="btn" id="payer">Payer ${euros(s.total)}</button>
+          <button class="btn btn-ligne" id="annuler">Annuler</button>
+        </div>
+        <div id="etat" aria-live="polite"></div>`;
+      document.getElementById("payer").onclick = async (e) => {
+        e.target.disabled = true;
+        document.getElementById("etat").innerHTML = `<p class="aide">Paiement en cours…</p>`;
+        try {
+          location.href = await window.MTB_DEMO.payer(s.id);
+        } catch (err) {
+          document.getElementById("etat").innerHTML = `<p class="message message-alerte">${echapper(err.message)}</p>`;
+          e.target.disabled = false;
+        }
+      };
+      document.getElementById("annuler").onclick = () => (location.href = s.cancel_url);
+    }
+  </script>
+</body>
+</html>

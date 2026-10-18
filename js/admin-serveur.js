@@ -13,7 +13,7 @@
     const c = config(D);
     if (!c.supabaseUrl || !c.supabaseCle || !window.supabase) return null;
     if (!client || client.__url !== c.supabaseUrl || client.__cle !== c.supabaseCle) {
-      client = window.supabase.createClient(c.supabaseUrl, c.supabaseCle, { auth: { persistSession: true, storageKey: "mtb-admin-supabase", detectSessionInUrl: true } });
+      client = window.supabase.createClient(c.supabaseUrl, c.supabaseCle, { auth: { persistSession: true, storageKey: window.MTB_DEMO ? "mtb-demo-supabase" : "mtb-admin-supabase", detectSessionInUrl: true } });
       client.__url = c.supabaseUrl;
       client.__cle = c.supabaseCle;
     }

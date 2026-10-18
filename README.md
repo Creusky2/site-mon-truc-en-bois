@@ -18,6 +18,9 @@ et le marketing.
 | [`docs/benchmark-plateformes.md`](docs/benchmark-plateformes.md) | Choix des plateformes, coûts, obligations légales |
 | [`docs/benchmark.md`](docs/benchmark.md) | Bonnes pratiques des sites de cadeaux personnalisés reprises sur le site |
 
+**Démonstration** : [`demo.html`](demo.html) fait essayer tout le site (côté client et côté boutique) sans aucun compte,
+avec des exemples et une boîte mail simulée ; rien n'est envoyé ni payé. Détails dans [`docs/technique.md`](docs/technique.md).
+
 ## Gérer le site : la page admin
 
 Ouvrir **`/admin.html`** (ex. `https://creusky2.github.io/site-mon-truc-en-bois/admin.html`).
