@@ -121,6 +121,8 @@ jobs:
         env:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          CONTENU_GITHUB_TOKEN: ${{ secrets.CONTENU_GITHUB_TOKEN }}
         run: |
           {
             echo "SITE_URL=$SITE_URL"
@@ -129,6 +131,10 @@ jobs:
             echo "EMAIL_EXPEDITEUR=${{ vars.EMAIL_EXPEDITEUR }}"
             echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY"
             echo "RESEND_API_KEY=$RESEND_API_KEY"
+            echo "BREVO_API_KEY=$BREVO_API_KEY"
+            echo "CONTENU_GITHUB_TOKEN=$CONTENU_GITHUB_TOKEN"
+            echo "CONTENU_DEPOT=${{ github.repository }}"
+            echo "CONTENU_BRANCHE=${{ github.ref_name }}"
           } | grep -v '=$' > secrets.env
           supabase secrets set --project-ref "$PROJET" --env-file secrets.env
           rm secrets.env

@@ -1,5 +1,5 @@
 // Onglet « Installation » de l'admin : assistant qui installe le serveur de la boutique (Supabase),
-// le paiement par carte (Stripe) et les emails (Resend), puis vérifie que tout fonctionne.
+// le paiement par carte (Stripe) et les emails (Brevo), puis vérifie que tout fonctionne.
 // Les clés secrètes sont chiffrées dans le navigateur et rangées dans les « secrets » GitHub du dépôt :
 // elles ne sont jamais publiées sur le site. L'installation elle-même tourne dans GitHub Actions
 // (.github/workflows/supabase.yml), lancée par l'enregistrement de supabase/installation.json.
@@ -82,6 +82,7 @@
   }
 
   // ---------- Affichage ----------
+  const expireBientot = (d) => d === "erreur" || (!!d && new Date(d.replace(" UTC", "Z").replace(" ", "T")) - Date.now() < 30 * 864e5);
   const pastille = (ok, texte, detail = "") =>
     `<li><span class="etat ${ok === true ? "ok" : ok === false ? "afaire" : "option"}">${ok === true ? "✓" : ok === false ? "!" : "·"}</span><span>${texte}${detail ? `<small>${detail}</small>` : ""}</span></li>`;
 
@@ -101,9 +102,10 @@
           ${pastille(v.cle === "ok", "Projet Supabase joignable", v.cle === "ok" ? e(cmd().supabaseUrl) : v.cle === "refusee" ? "La clé publique est refusée : recopiez-la depuis Supabase." : v.cle === "injoignable" ? "Projet introuvable ou en pause (un projet gratuit se met en pause après 7 jours sans visite : ouvrez supabase.com pour le réveiller)." : v.cle)}
           ${pastille(v.base === "ok", "Base de données", v.base === "ok" ? "Tables des commandes, clients, demandes et codes promo en place." : v.base === "absente" ? "Pas encore créée : lancez l'installation." : v.base || "")}
           ${pastille(fnsOk === fns.length, "Fonctions serveur", fns.map(([f, nom]) => `${v.fonctions[f] === "ok" ? "✓" : "✗"} ${nom}${v.fonctions[f] && v.fonctions[f] !== "ok" && v.fonctions[f] !== "absente" ? ` (${e(v.fonctions[f])})` : ""}`).join(" · "))}
+          ${et ? pastille(et.publication ? expireBientot(et.publication_expiration) ? false : true : false, "Modification du site par le commerçant", et.publication ? (et.publication_expiration === "erreur" ? "La clé de publication est refusée par GitHub : créez-en une nouvelle (étape 3)." : et.publication_expiration ? `Clé de publication valable jusqu'au ${new Date(et.publication_expiration.replace(" UTC", "Z").replace(" ", "T")).toLocaleDateString("fr-FR")}${expireBientot(et.publication_expiration) ? " : à renouveler maintenant (étape 3)" : ""}.` : "Clé de publication sans date d'expiration.") : "Pas encore de clé de publication : le commerçant ne peut modifier le site qu'avec une clé GitHub (étape 3).") : ""}
           ${pastille(v.connecte, "Compte administrateur", v.connecte ? "Connecté sur cet appareil." : "Connectez-vous plus bas pour gérer commandes et clients.")}
           ${et ? pastille(et.stripe ? (et.webhook ? true : false) : null, "Paiement par carte (Stripe)", et.stripe ? `Mode ${et.stripe_mode === "production" ? "<strong>réel</strong>" : "<strong>test</strong> (cartes de test uniquement)"}${et.webhook ? " · confirmation automatique active" : " · confirmation automatique manquante : relancez l'installation"}${cmd().paiement?.enLigne ? "" : " · désactivé sur le site"}` : "Non configuré (facultatif).") : ""}
-          ${et ? pastille(et.emails ? true : null, "Emails automatiques (Resend)", et.emails ? `Expéditeur : ${e(et.expediteur || "onboarding@resend.dev")} · copie des commandes à ${e(et.boutique_email || ctx.D.site.email)}` : "Non configurés : ni la boutique ni les clients ne reçoivent d'email.") : ""}
+          ${et ? pastille(et.emails ? true : null, `Emails automatiques${et.emails_service ? ` (${et.emails_service === "brevo" ? "Brevo" : "Resend"})` : ""}`, et.emails ? `Expéditeur : ${e(et.expediteur)} · copie des commandes à ${e(et.boutique_email || ctx.D.site.email)}` : "Non configurés : ni la boutique ni les clients ne reçoivent d'email.") : ""}
           ${run ? pastille(run.status !== "completed" ? null : run.conclusion === "success", "Dernière installation", `${date(run.created_at)} · ${run.status !== "completed" ? "en cours" : run.conclusion === "success" ? "réussie" : "échouée"} · <a href="${run.html_url}" target="_blank" rel="noopener">journal</a>`) : ""}
         </ul>
         <div id="ins-connexion"></div>
@@ -125,7 +127,7 @@
     return `
       <section class="bloc assistant">
         <div class="bloc-tete"><h2>${premier ? "Assistant d'installation" : "Réglages du serveur"}</h2></div>
-        <p class="aide">${premier ? "Comptez 20 minutes, une seule fois. Trois comptes gratuits : <strong>Supabase</strong> (serveur et base de données), <strong>Stripe</strong> (paiement par carte, facultatif) et <strong>Resend</strong> (emails automatiques, recommandé)." : "Pour changer une clé (passer Stripe en mode réel, nouvelle clé Resend, nouveau mot de passe…), remplissez seulement le champ concerné puis relancez l'installation. Les champs secrets laissés vides gardent leur valeur."}</p>
+        <p class="aide">${premier ? "Comptez 20 minutes, une seule fois. Trois comptes gratuits : <strong>Supabase</strong> (serveur et base de données), <strong>Stripe</strong> (paiement par carte, facultatif) et <strong>Brevo</strong> (emails automatiques et newsletter, recommandé)." : "Pour changer une clé (passer Stripe en mode réel, nouvelle clé Brevo, nouveau mot de passe…), remplissez seulement le champ concerné puis relancez l'installation. Les champs secrets laissés vides gardent leur valeur."}</p>
 
         <ol class="etapes-ins">
           <li class="${droitsOk ? "fait" : ""}">
@@ -156,13 +158,21 @@
           </li>
 
           <li>
-            <h3>3. Votre compte administrateur</h3>
-            <p class="aide">Pour vous connecter ici aux commandes et aux clients, depuis n'importe quel appareil.</p>
+            <h3>3. Compte du commerçant</h3>
+            <p class="aide">Son seul identifiant : il se connecte à l'admin avec cet email et ce mot de passe, depuis n'importe quel appareil, sans jamais voir GitHub.</p>
             <div class="grille-champs">
               ${champ("ins-admin", "Email administrateur", { type: "email", valeur: v.ADMIN_EMAIL || emailBoutique, requis: true, auto: "username" })}
               ${champ("ins-mdp", premier || !v.ADMIN_EMAIL ? "Mot de passe (10 caractères minimum)" : "Nouveau mot de passe", { type: "password", requis: premier || !v.ADMIN_EMAIL, auto: "new-password", aide: premier || !v.ADMIN_EMAIL ? "" : "Laissez vide pour garder le mot de passe actuel." })}
               ${champ("ins-mdp2", "Mot de passe (confirmation)", { type: "password", requis: premier || !v.ADMIN_EMAIL, auto: "new-password" })}
             </div>
+            <details ${gh?.secrets.CONTENU_GITHUB_TOKEN ? "" : "open"}><summary><strong>Clé de publication</strong> : permet au commerçant de modifier le site</summary>
+              <ol style="margin-top:.6rem">
+                <li>Sur <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>, créez une <strong>deuxième</strong> clé : nom « Publication commerçant », expiration 1 an, dépôt <code>${e(ctx.github.cfg.depot)}</code> uniquement.</li>
+                <li>Permissions : <strong>Contents</strong> sur <em>Read and write</em>, <strong>rien d'autre</strong>. Elle ne sert qu'à publier le catalogue et les photos.</li>
+                <li>Notez la date d'expiration dans l'agenda de l'agence : l'état du serveur l'affiche aussi et prévient 30 jours avant.</li>
+              </ol>
+              <div class="grille-champs">${champ("ins-publication", "Clé de publication", { type: "password", placeholder: "github_pat_…", aide: garde("CONTENU_GITHUB_TOKEN") || "Rangée chiffrée dans les secrets du serveur, jamais sur le site." })}</div>
+            </details>
           </li>
 
           <li>
@@ -178,14 +188,15 @@
           </li>
 
           <li>
-            <h3>5. Emails automatiques — Resend</h3>
+            <h3>5. Emails automatiques et newsletter — Brevo</h3>
             <ol>
-              <li>Créez un compte sur <a href="https://resend.com/signup" target="_blank" rel="noopener">resend.com</a>, puis <em>API Keys → Create API Key</em> (permission <em>Sending access</em>) et copiez-la (<code>re_…</code>).</li>
-              <li>Au début, l'expéditeur <code>onboarding@resend.dev</code> n'envoie qu'à l'adresse de votre compte Resend. Pour écrire aux clients, ajoutez votre nom de domaine dans <em>Domains</em> (Resend indique les lignes à copier chez votre hébergeur), puis indiquez ici une adresse de ce domaine.</li>
+              <li>Créez un compte gratuit sur <a href="https://onboarding.brevo.com/account/register" target="_blank" rel="noopener">brevo.com</a> <strong>avec l'email de la boutique</strong> (il devient l'expéditeur validé).</li>
+              <li>Menu du compte → <em>SMTP &amp; API</em> → onglet <em>Clés API</em> → <strong>Générer une nouvelle clé API</strong>, copiez-la (<code>xkeysib-…</code>).</li>
+              <li>Avec votre nom de domaine : <em>Expéditeurs, domaines et IP dédiées</em> → <em>Domaines</em> → <strong>Authentifier le domaine</strong> (Brevo indique les lignes DNS à copier), puis indiquez ici une adresse de ce domaine, par exemple <code>Mon Truc en Bois &lt;bonjour@montrucenbois.fr&gt;</code>.</li>
             </ol>
             <div class="grille-champs">
-              ${champ("ins-resend", "Clé Resend", { type: "password", placeholder: "re_…", aide: garde("RESEND_API_KEY") })}
-              ${champ("ins-expediteur", "Expéditeur des emails", { valeur: v.EMAIL_EXPEDITEUR || "Mon Truc en Bois <onboarding@resend.dev>", placeholder: "Mon Truc en Bois <bonjour@votre-domaine.fr>" })}
+              ${champ("ins-brevo", "Clé Brevo", { type: "password", placeholder: "xkeysib-…", aide: garde("BREVO_API_KEY") || (gh?.secrets.RESEND_API_KEY ? "Les emails passent actuellement par Resend : une clé Brevo le remplace." : "") })}
+              ${champ("ins-expediteur", "Expéditeur des emails", { valeur: v.EMAIL_EXPEDITEUR || "", placeholder: "Vide = « Mon Truc en Bois » avec l'email de la boutique" })}
               ${champ("ins-boutique", "Email qui reçoit les commandes et devis", { type: "email", valeur: v.BOUTIQUE_EMAIL || emailBoutique, requis: true })}
             </div>
           </li>
@@ -228,9 +239,10 @@
     const val = (id) => zone.querySelector(`#${id}`)?.value.trim() ?? "";
     return {
       url: val("ins-url"), cle: val("ins-cle"), jeton: val("ins-jeton"),
+      publication: val("ins-publication"),
       admin: val("ins-admin").toLowerCase(), mdp: zone.querySelector("#ins-mdp").value, mdp2: zone.querySelector("#ins-mdp2").value,
       stripe: val("ins-stripe"), carte: zone.querySelector("#ins-carte").checked,
-      resend: val("ins-resend"), expediteur: val("ins-expediteur"), boutique: val("ins-boutique").toLowerCase(),
+      brevo: val("ins-brevo"), expediteur: val("ins-expediteur"), boutique: val("ins-boutique").toLowerCase(),
       site: val("ins-site").replace(/\/+$/, ""),
     };
   }
@@ -253,7 +265,9 @@
     if (x.stripe && /^pk_/.test(x.stripe)) return "C'est la clé « publiable » de Stripe : il faut la clé secrète (sk_test_… ou sk_live_…).";
     if (x.stripe && !/^(sk|rk)_(test|live)_[A-Za-z0-9]+$/.test(x.stripe)) return "La clé secrète Stripe commence par sk_test_ ou sk_live_.";
     if (x.carte && !x.stripe && !gh.secrets.STRIPE_SECRET_KEY) return "Pour proposer le paiement par carte, collez la clé secrète Stripe (ou décochez la case).";
-    if (x.resend && !/^re_[A-Za-z0-9_]+$/.test(x.resend)) return "La clé Resend commence par re_.";
+    if (x.publication && !/^github_pat_\w{20,}$/.test(x.publication)) return "La clé de publication commence par github_pat_.";
+    if (x.publication && x.publication === ctx.github.cfg.cle) return "Créez une clé de publication distincte de la clé de l'agence, avec la seule permission Contents.";
+    if (x.brevo && !/^xkeysib-[A-Za-z0-9-]{20,}$/.test(x.brevo)) return "La clé Brevo commence par xkeysib- (menu SMTP & API → Clés API).";
     if (x.expediteur && !/@/.test(x.expediteur)) return "Expéditeur : une adresse email, par exemple « Mon Truc en Bois <bonjour@votre-domaine.fr> ».";
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(x.boutique)) return "Indiquez l'email qui reçoit les commandes.";
     if (!/^https:\/\/[^/]+/.test(x.site)) return "Adresse du site : elle doit commencer par https://.";
@@ -316,7 +330,7 @@
 
       // 2. Secrets chiffrés
       const cle = await api("/actions/secrets/public-key");
-      const secrets = { SUPABASE_ACCESS_TOKEN: x.jeton, STRIPE_SECRET_KEY: x.stripe, RESEND_API_KEY: x.resend, ADMIN_MOT_DE_PASSE: x.mdp };
+      const secrets = { SUPABASE_ACCESS_TOKEN: x.jeton, STRIPE_SECRET_KEY: x.stripe, BREVO_API_KEY: x.brevo, CONTENU_GITHUB_TOKEN: x.publication, ADMIN_MOT_DE_PASSE: x.mdp };
       for (const [nom, valeur] of Object.entries(secrets)) {
         if (!valeur) continue;
         await api(`/actions/secrets/${nom}`, { method: "PUT", body: JSON.stringify({ encrypted_value: await chiffrer(cle, valeur), key_id: cle.key_id }) });
@@ -328,7 +342,7 @@
       const vars = {
         SUPABASE_PROJECT_REF: ok.ref, SUPABASE_URL: url, SUPABASE_ANON_KEY: x.cle, SITE_URL: x.site,
         SITE_ORIGINES: [...new Set([origine, location.origin].filter((o) => /^https:/.test(o)))].join(","),
-        BOUTIQUE_EMAIL: x.boutique, EMAIL_EXPEDITEUR: x.expediteur || "Mon Truc en Bois <onboarding@resend.dev>", ADMIN_EMAIL: x.admin,
+        BOUTIQUE_EMAIL: x.boutique, EMAIL_EXPEDITEUR: x.expediteur || `Mon Truc en Bois <${x.boutique}>`, ADMIN_EMAIL: x.admin,
       };
       for (const [nom, valeur] of Object.entries(vars)) await ecrireVariable(nom, valeur);
       etape(2, "ok");

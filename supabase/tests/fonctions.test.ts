@@ -88,14 +88,22 @@ globalThis.fetch = async (entree: string | URL | Request, init: RequestInit = {}
   }
   if (url.href.startsWith(`${SUPA}/auth/v1/user`)) {
     const id = JETONS[(new Headers(init.headers).get("Authorization") ?? "").replace("Bearer ", "")];
-    return id ? reponse({ id }) : reponse({ msg: "invalid" }, 401);
+    return id ? reponse({ id, email: id === ADMIN ? "boutique@test.fr" : "client@test.fr" }) : reponse({ msg: "invalid" }, 401);
   }
   if (url.href.startsWith(`${SUPA}/storage/v1/object/upload/sign/`)) return reponse({ url: url.pathname.replace("/storage/v1", "") + "?token=envoi" });
   if (url.href.startsWith(`${SUPA}/storage/v1/object/sign/`)) return reponse({ signedURL: url.pathname.replace("/storage/v1", "") + "?token=lecture" });
   if (url.href === "https://api.stripe.com/v1/checkout/sessions") return reponse({ id: "cs_test_1", url: "https://checkout.stripe.test/cs_test_1" });
   if (url.href === "https://api.stripe.com/v1/coupons") return reponse({ id: "coupon_1" });
   if (url.href === "https://api.resend.com/emails") return reponse({ id: "email_1" });
-  if (url.href === "https://api.resend.com/emails/batch") return reponse({ data: corps.map((_: unknown, i: number) => ({ id: `lot_${i}` })) });
+  if (url.href.startsWith("https://api.github.com/repos/agence/site/contents/")) {
+    const auth = (init.headers as any)?.Authorization;
+    if (auth !== "Bearer github_pat_contenu") return reponse({ message: "Bad credentials" }, 401);
+    const chemin = decodeURIComponent(url.pathname.replace("/repos/agence/site/contents/", ""));
+    if (methode === "GET") return chemin === "data/donnees.js" ? new Response(JSON.stringify({ sha: "a".repeat(40), content: btoa("window.DONNEES = {}") }), { headers: { "github-authentication-token-expiration": "2027-10-01 00:00:00 UTC" } }) : reponse({}, 404);
+    if (corps.sha && corps.sha !== "a".repeat(40)) return reponse({ message: "conflict" }, 409);
+    return reponse({ content: { sha: "b".repeat(40) }, commit: { sha: "c".repeat(40) } }, corps.sha ? 200 : 201);
+  }
+  if (url.href === "https://api.brevo.com/v3/smtp/email") return init.headers && (init.headers as any)["api-key"] === "xkeysib-test" ? reponse({ messageId: "<1@brevo>" }, 201) : reponse({ code: "unauthorized" }, 401);
   return reponse({ erreur: `non simulé : ${url.href}` }, 500);
 };
 function reinitialiser() {
@@ -375,11 +383,102 @@ Deno.test("admin : email aux abonnés (essai, puis envoi avec lien de désinscri
   assertEquals(emails()[0].to, ["boutique@test.fr"]);
   const r = await (await post(admin, corps, auth)).json();
   assertEquals(r.envoyes, 1);
-  const lot = appels.find((a) => a.url.endsWith("/emails/batch"))!.corps;
+  const lot = emails().filter((e) => e.to[0] !== "boutique@test.fr");
   assertEquals(lot.length, 1);
   assertEquals(lot[0].to, ["marie@test.fr"]);
   assertMatch(lot[0].html, /Bonjour Marie/);
   assertMatch(lot[0].html, /newsletter\.html\?desinscription=1&email=marie%40test\.fr/);
   assertMatch(lot[0].headers["List-Unsubscribe"], /desinscription/);
   assertEquals(tables.campagnes[0].destinataires, 1);
+});
+
+Deno.test("emails par Brevo : expéditeur, destinataire, réponse, désinscription ; refus du service signalé", async () => {
+  reinitialiser();
+  Deno.env.set("BREVO_API_KEY", "xkeysib-test");
+  try {
+    await post(commande, demande());
+    const envoi = appels.filter((a) => a.url === "https://api.brevo.com/v3/smtp/email").map((a) => a.corps);
+    assertEquals(envoi.length, 2);
+    assertEquals(envoi[0].sender, { name: "Mon Truc en Bois", email: "boutique@test.fr" });
+    assertEquals(envoi[1].to, [{ email: "marie@test.fr" }]);
+    assertEquals(envoi[1].replyTo, { email: "boutique@test.fr" });
+    assertMatch(envoi[1].htmlContent, /MTB-2026-0001/);
+    assertEquals(appels.some((a) => a.url.startsWith("https://api.resend.com")), false);
+    const auth = { Authorization: "Bearer jeton-admin" };
+    const etat = await (await post(admin, { action: "etat" }, auth)).json();
+    assertEquals(etat.emails_service, "brevo");
+    Deno.env.set("EMAIL_EXPEDITEUR", "Atelier MTB <bonjour@montrucenbois.fr>");
+    tables.clients.push({ id: "c1", nom: "Marie Durand", email: "marie@test.fr", consentement_marketing: true });
+    appels = [];
+    const r = await (await post(admin, { action: "campagne", sujet: "Noël", message: "Nos idées." }, auth)).json();
+    assertEquals(r.envoyes, 1);
+    const c = appels.find((a) => a.url.includes("brevo"))!.corps;
+    assertEquals(c.sender, { name: "Atelier MTB", email: "bonjour@montrucenbois.fr" });
+    assertMatch(c.headers["List-Unsubscribe"], /desinscription=1&email=marie%40test\.fr/);
+    Deno.env.set("BREVO_API_KEY", "mauvaise-cle");
+    const ko = await post(admin, { action: "email_client", email: "marie@test.fr", nom: "Marie", sujet: "Test", message: "Bonjour" }, auth);
+    assertEquals(ko.status, 400);
+    assertMatch((await ko.json()).erreur, /Brevo 401/);
+  } finally {
+    Deno.env.delete("BREVO_API_KEY");
+    Deno.env.delete("EMAIL_EXPEDITEUR");
+  }
+});
+
+Deno.test("publication du contenu par le serveur : réservée aux admins, contenu vérifié, auteur tracé", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  const b64 = (t: string) => btoa(String.fromCharCode(...new TextEncoder().encode(t)));
+  const valide = b64("// en-tête\nwindow.DONNEES = " + JSON.stringify({ site: { nom: "Mon Truc en Bois — été" }, produits: [] }) + ";\n");
+  assertEquals((await post(admin, { action: "contenu_lire" }, auth)).status, 503); // pas encore configuré
+  Deno.env.set("CONTENU_GITHUB_TOKEN", "github_pat_contenu");
+  Deno.env.set("CONTENU_DEPOT", "agence/site");
+  Deno.env.set("CONTENU_BRANCHE", "site-vitrine-boutique");
+  try {
+    assertEquals((await post(admin, { action: "contenu_lire" })).status, 401);
+    assertEquals((await post(admin, { action: "contenu_lire" }, { Authorization: "Bearer jeton-client" })).status, 403);
+    const lu = await (await post(admin, { action: "contenu_lire" }, auth)).json();
+    assertEquals(lu.sha, "a".repeat(40));
+    const etat = await (await post(admin, { action: "etat" }, auth)).json();
+    assertEquals(etat.publication, true);
+    assertMatch(etat.publication_expiration, /^2027-10-01/);
+
+    const r = await post(admin, { action: "contenu_publier", contenu: valide, sha: "a".repeat(40), message: "Nouveaux prix" }, auth);
+    assertEquals(r.status, 200);
+    const put = appels.find((a) => a.methode === "PUT" && a.url.includes("/contents/data/donnees.js"))!;
+    assertEquals(put.corps.branch, "site-vitrine-boutique");
+    assertEquals(put.corps.committer.email, "boutique@test.fr");
+    assertEquals(put.corps.message, "Nouveaux prix");
+
+    const piege = b64("fetch('https://pirate.test');\nwindow.DONNEES = {\"site\":{},\"produits\":[]};");
+    assertEquals((await post(admin, { action: "contenu_publier", contenu: piege, sha: "a".repeat(40) }, auth)).status, 400);
+    const piege2 = b64("window.DONNEES = {\"site\":{},\"produits\":[]}; alert(1)");
+    assertEquals((await post(admin, { action: "contenu_publier", contenu: piege2, sha: "a".repeat(40) }, auth)).status, 400);
+    assertEquals((await post(admin, { action: "contenu_publier", contenu: valide, sha: "d".repeat(40) }, auth)).status, 409);
+
+    const jpeg = "/9j/" + "A".repeat(100);
+    assertEquals((await post(admin, { action: "photo_publier", chemin: "img/mug-noel.jpg", contenu: jpeg }, auth)).status, 201);
+    assertEquals((await post(admin, { action: "photo_publier", chemin: "js/main.js", contenu: jpeg }, auth)).status, 400);
+    assertEquals((await post(admin, { action: "photo_publier", chemin: "img/../index.jpg", contenu: jpeg }, auth)).status, 400);
+    assertEquals((await post(admin, { action: "photo_publier", chemin: "img/x.jpg", contenu: btoa("<svg/>") }, auth)).status, 400);
+
+    Deno.env.set("CONTENU_GITHUB_TOKEN", "expiree");
+    const exp = await post(admin, { action: "contenu_lire" }, auth);
+    assertEquals(exp.status, 502);
+    assertMatch((await exp.json()).erreur, /expiré/);
+  } finally {
+    for (const v of ["CONTENU_GITHUB_TOKEN", "CONTENU_DEPOT", "CONTENU_BRANCHE"]) Deno.env.delete(v);
+  }
+});
+
+Deno.test("caisse : espèces refusées si la boutique est assujettie à la TVA, acceptées en franchise", async () => {
+  reinitialiser();
+  const auth = { Authorization: "Bearer jeton-admin" };
+  const vente = { lignes: [{ id: "mug-personnalise", quantite: 1 }], canal: "boutique", paiement_statut: "paye", paiement_moyen: "especes" };
+  catalogueOuvert((d) => (d.site.legal = { regimeTva: "assujetti", tauxTva: 20 }));
+  assertEquals((await post(admin, { action: "creer_commande", vente }, auth)).status, 400);
+  assertEquals((await post(admin, { action: "creer_commande", vente: { ...vente, paiement_moyen: "carte" } }, auth)).status, 201);
+  catalogueOuvert((d) => (d.site.legal = { regimeTva: "franchise" }));
+  assertEquals((await post(admin, { action: "creer_commande", vente }, auth)).status, 201);
+  catalogueOuvert();
 });

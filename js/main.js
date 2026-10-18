@@ -526,6 +526,32 @@
     else setTimeout(envoyer, 1500);
   }
 
+  // ---------- Informations légales (CGV, mentions légales), saisies dans l'admin ----------
+  const HEBERGEURS = {
+    cloudflare: "Cloudflare Pages — Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis.",
+    github: "GitHub Pages — GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis.",
+  };
+  function remplirLegal() {
+    const L = S.legal || {};
+    const m = L.mediateur || {};
+    const valeurs = {
+      exploitant: L.exploitant,
+      forme: L.formeJuridique,
+      siret: L.siret || S.siret,
+      tva: L.regimeTva === "franchise" ? "TVA non applicable (article 293 B du code général des impôts)" : L.regimeTva === "assujetti" ? "toutes taxes comprises (TVA incluse)" : "",
+      mediateur: m.nom ? `${echapper(m.nom)}${m.adresse ? `, ${echapper(m.adresse)}` : ""}${m.url ? ` — <a href="${echapper(m.url)}" target="_blank" rel="noopener">${echapper(m.url.replace(/^https?:\/\//, ""))}</a>` : ""}` : "",
+      hebergeur: HEBERGEURS[L.hebergeur] || HEBERGEURS.github,
+    };
+    let incomplet = false;
+    document.querySelectorAll("[data-legal]").forEach((el) => {
+      const v = valeurs[el.dataset.legal];
+      if (!v) incomplet = true;
+      if (el.dataset.legal === "mediateur" && v) el.innerHTML = v;
+      else el.textContent = v || "[à compléter]";
+    });
+    document.querySelectorAll("[data-legal-incomplet]").forEach((el) => (el.hidden = !incomplet));
+  }
+
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-favori]");
     if (!b) return;
@@ -542,6 +568,7 @@
     boutonContact();
     donneesStructurees();
     document.querySelectorAll("[data-site]").forEach((el) => (el.textContent = S[el.dataset.site] ?? ""));
+    remplirLegal();
     document.querySelectorAll("[data-texte]").forEach((el) => (el.textContent = D.textes?.[el.dataset.texte] ?? ""));
     document.querySelectorAll("[data-icone]").forEach((el) => el.insertAdjacentHTML("afterbegin", icone(el.dataset.icone)));
     document.querySelectorAll("[data-horaires]").forEach((el) => (el.innerHTML = horairesHTML()));

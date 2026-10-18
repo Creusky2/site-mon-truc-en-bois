@@ -1,5 +1,7 @@
 # Régénère les pages produits (p/<id>.html) et le plan du site à chaque modification du catalogue depuis l'admin.
 # Rien à faire à la main : voir outils/generer-pages.mjs.
+# Sur Cloudflare Pages, la génération se fait à chaque mise en ligne (outils/construire.mjs) :
+# créer alors la variable de dépôt HEBERGEMENT = cloudflare pour désactiver ce robot.
 name: "Site : pages produits pour Google"
 
 on:
@@ -19,6 +21,7 @@ concurrency:
 jobs:
   generer:
     runs-on: ubuntu-latest
+    if: ${{ vars.HEBERGEMENT != 'cloudflare' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,7 +31,7 @@ jobs:
         run: node outils/generer-pages.mjs
       - name: Publication
         run: |
-          git add -A p sitemap.xml ./*.html
+          git add -A p sitemap.xml robots.txt ./*.html
           if git diff --cached --quiet; then echo "Pages déjà à jour."; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

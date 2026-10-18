@@ -14,11 +14,30 @@
 <body class="admin">
   <!-- Écran de connexion -->
   <main id="connexion" class="connexion" hidden>
-    <form class="carte" id="form-connexion">
+    <!-- Connexion du commerçant (une fois le serveur installé) -->
+    <form class="carte" id="form-commercant" hidden>
       <img src="img/logo-200.webp" alt="Mon Truc en Bois" width="120" height="110" style="margin-inline:auto">
       <div class="pile" style="gap:.5rem">
         <h1 style="font-size:1.8rem">Administration du site</h1>
-        <p class="aide">Pour modifier le site, collez votre clé d'accès GitHub. Elle reste enregistrée uniquement sur cet appareil.</p>
+        <p class="aide">Connectez-vous avec votre email et votre mot de passe. La connexion est mémorisée sur cet appareil.</p>
+      </div>
+      <div class="champ"><label for="c-email">Email</label><input type="email" id="c-email" required autocomplete="username"></div>
+      <div class="champ"><label for="c-mdp">Mot de passe</label><input type="password" id="c-mdp" required autocomplete="current-password"></div>
+      <button class="btn btn-plein" type="submit">Se connecter</button>
+      <button class="mini" type="button" id="c-oubli" style="justify-self:center">Mot de passe oublié ?</button>
+      <div id="erreur-commercant" aria-live="polite"></div>
+      <details class="aide-cle" id="acces-agence">
+        <summary>Accès agence</summary>
+        <p class="aide" style="margin-top:.6rem">Réservé à l'agence (installation, réglages avancés) : connexion avec une clé GitHub.</p>
+        <button class="btn btn-ligne" type="button" id="vers-agence">Se connecter avec une clé GitHub</button>
+      </details>
+    </form>
+
+    <form class="carte" id="form-connexion">
+      <img src="img/logo-200.webp" alt="Mon Truc en Bois" width="120" height="110" style="margin-inline:auto">
+      <div class="pile" style="gap:.5rem">
+        <h1 style="font-size:1.8rem">Accès agence</h1>
+        <p class="aide">Collez la clé d'accès GitHub de l'agence. Elle reste enregistrée uniquement sur cet appareil.</p>
       </div>
       <div class="champ">
         <label for="cle">Clé d'accès GitHub</label>
@@ -35,6 +54,7 @@
       </details>
       <button class="btn btn-plein" type="submit">Se connecter</button>
       <div id="erreur-connexion" aria-live="polite"></div>
+      <button class="mini" type="button" id="vers-commercant" hidden style="justify-self:center">← Connexion commerçant (email et mot de passe)</button>
       <details class="aide-cle">
         <summary>Comment obtenir une clé d'accès ?</summary>
         <ol>
@@ -90,6 +110,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="data/donnees.js"></script>
   <script src="js/admin-serveur.js"></script>
   <script src="js/admin-commandes.js"></script>
   <script src="js/admin-crm.js"></script>

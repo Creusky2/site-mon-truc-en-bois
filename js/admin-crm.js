@@ -104,6 +104,8 @@
   // =====================================================================
   //  CAISSE : vente en boutique, par téléphone, sur un salon
   // =====================================================================
+  // Assujetti à la TVA : les paiements en espèces doivent passer par un logiciel de caisse certifié (art. 286 du CGI).
+  const especesInterdites = () => ctx.D.site.legal?.regimeTva === "assujetti";
   const produitsVendables = () => ctx.D.produits.filter((p) => p.visible !== false);
   function totauxCaisse() {
     const sous = arrondi(caisse.lignes.reduce((t, l) => t + arrondi(l.prix) * l.quantite, 0));
@@ -186,7 +188,7 @@
               <button type="button" class="filtre" data-crm="paye" data-valeur="1" aria-pressed="${caisse.paye}">Réglée maintenant</button>
               <button type="button" class="filtre" data-crm="paye" data-valeur="" aria-pressed="${!caisse.paye}">À régler plus tard</button>
             </div>
-            ${caisse.paye ? `<div class="filtres">${Object.entries(MOYENS).map(([k, v]) => `<button type="button" class="filtre" data-crm="moyen" data-valeur="${k}" aria-pressed="${caisse.moyen === k}">${v}</button>`).join("")}</div>` : `<p class="aide">La commande sera « à payer » : vous pourrez envoyer un lien de paiement par carte depuis l'onglet Commandes.</p>`}
+            ${caisse.paye ? `<div class="filtres">${Object.entries(MOYENS).filter(([k]) => k !== "especes" || !especesInterdites()).map(([k, v]) => `<button type="button" class="filtre" data-crm="moyen" data-valeur="${k}" aria-pressed="${caisse.moyen === k}">${v}</button>`).join("")}</div>${especesInterdites() ? `<p class="aide">Espèces : à enregistrer sur une caisse certifiée (obligation pour les commerces assujettis à la TVA). Ici : carte, chèque, virement.</p>` : ""}` : `<p class="aide">La commande sera « à payer » : vous pourrez envoyer un lien de paiement par carte depuis l'onglet Commandes.</p>`}
             <div class="grille-champs">
               <div class="champ"><label for="cs-remise">Remise</label><span class="avec-unite"><input id="cs-remise" type="number" step="0.01" min="0" data-caisse="remise" value="${caisse.remise || ""}" placeholder="0"><select data-caisse="remiseType" aria-label="Type de remise"><option value="euros" ${caisse.remiseType === "euros" ? "selected" : ""}>€</option><option value="pourcent" ${caisse.remiseType === "pourcent" ? "selected" : ""}>%</option></select></span></div>
               <div class="champ"><label for="cs-date">Pour le (facultatif)</label><input id="cs-date" type="date" data-caisse="date" value="${e(caisse.date)}"></div>
@@ -229,6 +231,7 @@
     const n = caisse.nouveau;
     if (n.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(n.email)) return ctx.toast("Email du client invalide.", true);
     if (caisse.reception === "livraison" && !client?.adresse && !caisse.adresse.trim()) return ctx.toast("Indiquez l'adresse de livraison.", true);
+    if (caisse.paye && caisse.moyen === "especes" && especesInterdites()) return ctx.toast("Les espèces doivent être enregistrées sur votre caisse certifiée.", true);
     const vente = {
       client: client ? { id: client.id } : n.nom || n.email || n.tel ? { ...n, consentement: caisse.consentement } : undefined,
       lignes: caisse.lignes.map((l) => {

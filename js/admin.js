@@ -1,5 +1,9 @@
-// Administration du site : lit data/donnees.js sur GitHub, le modifie via des formulaires,
-// puis le republie (commit) avec l'API GitHub. Les photos ajoutées sont envoyées dans img/.
+// Administration du site : lit data/donnees.js, le modifie via des formulaires, puis le republie.
+// Deux façons de se connecter :
+//   - le commerçant : email + mot de passe (serveur Supabase), qui publie pour lui avec une clé GitHub
+//     limitée au contenu, gardée côté serveur ;
+//   - l'agence : sa clé GitHub, qui donne aussi accès à l'onglet Installation.
+// Les photos ajoutées sont envoyées dans img/.
 (function () {
   const FICHIER = "data/donnees.js";
   const PREFIXE = "window.DONNEES = ";
@@ -36,6 +40,10 @@
     } catch {}
   }
   const lienGithub = (chemin) => `https://github.com/${cfg.proprio}/${cfg.depot}/${chemin}`;
+  let mode = cfg.cle ? "github" : "serveur";
+  // Serveur de la boutique : son adresse est dans le contenu publié du site (data/donnees.js, chargé par la page)
+  const serveurDispo = () => !!(window.AdminServeur && window.DONNEES?.site?.commandes?.supabaseUrl && window.DONNEES?.site?.commandes?.supabaseCle);
+  const dServeur = () => D || window.DONNEES;
 
   // ---------- API GitHub ----------
   async function api(chemin, options = {}) {
@@ -69,7 +77,10 @@
   const cheminContenu = (f) => `/contents/${f.split("/").map(encodeURIComponent).join("/")}`;
 
   async function chargerDonnees() {
-    const f = await api(`${cheminContenu(FICHIER)}?ref=${encodeURIComponent(cfg.branche)}&t=${Date.now()}`);
+    const f =
+      mode === "serveur"
+        ? await window.AdminServeur.appel(dServeur(), "contenu_lire")
+        : await api(`${cheminContenu(FICHIER)}?ref=${encodeURIComponent(cfg.branche)}&t=${Date.now()}`);
     const texte = depuisBase64(f.content);
     // La ligne de données commence par « window.DONNEES = » (le commentaire d'en-tête aussi contient ces mots).
     const i = texte.search(/^window\.DONNEES = /m);
@@ -78,6 +89,10 @@
     return { donnees: JSON.parse(json), sha: f.sha };
   }
   async function envoyerFichier(chemin, contenuBase64, message, sha) {
+    if (mode === "serveur")
+      return chemin === FICHIER
+        ? window.AdminServeur.appel(dServeur(), "contenu_publier", { contenu: contenuBase64, sha, message })
+        : window.AdminServeur.appel(dServeur(), "photo_publier", { chemin, contenu: contenuBase64 });
     return api(cheminContenu(chemin), {
       method: "PUT",
       body: JSON.stringify({ message, content: contenuBase64, branch: cfg.branche, ...(sha ? { sha } : {}) }),
@@ -101,6 +116,8 @@
     d.site.commandes.paiement ||= { enLigne: false, apresValidation: true, boutique: true };
     d.site.plateformesAvis ||= {};
     d.site.mesure ||= { goatcounter: "" };
+    d.site.legal ||= { exploitant: "", formeJuridique: "", regimeTva: "", tauxTva: 20, hebergeur: "github", plateformeFacturation: false };
+    d.site.legal.mediateur ||= { nom: "", url: "", adresse: "" };
     d.site.plateformesAvis.facebook ||= { lien: "", taux: 100, nombre: 0 };
     d.site.plateformesAvis.google ||= { lien: "", lienAvis: "", note: 0, nombre: 0 };
     d.produits ||= [];
@@ -190,28 +207,44 @@
   }
 
   // ---------- Connexion ----------
-  function afficherConnexion(erreur) {
+  function afficherConnexion(erreur, vue = serveurDispo() ? "commercant" : "agence") {
     $("#app").hidden = true;
     $("#connexion").hidden = false;
+    $("#form-commercant").hidden = vue !== "commercant";
+    $("#form-connexion").hidden = vue === "commercant";
+    $("#vers-commercant").hidden = !serveurDispo();
+    $("#erreur-commercant").innerHTML = vue === "commercant" && erreur ? `<p class="message message-alerte">${echapper(erreur)}</p>` : "";
     $("#cle").value = cfg.cle || "";
     $("#cfg-proprio").value = cfg.proprio;
     $("#cfg-depot").value = cfg.depot;
     $("#cfg-branche").value = cfg.branche;
-    $("#erreur-connexion").innerHTML = erreur ? `<p class="message message-alerte">${echapper(erreur)}</p>` : "";
+    $("#erreur-connexion").innerHTML = vue !== "commercant" && erreur ? `<p class="message message-alerte">${echapper(erreur)}</p>` : "";
   }
   async function demarrer() {
-    $("#erreur-connexion").innerHTML = `<p class="aide">Connexion…</p>`;
+    $(mode === "serveur" ? "#erreur-commercant" : "#erreur-connexion").innerHTML = `<p class="aide">Connexion…</p>`;
     try {
-      const depot = await api("");
-      if (!depot.permissions?.push) throw Object.assign(new Error("droits"), { status: 403 });
+      if (mode === "github") {
+        const depot = await api("");
+        if (!depot.permissions?.push) throw Object.assign(new Error("droits"), { status: 403 });
+      }
       ({ donnees: D, sha } = await chargerDonnees());
     } catch (e) {
+      if (mode === "serveur") {
+        afficherConnexion(
+          e.status === 503 ? "La modification du site depuis ce compte n'est pas encore activée : prévenez votre agence."
+          : e.status === 403 ? "Ce compte n'a pas accès à l'administration."
+          : e.status === 401 ? "Session expirée : reconnectez-vous."
+          : e.message,
+          "commercant"
+        );
+        return;
+      }
       const msg =
         e.status === 401 ? "Clé refusée par GitHub : vérifiez qu'elle est complète et pas expirée."
         : e.status === 403 ? "Cette clé n'a pas le droit de modifier le dépôt : donnez-lui la permission « Contents : Read and write »."
         : e.status === 404 ? "Dépôt, branche ou fichier introuvable : vérifiez les réglages avancés et que la clé donne accès au dépôt."
         : `Connexion impossible (${e.message}).`;
-      afficherConnexion(msg);
+      afficherConnexion(msg, "agence");
       return;
     }
     normaliser(D);
@@ -231,15 +264,35 @@
 
     $("#connexion").hidden = true;
     $("#app").hidden = false;
+    // Le commerçant ne voit pas l'onglet réservé à l'agence
+    document.querySelector('[data-onglet="installation"]').hidden = mode === "serveur";
     majStatut();
-    window.AdminServeur?.surveillerRecuperation(D, contexte());
     const ancre = location.hash.slice(1);
     if (VUES[ancre]) return allerA(ancre);
     rendre();
   }
 
+  $("#form-commercant").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const client = window.AdminServeur.client(window.DONNEES);
+    $("#erreur-commercant").innerHTML = `<p class="aide">Connexion…</p>`;
+    const { error } = await client.auth.signInWithPassword({ email: $("#c-email").value.trim(), password: $("#c-mdp").value });
+    if (error) return afficherConnexion(/fetch|network/i.test(error.message) ? "Serveur injoignable : vérifiez votre connexion internet." : "Email ou mot de passe incorrect.", "commercant");
+    mode = "serveur";
+    demarrer();
+  });
+  $("#c-oubli").addEventListener("click", async () => {
+    const email = $("#c-email").value.trim();
+    if (!email) return toast("Indiquez d'abord votre email.", true);
+    const { error } = await window.AdminServeur.client(window.DONNEES).auth.resetPasswordForEmail(email, { redirectTo: location.href.split("#")[0] });
+    toast(error ? "Envoi impossible, réessayez plus tard." : "Un email pour choisir un nouveau mot de passe vous a été envoyé.", !!error);
+  });
+  $("#vers-agence").addEventListener("click", () => afficherConnexion("", "agence"));
+  $("#vers-commercant").addEventListener("click", () => afficherConnexion("", "commercant"));
+
   $("#form-connexion").addEventListener("submit", (e) => {
     e.preventDefault();
+    mode = "github";
     cfg = {
       cle: $("#cle").value.trim(),
       proprio: $("#cfg-proprio").value.trim() || DEFAUT.proprio,
@@ -256,7 +309,10 @@
       localStorage.removeItem(CLE_STOCKAGE);
       sessionStorage.removeItem(CLE_STOCKAGE);
     } catch {}
+    if (serveurDispo()) window.AdminServeur.deconnecter(dServeur()).catch(() => {});
     modifie = false;
+    D = null;
+    mode = "serveur";
     afficherConnexion();
   });
   addEventListener("beforeunload", (e) => {
@@ -328,6 +384,7 @@
   const contexte = () => ({
     D, toast, echapper, euros, marquerModifie, publier, allerA,
     github: { api, cfg, envoyerFichier, versBase64, cheminContenu, lien: lienGithub },
+    mode,
     estModifie: () => modifie,
   });
   function rendre() {
@@ -438,7 +495,10 @@
     const visibles = D.produits.filter((p) => p.visible !== false);
     const sansPhoto = D.produits.filter((p) => !premiereImage(p));
     const emailOk = D.site.email && D.site.email !== EMAIL_PROVISOIRE;
-    const pret = emailOk && D.site.prixVerifies;
+    const L = D.site.legal;
+    const legalOk = !!(L.exploitant && L.formeJuridique && D.site.siret && L.regimeTva);
+    const mediateurOk = !!L.mediateur.nom;
+    const pret = emailOk && D.site.prixVerifies && legalOk && mediateurOk;
     const etape = (etat, titre, detail, action = "") =>
       `<li><span class="etat ${etat}">${etat === "ok" ? "✓" : etat === "afaire" ? "!" : "·"}</span><span>${titre}${detail ? `<small>${detail}</small>` : ""}</span>${action}</li>`;
     const aller = (o, t) => `<button class="mini" data-aller="${o}">${t}</button>`;
@@ -456,7 +516,7 @@
       <section class="bloc">
         <div class="bloc-tete">
           <h2>Avant d'ouvrir les commandes</h2>
-          ${D.site.apercu ? `<button class="btn" data-action="ouvrir-commandes" ${pret ? "" : "disabled"} title="${pret ? "" : "Complétez d'abord l'email et la vérification des prix"}">Ouvrir les commandes</button>` : `<span class="pastille" style="background:#e3f1e9;color:#1f6b45">Commandes ouvertes</span>`}
+          ${D.site.apercu ? `<button class="btn" data-action="ouvrir-commandes" ${pret ? "" : "disabled"} title="${pret ? "" : "Complétez d'abord les points marqués « ! » ci-dessous"}">Ouvrir les commandes</button>` : `<span class="pastille" style="background:#e3f1e9;color:#1f6b45">Commandes ouvertes</span>`}
         </div>
         <ul class="checklist">
           ${etape(emailOk ? "ok" : "afaire", "Adresse email de la boutique", emailOk ? echapper(D.site.email) : "L'adresse actuelle est provisoire : les commandes s'y perdraient.", emailOk ? "" : aller("boutique", "Corriger"))}
@@ -467,7 +527,9 @@
           ${etape(D.site.commandes?.supabaseUrl ? "ok" : "option", "Commandes en ligne et paiement par carte", D.site.commandes?.supabaseUrl ? `Reliées à Supabase${D.site.commandes?.paiement?.enLigne ? " · paiement par carte activé" : " · paiement par carte désactivé"}.` : "Recommandé : commandes enregistrées ici avec les photos, paiement par carte, fichier clients, suivi pour le client.", aller("installation", D.site.commandes?.supabaseUrl ? "Vérifier" : "Installer"))}
           ${etape(D.site.formulaireCommande ? "ok" : "option", "Réception des commandes par email (Formspree)", D.site.formulaireCommande ? "Activée." : "Recommandé : sans cela, le client doit envoyer lui-même l'email depuis sa messagerie.", D.site.formulaireCommande ? "" : aller("boutique", "Régler"))}
           ${etape(D.site.whatsapp ? "ok" : "option", "Commandes et questions par WhatsApp", D.site.whatsapp ? `Numéro : ${echapper(D.site.whatsapp)}` : "Facultatif : ajoute un bouton « Commander par WhatsApp » et un bouton de contact.", D.site.whatsapp ? "" : aller("boutique", "Ajouter"))}
-          ${etape("option", "Pages légales (CGV, mentions légales)", "À compléter une fois : SIRET, forme juridique, médiateur…", `<a class="mini" style="display:inline-grid;place-items:center;text-decoration:none" href="${lienGithub(`edit/${cfg.branche}/cgv.html`)}" target="_blank" rel="noopener">Modifier sur GitHub</a>`)}
+          ${etape(legalOk ? "ok" : "afaire", "Informations légales", legalOk ? `${echapper(L.formeJuridique)} · SIRET ${echapper(D.site.siret)} · ${L.regimeTva === "franchise" ? "franchise de TVA" : "assujetti à la TVA"} — reprises dans les CGV, les mentions légales et les factures.` : "Exploitant, forme juridique, SIRET et régime de TVA : obligatoires dans les CGV, les mentions légales et sur les factures.", legalOk ? "" : aller("boutique", "Compléter"))}
+          ${etape(mediateurOk ? "ok" : "afaire", "Médiateur de la consommation", mediateurOk ? echapper(L.mediateur.nom) : "Obligatoire pour vendre aux particuliers (amende jusqu'à 3 000 €) : adhésion de 30 à 150 € auprès d'un médiateur référencé par la CECMC.", mediateurOk ? "" : aller("boutique", "Renseigner"))}
+          ${etape(L.plateformeFacturation ? "ok" : "afaire", "Factures électroniques", L.plateformeFacturation ? "Compte ouvert sur une plateforme agréée." : "Obligatoire depuis le 1er septembre 2026 : pouvoir recevoir les factures de vos fournisseurs sur une plateforme agréée (souvent proposée par la banque ou le logiciel comptable). L'émission suivra en septembre 2027.", `<label class="case"><input type="checkbox" data-chemin="site.legal.plateformeFacturation" data-type="case" data-rendre ${L.plateformeFacturation ? "checked" : ""}> Fait</label>`)}
         </ul>
       </section>
 
@@ -487,7 +549,7 @@
         <div class="raccourcis">
           <button class="btn btn-ligne" data-action="telecharger">Télécharger une sauvegarde</button>
           <span class="btn btn-ligne bouton-fichier">Restaurer une sauvegarde<input type="file" accept="application/json,.json" id="restaurer" aria-label="Restaurer une sauvegarde"></span>
-          <a class="btn btn-ligne" href="${lienGithub(`commits/${cfg.branche}/${FICHIER}`)}" target="_blank" rel="noopener">Historique des publications</a>
+          ${mode === "github" ? `<a class="btn btn-ligne" href="${lienGithub(`commits/${cfg.branche}/${FICHIER}`)}" target="_blank" rel="noopener">Historique des publications</a>` : ""}
         </div>
       </section>`;
   }
@@ -977,6 +1039,29 @@
         </div>
       </section>
       <section class="bloc">
+        <div class="bloc-tete"><h2>Informations légales</h2></div>
+        <p class="aide">Reprises automatiquement dans les conditions générales de vente, les mentions légales et les factures.</p>
+        <div class="grille-champs">
+          ${champ("site.legal.exploitant", "Nom et prénom de l'exploitant", { placeholder: "Prénom Nom" })}
+          ${champ("site.legal.formeJuridique", "Forme juridique", { placeholder: "Micro-entreprise (entreprise individuelle)" })}
+          ${champ("site.siret", "SIRET", { placeholder: "14 chiffres" })}
+          <div class="champ"><label for="f-regime">Régime de TVA</label><select id="f-regime" data-chemin="site.legal.regimeTva" data-rendre>
+            <option value="" ${!D.site.legal.regimeTva ? "selected" : ""}>À choisir</option>
+            <option value="franchise" ${D.site.legal.regimeTva === "franchise" ? "selected" : ""}>Franchise en base (TVA non applicable)</option>
+            <option value="assujetti" ${D.site.legal.regimeTva === "assujetti" ? "selected" : ""}>Assujetti à la TVA</option>
+          </select><small>À confirmer avec le comptable. Il change les factures et la caisse (espèces).</small></div>
+          ${D.site.legal.regimeTva === "assujetti" ? champ("site.legal.tauxTva", "Taux de TVA (%)", { type: "nombre", aide: "Factures : montant HT, TVA et TTC (les prix du site sont TTC)." }) : ""}
+          ${champ("site.mentionTva", "Mention particulière sur les factures (facultatif)", { placeholder: D.site.legal.regimeTva === "franchise" ? "TVA non applicable, art. 293 B du CGI (ajoutée automatiquement)" : "", large: true })}
+          ${champ("site.legal.mediateur.nom", "Médiateur de la consommation", { placeholder: "Nom du médiateur", aide: "Liste officielle : economie.gouv.fr/mediation-conso (CECMC)." })}
+          ${champ("site.legal.mediateur.url", "Site du médiateur", { type: "url", placeholder: "https://…" })}
+          ${champ("site.legal.mediateur.adresse", "Adresse postale du médiateur", { large: true })}
+          <div class="champ"><label for="f-hebergeur">Hébergement du site</label><select id="f-hebergeur" data-chemin="site.legal.hebergeur">
+            <option value="github" ${D.site.legal.hebergeur !== "cloudflare" ? "selected" : ""}>GitHub Pages</option>
+            <option value="cloudflare" ${D.site.legal.hebergeur === "cloudflare" ? "selected" : ""}>Cloudflare Pages</option>
+          </select><small>Mentionné dans les mentions légales.</small></div>
+        </div>
+      </section>
+      <section class="bloc">
         <div class="bloc-tete"><h2>Référencement Google et statistiques de visite</h2></div>
         <p class="aide">Chaque produit a sa propre page optimisée pour Google et pour le partage sur Facebook/WhatsApp (photo, prix, description), recréée automatiquement à chaque publication. Pensez à déclarer le site dans <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Google Search Console</a> avec le plan du site <code>sitemap.xml</code>, et à mettre le lien du site sur votre fiche Google et votre page Facebook.</p>
         <div class="grille-champs">
@@ -995,8 +1080,6 @@
           ${champ("site.commandes.paiement.enLigne", "Proposer le paiement par carte à la commande (Stripe)", { type: "case", large: true, aide: "Nécessite la clé Stripe (onglet Installation)." })}
           ${champ("site.commandes.paiement.apresValidation", "Proposer « payer après validation de la maquette » (lien envoyé depuis l'admin)", { type: "case", large: true })}
           ${champ("site.commandes.paiement.boutique", "Proposer « payer à la boutique au retrait »", { type: "case", large: true })}
-          ${champ("site.siret", "SIRET (bons de commande et factures)", { placeholder: "14 chiffres" })}
-          ${champ("site.mentionTva", "Mention TVA sur les factures", { placeholder: "TVA non applicable, art. 293 B du CGI", aide: "À vérifier avec votre comptable selon votre statut." })}
         </div>
         <details style="margin-top:1rem"><summary>Réglages techniques (remplis par l'assistant d'installation)</summary>
           <div class="grille-champs" style="margin-top:.8rem">
@@ -1149,6 +1232,17 @@
   });
 
   // ---------- Démarrage ----------
+  // Retour depuis l'email « mot de passe oublié » : choix du nouveau mot de passe, puis entrée dans l'admin
+  if (serveurDispo())
+    window.AdminServeur.surveillerRecuperation(window.DONNEES, { toast }, () => {
+      if (!$("#app").hidden) return;
+      mode = "serveur";
+      demarrer();
+    });
   if (cfg.cle) demarrer();
+  else if (serveurDispo())
+    window.AdminServeur.connecte(window.DONNEES)
+      .then((ok) => (ok ? demarrer() : afficherConnexion()))
+      .catch(() => afficherConnexion());
   else afficherConnexion();
 })();

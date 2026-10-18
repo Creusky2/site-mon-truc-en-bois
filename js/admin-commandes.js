@@ -274,9 +274,15 @@
         ${Number(c.port) ? `<tr><td>Livraison</td><td class="n">1</td><td class="n">${ctx.euros(c.port)}</td><td class="n">${ctx.euros(c.port)}</td></tr>` : ""}
         ${Number(c.emballage) ? `<tr><td>Emballage cadeau</td><td class="n">1</td><td class="n">${ctx.euros(c.emballage)}</td><td class="n">${ctx.euros(c.emballage)}</td></tr>` : ""}
         ${Number(c.remise) ? `<tr><td>Remise${c.code_promo ? ` (code ${e(c.code_promo)})` : ""}</td><td class="n"></td><td class="n"></td><td class="n">−${ctx.euros(c.remise)}</td></tr>` : ""}
-      </tbody><tfoot><tr class="total"><td colspan="3" class="n">Total${S.mentionTva ? "" : " TTC"}</td><td class="n">${ctx.euros(c.total)}</td></tr></tfoot></table>
+      </tbody><tfoot>${(() => {
+        // Assujetti à la TVA : détail HT / TVA / TTC (les prix du site sont TTC)
+        if (S.legal?.regimeTva !== "assujetti") return `<tr class="total"><td colspan="3" class="n">Total</td><td class="n">${ctx.euros(c.total)}</td></tr>`;
+        const taux = Number(S.legal.tauxTva || 20);
+        const ht = Math.round((Number(c.total) / (1 + taux / 100)) * 100) / 100;
+        return `<tr><td colspan="3" class="n">Total HT</td><td class="n">${ctx.euros(ht)}</td></tr><tr><td colspan="3" class="n">TVA ${String(taux).replace(".", ",")} %</td><td class="n">${ctx.euros(Number(c.total) - ht)}</td></tr><tr class="total"><td colspan="3" class="n">Total TTC</td><td class="n">${ctx.euros(c.total)}</td></tr>`;
+      })()}</tfoot></table>
       ${facture ? `<p>Réglée le ${date(c.paye_le)}${c.paiement_moyen ? ` par ${MOYENS[c.paiement_moyen] || e(c.paiement_moyen)}` : c.paiement_mode === "en_ligne" || c.stripe_session_id ? " par carte bancaire (paiement en ligne)" : ""}.</p>` : `<p>${c.cadeau?.date ? `Date souhaitée : ${new Date(c.cadeau.date).toLocaleDateString("fr-FR")}<br>` : ""}${c.cadeau?.message ? `Message carte : « ${e(c.cadeau.message)} »<br>` : ""}${c.message ? `Message client : ${e(c.message)}` : ""}</p>`}
-      <p class="mention">${e(S.mentionTva || "")}</p>
+      <p class="mention">${[S.legal?.regimeTva === "franchise" ? "TVA non applicable, article 293 B du CGI." : "", S.legal?.formeJuridique ? `${e(S.legal.exploitant || S.nom)}, ${e(S.legal.formeJuridique)}${S.siret ? ` — SIRET ${e(S.siret)}` : ""}.` : "", e(S.mentionTva || "")].filter(Boolean).join("<br>")}</p>
       <button onclick="print()">Imprimer</button>
       <script>setTimeout(() => print(), 400)<\/script></body></html>`);
     w.document.close();

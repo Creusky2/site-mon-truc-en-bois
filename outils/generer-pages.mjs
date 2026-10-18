@@ -125,4 +125,6 @@ writeFileSync(
   join(RACINE, "sitemap.xml"),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${attr(u)}</loc></url>`).join("\n")}\n</urlset>\n`
 );
+// robots.txt : pris en compte quand le site est à la racine d'un domaine (montrucenbois.fr), ignoré sinon
+writeFileSync(join(RACINE, "robots.txt"), `User-agent: *\nDisallow: /admin.html\nDisallow: /panier.html\nDisallow: /suivi.html\nDisallow: /favoris.html\n\nSitemap: ${SITE}/sitemap.xml\n`);
 console.log(`${produits.length} pages produits, sitemap de ${urls.length} adresses (${SITE}).`);

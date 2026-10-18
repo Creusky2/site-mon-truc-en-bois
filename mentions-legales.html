@@ -26,21 +26,21 @@
   <main class="section" style="padding-top:clamp(36px,6vw,64px)">
     <div class="conteneur page-texte">
       <h1>Mentions légales</h1>
-      <p class="a-remplacer">Modèle à compléter (les passages entre crochets) avant la mise en ligne.</p>
+      <p class="a-remplacer" data-legal-incomplet hidden>Informations à compléter dans l'administration du site (Infos boutique → Informations légales).</p>
 
       <h2>Éditeur du site</h2>
       <p><strong data-site="nom"></strong><br>
-      [Nom et prénom de l'exploitant·e], [forme juridique]<br>
-      SIRET : [numéro]<br>
+      <span data-legal="exploitant"></span>, <span data-legal="forme"></span><br>
+      SIRET : <span data-legal="siret"></span><br>
       Adresse : <span data-site="adresse"></span><br>
       Téléphone : <span data-site="telephone"></span> — Email : <span data-site="email"></span><br>
-      Directeur·rice de la publication : [nom]</p>
+      Directeur·rice de la publication : <span data-legal="exploitant"></span></p>
 
       <h2>Hébergement</h2>
-      <p>Site : GitHub Pages — GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis.<br>
-      Commandes et données clients : Supabase Inc., données hébergées dans l'Union européenne ([région choisie, ex. Paris]).<br>
+      <p>Site : <span data-legal="hebergeur"></span><br>
+      Commandes et données clients : Supabase Inc., données hébergées dans l'Union européenne (Paris, France).<br>
       Paiements : Stripe Payments Europe Ltd., 1 Grand Canal Street Lower, Dublin 2, Irlande.<br>
-      <span class="a-remplacer">[À vérifier lors de la mise en ligne, et à adapter si le site change d'hébergeur ou de nom de domaine.]</span></p>
+      Emails : Brevo (Sendinblue SAS), Paris, France.</p>
 
       <h2>Propriété intellectuelle</h2>
       <p>L'ensemble des contenus de ce site (textes, photos, créations) est la propriété de <span data-site="nom"></span>, sauf mention contraire. Toute reproduction sans autorisation est interdite.</p>

@@ -6,8 +6,8 @@ Site de la boutique de personnalisation **Mon Truc en Bois** — 3 rue Salengro,
 
 ⚠️ Avant d'ouvrir les commandes : vérifier les **prix** (ce sont des exemples) et l'**email**, depuis la page admin.
 
-Site **statique** (HTML / CSS / JavaScript) hébergé gratuitement sur GitHub Pages, avec un serveur gratuit facultatif
-(Supabase + Stripe + Resend) pour les commandes en ligne, le paiement par carte, le fichier clients, la caisse
+Site **statique** (HTML / CSS / JavaScript), destiné à Cloudflare Pages en production (GitHub Pages pendant la mise en place),
+avec un serveur (Supabase + Stripe + Brevo) pour les commandes en ligne, le paiement par carte, le fichier clients, la caisse
 et le marketing. Installation et utilisation : [`docs/mise-en-ligne.md`](docs/mise-en-ligne.md).
 
 ## Gérer le site : la page admin
@@ -38,9 +38,11 @@ Ouvrir **`/admin.html`** (ex. `https://creusky2.github.io/site-mon-truc-en-bois/
 **Publier les modifications** enregistre `data/donnees.js` sur GitHub ; le site est à jour quelques minutes plus tard.
 Les modifications en cours sont gardées automatiquement sur l'appareil en cas de fermeture de la page.
 
-**Connexion** : la page demande une clé d'accès GitHub (*fine-grained personal access token*), limitée à ce dépôt
-avec les permissions **Contents**, **Secrets** et **Variables** en *Read and write* et **Actions** en *Read-only*.
-Les onglets Commandes, Caisse, Clients, Demandes et Marketing demandent en plus le compte administrateur du serveur. La marche à suivre est rappelée sur l'écran de connexion.
+**Connexion** :
+- **le commerçant** : son email et son mot de passe, rien d'autre. Le serveur publie ses modifications avec une clé GitHub
+  limitée au contenu (*Contents* seulement), gardée dans les secrets du serveur. L'onglet Installation lui est caché.
+- **l'agence** (« Accès agence ») : une clé GitHub (*fine-grained personal access token*) limitée à ce dépôt, avec
+  **Contents**, **Secrets** et **Variables** en *Read and write* et **Actions** en *Read-only*. La marche à suivre est rappelée sur l'écran de connexion.
 La clé reste enregistrée uniquement dans le navigateur de l'appareil utilisé.
 
 ## Pages
@@ -77,7 +79,7 @@ Le benchmark qui a guidé ces choix est dans [`docs/benchmark.md`](docs/benchmar
 
 ## Fonctionnement des commandes
 
-**Avec les commandes en ligne activées** (Supabase + Stripe + Resend, guide pas à pas : [`docs/mise-en-ligne.md`](docs/mise-en-ligne.md)) :
+**Avec les commandes en ligne activées** (Supabase + Stripe + Brevo, guide pas à pas : [`docs/mise-en-ligne.md`](docs/mise-en-ligne.md)) :
 
 1. Le client valide son panier et choisit son paiement : **carte en ligne**, **après validation de la maquette**
    (lien envoyé depuis l'admin) ou **à la boutique** au retrait.

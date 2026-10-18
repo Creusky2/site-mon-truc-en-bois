@@ -1,54 +1,72 @@
-// Emails envoyés par le site (service Resend). Sans clé RESEND_API_KEY, rien n'est envoyé
-// et la commande reste visible dans l'admin : un email raté ne bloque jamais une commande.
+// Emails envoyés par le site, par Brevo (recommandé : société française, 300 emails/jour gratuits)
+// ou par Resend. Sans clé, rien n'est envoyé et la commande reste visible dans l'admin :
+// un email raté ne bloque jamais une commande.
 import { env, euros, STATUTS } from "./outils.ts";
 
 const echapper = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-export async function envoyerEmail({ a, sujet, html, repondreA }: { a: string; sujet: string; html: string; repondreA?: string }) {
-  const cle = env("RESEND_API_KEY");
-  if (!cle || !a) return { envoye: false, raison: "non configuré" };
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${cle}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: env("EMAIL_EXPEDITEUR", "Mon Truc en Bois <onboarding@resend.dev>"),
-      to: [a],
-      subject: sujet,
-      html,
-      ...(repondreA ? { reply_to: repondreA } : {}),
-    }),
-  });
+type Message = { a: string; sujet: string; html: string; repondreA?: string; desinscription?: string };
+
+/** Service d'envoi configuré : Brevo s'il a une clé, sinon Resend, sinon aucun. */
+export const fournisseurEmail = () => (env("BREVO_API_KEY") ? "brevo" : env("RESEND_API_KEY") ? "resend" : null);
+
+/** Expéditeur : « Nom <adresse> ». Par défaut l'adresse de la boutique (déjà validée chez Brevo à l'inscription). */
+export function expediteur() {
+  const brut = env("EMAIL_EXPEDITEUR") || (fournisseurEmail() === "resend" ? "Mon Truc en Bois <onboarding@resend.dev>" : `Mon Truc en Bois <${env("BOUTIQUE_EMAIL")}>`);
+  const m = brut.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  return m ? { nom: m[1].replace(/^"|"$/g, ""), email: m[2].trim() } : { nom: "Mon Truc en Bois", email: brut.trim() };
+}
+
+async function envoyerUn(m: Message): Promise<{ envoye: boolean; raison?: string }> {
+  const service = fournisseurEmail();
+  if (!service || !m.a) return { envoye: false, raison: "non configuré" };
+  const exp = expediteur();
+  const entetes = m.desinscription ? { "List-Unsubscribe": `<${m.desinscription}>` } : undefined;
+  const r =
+    service === "brevo"
+      ? await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: { "api-key": env("BREVO_API_KEY"), "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            sender: { name: exp.nom, email: exp.email },
+            to: [{ email: m.a }],
+            subject: m.sujet,
+            htmlContent: m.html,
+            ...(m.repondreA ? { replyTo: { email: m.repondreA } } : {}),
+            ...(entetes ? { headers: entetes } : {}),
+          }),
+        })
+      : await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: `${exp.nom} <${exp.email}>`,
+            to: [m.a],
+            subject: m.sujet,
+            html: m.html,
+            ...(m.repondreA ? { reply_to: m.repondreA } : {}),
+            ...(entetes ? { headers: entetes } : {}),
+          }),
+        });
   if (!r.ok) {
-    console.error("Email non envoyé", r.status, await r.text());
-    return { envoye: false, raison: `Resend ${r.status}` };
+    console.error("Email non envoyé", service, r.status, await r.text());
+    return { envoye: false, raison: `${service === "brevo" ? "Brevo" : "Resend"} ${r.status}` };
   }
   return { envoye: true };
 }
 
-/** Envoi groupé (newsletter) : 100 emails maximum par appel Resend. */
-export async function envoyerLot(messages: { a: string; sujet: string; html: string; desinscription?: string }[], repondreA?: string) {
-  const cle = env("RESEND_API_KEY");
-  if (!cle) return { envoyes: 0, raison: "non configuré" };
+export const envoyerEmail = (m: Message) => envoyerUn(m);
+
+/** Envoi groupé (newsletter), 5 à la fois ; s'arrête à la première erreur du service (quota atteint…). */
+export async function envoyerLot(messages: Omit<Message, "repondreA">[], repondreA?: string) {
+  if (!fournisseurEmail()) return { envoyes: 0, raison: "non configuré" };
   let envoyes = 0;
-  for (let i = 0; i < messages.length; i += 100) {
-    const r = await fetch("https://api.resend.com/emails/batch", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${cle}`, "Content-Type": "application/json" },
-      body: JSON.stringify(messages.slice(i, i + 100).map((m) => ({
-        from: env("EMAIL_EXPEDITEUR", "Mon Truc en Bois <onboarding@resend.dev>"),
-        to: [m.a],
-        subject: m.sujet,
-        html: m.html,
-        ...(repondreA ? { reply_to: repondreA } : {}),
-        ...(m.desinscription ? { headers: { "List-Unsubscribe": `<${m.desinscription}>` } } : {}),
-      }))),
-    });
-    if (!r.ok) {
-      console.error("Envoi groupé interrompu", r.status, await r.text());
-      return { envoyes, raison: `Resend ${r.status}` };
-    }
-    envoyes += Math.min(100, messages.length - i);
+  for (let i = 0; i < messages.length; i += 5) {
+    const resultats = await Promise.all(messages.slice(i, i + 5).map((m) => envoyerUn({ ...m, repondreA })));
+    envoyes += resultats.filter((r) => r.envoye).length;
+    const echec = resultats.find((r) => !r.envoye);
+    if (echec) return { envoyes, raison: echec.raison };
   }
   return { envoyes };
 }

@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin.html
+Disallow: /panier.html
+Disallow: /suivi.html
+Disallow: /favoris.html
+
+Sitemap: https://creusky2.github.io/site-mon-truc-en-bois/sitemap.xml

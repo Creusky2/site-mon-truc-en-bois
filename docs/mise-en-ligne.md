@@ -1,44 +1,67 @@
 # Mise en ligne et utilisation au quotidien
 
-Le site fonctionne déjà en **vitrine** : catalogue, idées cadeaux, avis, devis par email, commandes par email ou WhatsApp.
-Pour en faire une vraie boutique en ligne avec fichier clients, il faut installer **le serveur de la boutique**.
-Tout se fait depuis la page admin, onglet **Installation** : comptez 20 minutes, une seule fois.
+Guide de l'agence. Le commerçant, lui, n'utilise que l'admin avec son email et son mot de passe (partie 2).
+Les choix de plateformes et leurs coûts sont justifiés dans le benchmark des plateformes (document partagé de l'agence).
 
-| Service | Rôle | Prix |
+| Service | Rôle | Coût fixe |
 |---|---|---|
-| **Supabase** | Base de données : commandes, clients, demandes, codes promo, photos des clients | Gratuit (jusqu'à 500 Mo, largement suffisant) |
-| **Stripe** | Paiement par carte, Apple Pay, Google Pay | Pas d'abonnement : 1,5 % + 0,25 € par paiement (cartes européennes) |
-| **Resend** | Emails automatiques (confirmation, suivi, newsletter) | Gratuit jusqu'à 3 000 emails par mois (100 par jour) |
-| **GoatCounter** | Statistiques de visite, sans cookie | Gratuit (facultatif) |
+| **Cloudflare Pages** | Hébergement du site (usage commercial autorisé), DNS, adresse contact@, statistiques sans cookie | Gratuit |
+| **Nom de domaine** (.fr, registrar français) | montrucenbois.fr | ~10 € par an |
+| **Supabase** (région Paris) | Commandes, clients, devis, codes promo, photos des clients, fonctions serveur | Gratuit pendant la mise en place, **Pro (25 $/mois)** dès l'ouverture : pas de mise en pause, sauvegarde quotidienne |
+| **Stripe** | Paiement par carte, Apple Pay, Google Pay | Aucun : 1,5 % + 0,25 € par carte européenne |
+| **Brevo** | Emails automatiques et newsletter (société française) | Gratuit jusqu'à 300 emails par jour |
+| **Better Stack** | Surveillance du site et du serveur, alertes à l'agence | Gratuit |
 
-Les clés secrètes (Supabase, Stripe, Resend) sont chiffrées dans votre navigateur et rangées dans les « secrets » GitHub : elles ne sont **jamais** publiées sur le site.
+> GitHub Pages ne convient pas en production : ses conditions interdisent les sites e-commerce. Il sert seulement pendant la mise en place.
+
+Les clés secrètes sont chiffrées dans le navigateur et rangées dans les « secrets » GitHub, puis dans ceux du serveur : elles ne sont **jamais** publiées sur le site.
 
 ---
 
-## 1. Installation (une seule fois)
+## 1. Installation (agence, une seule fois)
 
-Ouvrez `admin.html`, connectez-vous, puis l'onglet **Installation**. L'assistant détaille chaque étape à l'écran :
+Ouvrez `admin.html` → **Accès agence** (clé GitHub de l'agence), puis l'onglet **Installation**. L'assistant détaille chaque étape à l'écran :
 
-1. **Autoriser l'admin** — sur github.com, ajoutez à votre clé d'accès les permissions *Secrets* et *Variables* (Read and write) et *Actions* (Read-only). La clé reste la même.
-2. **Créer le serveur Supabase** — compte sur supabase.com (bouton *Continue with GitHub*), nouveau projet en région **Paris**, puis copiez dans l'assistant : l'adresse du projet, la clé publique *anon*, et un jeton d'accès (*Account → Access Tokens*).
-3. **Votre compte administrateur** — l'email et le mot de passe qui serviront à vous connecter aux commandes et aux clients (depuis n'importe quel appareil).
-4. **Stripe** (facultatif) — collez la clé secrète `sk_test_…` pour commencer en mode test. La confirmation automatique des paiements (webhook) est créée toute seule.
-5. **Resend** (recommandé) — collez la clé `re_…`. Tant que votre nom de domaine n'est pas vérifié chez Resend, les emails ne partent que vers l'adresse de votre compte Resend : parfait pour tester.
-6. **Installer** — l'assistant range les clés, relie le site au serveur et lance l'installation (2 à 4 minutes). La progression s'affiche en direct ; à la fin, connectez-vous avec votre compte administrateur : toutes les vérifications doivent être vertes.
+1. **Autoriser l'admin** — permissions de la clé de l'agence : *Contents*, *Secrets*, *Variables* (Read and write) et *Actions* (Read-only).
+2. **Créer le serveur Supabase** — projet au nom du client, région **Paris** ; copier l'adresse du projet, la clé publique *anon* et un jeton d'accès (*Account → Access Tokens*).
+3. **Compte du commerçant** — son email et son mot de passe (son seul identifiant), et la **clé de publication** : une deuxième clé GitHub limitée à *Contents* sur ce dépôt, qui permet au serveur de publier les modifications du commerçant. Noter sa date d'expiration (l'onglet Installation l'affiche et prévient 30 jours avant).
+4. **Stripe** — clé secrète `sk_test_…` pour commencer. Le webhook de confirmation des paiements est créé tout seul.
+5. **Brevo** — compte créé avec l'email de la boutique, clé `xkeysib-…`. Avec le nom de domaine : authentifier le domaine dans Brevo et indiquer l'expéditeur (ex. `Mon Truc en Bois <bonjour@montrucenbois.fr>`).
+6. **Installer** — l'assistant range les clés, relie le site au serveur et lance l'installation (2 à 4 minutes), avec la progression en direct et des vérifications vertes à la fin.
 
-L'installation peut être relancée autant de fois que nécessaire : elle ne supprime rien. C'est aussi par là que l'on **change une clé** (passage de Stripe en mode réel, nouvelle clé Resend, nouveau mot de passe administrateur) : on remplit seulement le champ concerné et on relance.
+L'installation se relance autant de fois que nécessaire (elle ne supprime rien) : c'est aussi par là que l'on change une clé (Stripe en mode réel, nouvelle clé de publication, nouveau mot de passe…).
+
+### Informations légales (avant l'ouverture)
+
+Dans **Infos boutique → Informations légales** : exploitant, forme juridique, SIRET, **régime de TVA**, médiateur de la consommation. Elles alimentent automatiquement les CGV, les mentions légales et les factures ; le bouton « Ouvrir les commandes » reste bloqué tant qu'elles manquent.
+
+- **Franchise en base** : factures avec la mention « TVA non applicable, article 293 B du CGI » ; la caisse accepte les espèces.
+- **Assujetti à la TVA** : factures avec HT, TVA et TTC ; les espèces doivent passer par une caisse certifiée, la caisse de l'admin ne propose donc que carte, chèque et virement.
+- **Médiateur** : obligatoire pour vendre aux particuliers (adhésion de 30 à 150 €).
+- **Factures électroniques** : depuis le 1er septembre 2026, le commerçant doit pouvoir recevoir les factures de ses fournisseurs sur une plateforme agréée ; l'émission et le e-reporting des ventes suivront en septembre 2027 (chantier agence).
+
+### Passer sur Cloudflare Pages et le nom de domaine
+
+1. Acheter le domaine au nom du client ; créer le compte Cloudflare du client (agence en administrateur) et y déplacer les DNS du domaine.
+2. Déplacer le dépôt dans l'organisation GitHub de l'agence et le passer en **privé** (possible hors GitHub Pages).
+3. Cloudflare → *Workers & Pages* → *Create* → *Pages* → connecter le dépôt, branche `site-vitrine-boutique`, commande de build `node outils/construire.mjs`, dossier de sortie `dist`. Ajouter le domaine personnalisé. Les en-têtes de sécurité (`_headers`) et `robots.txt` sont pris en compte automatiquement.
+4. Créer la variable de dépôt GitHub `HEBERGEMENT` = `cloudflare` : le robot de génération des pages produits s'arrête (Cloudflare les génère à chaque mise en ligne).
+5. Dans l'admin : **Infos boutique** → adresse publique du site = `https://montrucenbois.fr`, hébergement = Cloudflare Pages, puis **Publier**. Onglet **Installation** → *Adresse du site (avancé)* → même adresse, et relancer l'installation (adresses autorisées du serveur, liens des emails).
+6. Cloudflare : activer *Email Routing* (contact@montrucenbois.fr vers la boîte du commerçant) et *Web Analytics*. Brevo : authentifier le domaine (enregistrements DNS dans Cloudflare).
+7. Better Stack : surveiller `https://montrucenbois.fr` et l'adresse `…supabase.co/functions/v1/suivi` (réponse attendue : 400).
+8. Désactiver GitHub Pages (Settings → Pages) une fois le domaine en ligne ; déclarer le site et `sitemap.xml` dans Google Search Console.
 
 ### Tester avant d'ouvrir
 
-1. Dans **Infos boutique**, cochez les modes de paiement voulus ; dans le tableau de bord, vérifiez l'email de la boutique et les prix.
-2. Utilisez le bouton **Prévisualiser** pour passer une commande de test sans ouvrir le site au public, ou ouvrez les commandes puis passez une commande avec la carte de test Stripe `4242 4242 4242 4242` (date future, code 123).
-3. Vérifiez : la commande apparaît dans **Commandes**, le client dans **Clients**, les emails sont reçus, le lien de suivi fonctionne.
+1. Dans **Infos boutique**, cocher les modes de paiement voulus ; dans le tableau de bord, vérifier l'email de la boutique, les prix et les informations légales.
+2. Commande de test avec la carte Stripe `4242 4242 4242 4242` (mode test), puis une vraie commande de 1 € remboursée en mode réel.
+3. Vérifier : la commande apparaît dans **Commandes**, le client dans **Clients**, les emails arrivent, le lien de suivi fonctionne, la facture est correcte.
 
 ### Ouvrir la boutique
 
 1. Tableau de bord → **Ouvrir les commandes**, puis **Publier**.
-2. Pour encaisser de vrais paiements : finalisez le compte Stripe (identité, IBAN), puis collez la clé `sk_live_…` dans l'onglet Installation et relancez.
-3. Pour écrire aux clients depuis votre propre adresse : ajoutez votre nom de domaine dans Resend (*Domains*), puis indiquez l'expéditeur (ex. `Mon Truc en Bois <bonjour@montrucenbois.fr>`) dans l'onglet Installation.
+2. Passer Supabase en **Pro** ; coller la clé Stripe `sk_live_…` dans l'onglet Installation et relancer.
+3. Prise en main d'une heure avec le commerçant, sur son téléphone.
 
 ---
 
@@ -70,7 +93,7 @@ Onglet **Marketing** :
 
 ### Statistiques
 Le tableau de bord affiche le chiffre d'affaires du mois (et son évolution), le panier moyen, les 12 derniers mois et la répartition site / boutique / téléphone / salons.
-Pour les visites du site, créez un compte gratuit sur goatcounter.com et indiquez son code dans **Infos boutique → Référencement et statistiques**.
+Pour les visites du site : Cloudflare Web Analytics (tableau de bord Cloudflare), ou GoatCounter dont le code se règle dans **Infos boutique → Référencement et statistiques**.
 
 ### Google
 Chaque produit a sa propre page optimisée (titre, description, photo, prix), recréée automatiquement à chaque publication, et le plan du site `sitemap.xml` est tenu à jour.
@@ -82,17 +105,18 @@ Chaque produit a sa propre page optimisée (titre, description, photo, prix), re
 
 | Constat | Que faire |
 |---|---|
-| L'onglet Installation indique « projet introuvable ou en pause » | Un projet Supabase gratuit se met en pause après 7 jours sans aucune visite : ouvrez supabase.com et cliquez sur *Restore*. Le site interroge le serveur deux fois par semaine pour l'éviter (GitHub Actions). |
+| L'onglet Installation indique « projet introuvable ou en pause » | Un projet Supabase gratuit se met en pause après 7 jours sans aucune visite : ouvrez supabase.com et cliquez sur *Restore*. La formule Pro supprime ce risque ; en gratuit, le site interroge le serveur deux fois par semaine (GitHub Actions) et la surveillance Better Stack le maintient actif. |
 | L'installation échoue | Cliquez sur *Voir le journal détaillé* : le message en rouge donne la cause (jeton Supabase expiré, clé Stripe erronée…). Corrigez le champ concerné et relancez. |
-| Les clients ne reçoivent pas d'email | Vérifiez dans Installation que les emails sont configurés, puis que votre domaine est vérifié dans Resend (sans domaine, Resend n'écrit qu'à votre propre adresse). |
+| Les clients ne reçoivent pas d'email | Vérifier dans Installation que les emails sont configurés, et dans Brevo que l'expéditeur ou le domaine est validé. |
+| Le commerçant ne peut plus publier | La clé de publication a expiré : en créer une nouvelle (Contents seulement) et la coller à l'étape 3 de l'onglet Installation. |
 | Un paiement n'apparaît pas comme payé | Vérifiez dans Installation que la « confirmation automatique » est active ; sinon relancez l'installation. En dernier recours, « Marquer comme payée » dans la commande. |
-| Mot de passe administrateur oublié | Écran de connexion → *Mot de passe oublié*, ou choisissez-en un nouveau dans l'onglet Installation et relancez. |
+| Mot de passe oublié | Écran de connexion → *Mot de passe oublié* (email de réinitialisation), ou nouveau mot de passe dans l'onglet Installation puis relance. |
 
 ---
 
 ## Pour les développeurs
 
 - Base de données : `supabase/migrations/*.sql` (rejouables) — tables `commandes`, `clients`, `demandes`, `codes_promo`, `campagnes`, vue `stats_ventes`, accès réservés aux comptes de la table `admins` (RLS).
-- Fonctions serveur (Deno) : `supabase/functions/` — `commande` (prix recalculés depuis le catalogue publié, codes promo, paiement Stripe), `suivi`, `contact` (devis, newsletter), `admin` (vente en boutique, emails, liens de paiement, campagnes), `stripe-webhook`. Tests : `deno test --allow-env --allow-read supabase/tests/`.
+- Fonctions serveur (Deno) : `supabase/functions/` — `commande` (prix recalculés depuis le catalogue publié, codes promo, paiement Stripe), `suivi`, `contact` (devis, newsletter), `admin` (vente en boutique, emails, liens de paiement, campagnes, publication du contenu pour le commerçant), `stripe-webhook`. Emails : Brevo (`BREVO_API_KEY`) ou Resend (`RESEND_API_KEY`). Tests : `deno test --allow-env --allow-read supabase/tests/`.
 - Installation : `.github/workflows/supabase.yml`, déclenché par l'admin via `supabase/installation.json` (message de commit contenant `[installation]`).
-- Pages produits et plan du site : `node outils/generer-pages.mjs`, lancé par `.github/workflows/pages-produits.yml` à chaque modification de `data/donnees.js`.
+- Pages produits, plan du site, robots.txt : `node outils/generer-pages.mjs` ; `node outils/construire.mjs` prépare `dist/` pour Cloudflare Pages. Sur GitHub Pages, `.github/workflows/pages-produits.yml` les régénère à chaque modification de `data/donnees.js`.

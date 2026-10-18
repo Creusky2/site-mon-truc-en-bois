@@ -6,12 +6,17 @@
 //   creer_commande : vente en boutique, commande par téléphone ou sur un salon
 //   email_client   : message libre à un client (CRM)
 //   campagne       : email (nouveautés, promotion) aux clients abonnés, ou essai à la boutique
+//   contenu_lire, contenu_publier, photo_publier : le commerçant modifie le site sans compte GitHub
+//                    (le serveur publie avec une clé GitHub limitée au contenu, gardée dans ses secrets)
 import { catalogue, creerPaiementStripe, db, enregistrerClient, env, ErreurClient, json, lireJson, servir, urlLecturePhoto } from "../_shared/outils.ts";
-import { emailCampagne, emailLibre, emailLienPaiement, emailStatut, envoyerEmail, envoyerLot } from "../_shared/emails.ts";
+import { emailCampagne, emailLibre, emailLienPaiement, emailStatut, envoyerEmail, envoyerLot, expediteur, fournisseurEmail } from "../_shared/emails.ts";
 
 type LigneSaisie = { id?: string; nom?: string; prix_unitaire?: number; quantite?: number; texte?: string; remarque?: string; variante?: string };
 type Demande = {
-  action: "etat" | "lien_paiement" | "notifier" | "photos" | "creer_commande" | "email_client" | "campagne";
+  action: "etat" | "lien_paiement" | "notifier" | "photos" | "creer_commande" | "email_client" | "campagne" | "contenu_lire" | "contenu_publier" | "photo_publier";
+  contenu?: string; // base64
+  sha?: string;
+  chemin?: string;
   lien?: string;
   texte_lien?: string;
   essai?: boolean;
@@ -49,12 +54,48 @@ async function verifierAdmin(req: Request) {
   return utilisateur;
 }
 
+// ---------- Publication du contenu du site (dépôt GitHub) ----------
+const FICHIER_CONTENU = "data/donnees.js";
+async function github(chemin: string, init: RequestInit = {}) {
+  const jeton = env("CONTENU_GITHUB_TOKEN");
+  if (!jeton || !env("CONTENU_DEPOT")) throw new ErreurClient("La publication depuis le serveur n'est pas encore configurée (onglet Installation).", 503);
+  const r = await fetch(`https://api.github.com/repos/${env("CONTENU_DEPOT")}/contents/${chemin}`, {
+    ...init,
+    headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${jeton}`, "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "mon-truc-en-bois", ...(init.body ? { "Content-Type": "application/json" } : {}) },
+  });
+  const d = await r.json().catch(() => ({}));
+  if (r.status === 409 || r.status === 422) throw new ErreurClient("Le site a été modifié ailleurs entre-temps : rechargez la page.", 409);
+  if (r.status === 401) throw new ErreurClient("La clé de publication a expiré ou a été révoquée : prévenez votre agence.", 502);
+  if (!r.ok) throw new ErreurClient(`Publication impossible (GitHub ${r.status}).`, 502);
+  return { d, expiration: r.headers.get("github-authentication-token-expiration") };
+}
+const branche = () => env("CONTENU_BRANCHE", "main");
+const auteur = (u: any) => ({ name: `Admin ${String(u.email ?? "").split("@")[0]}`.slice(0, 60), email: u.email || "admin@boutique.invalid" });
+function verifierContenu(base64: string) {
+  if (!base64 || base64.length > 3_000_000) throw new ErreurClient("Contenu manquant ou trop volumineux.");
+  const texte = new TextDecoder().decode(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+  const i = texte.search(/^window\.DONNEES = /m);
+  if (i < 0) throw new ErreurClient("Contenu invalide.");
+  // Le fichier ne doit contenir que des commentaires puis les données JSON : aucun code ne peut s'y glisser.
+  if (texte.slice(0, i).split("\n").some((l) => l.trim() && !l.trim().startsWith("//"))) throw new ErreurClient("Contenu invalide.");
+  let d: any;
+  try {
+    d = JSON.parse(texte.slice(i + "window.DONNEES = ".length).trim().replace(/;\s*$/, ""));
+  } catch {
+    throw new ErreurClient("Contenu invalide (JSON).");
+  }
+  if (!d?.site || !Array.isArray(d.produits)) throw new ErreurClient("Contenu invalide.");
+}
+
 const arrondi = (n: number) => Math.round(n * 100) / 100;
 const texte = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 
 async function creerVente(v: NonNullable<Demande["vente"]>) {
   if (!Array.isArray(v.lignes) || !v.lignes.length) throw new ErreurClient("Ajoutez au moins un article.");
   const D = await catalogue();
+  // Assujetti à la TVA : les espèces doivent être enregistrées sur une caisse certifiée (art. 286 du CGI)
+  if (D.site?.legal?.regimeTva === "assujetti" && v.paiement_statut === "paye" && v.paiement_moyen === "especes")
+    throw new ErreurClient("Les paiements en espèces doivent être enregistrés sur votre caisse certifiée.");
   const lignes = v.lignes.map((l) => {
     const p = l.id ? (D.produits ?? []).find((x: any) => x.id === l.id) : null;
     const nom = texte(l.nom || p?.nom, 160);
@@ -104,8 +145,8 @@ async function creerVente(v: NonNullable<Demande["vente"]>) {
 }
 
 export const traiter = servir(async (req) => {
-  await verifierAdmin(req);
-  const d = await lireJson<Demande>(req, 50_000);
+  const utilisateur = await verifierAdmin(req);
+  const d = await lireJson<Demande>(req, 6_000_000);
 
   if (d.action === "etat") {
     const cle = env("STRIPE_SECRET_KEY");
@@ -113,11 +154,35 @@ export const traiter = servir(async (req) => {
       stripe: !!cle,
       stripe_mode: cle ? (cle.startsWith("sk_live_") || cle.startsWith("rk_live_") ? "production" : "test") : null,
       webhook: !!env("STRIPE_WEBHOOK_SECRET"),
-      emails: !!env("RESEND_API_KEY"),
-      expediteur: env("EMAIL_EXPEDITEUR"),
+      emails: !!fournisseurEmail(),
+      emails_service: fournisseurEmail(),
+      expediteur: fournisseurEmail() ? `${expediteur().nom} <${expediteur().email}>` : "",
       boutique_email: env("BOUTIQUE_EMAIL"),
       site_url: env("SITE_URL"),
+      publication: !!(env("CONTENU_GITHUB_TOKEN") && env("CONTENU_DEPOT")),
+      publication_expiration: env("CONTENU_GITHUB_TOKEN") && env("CONTENU_DEPOT") ? await github(`${FICHIER_CONTENU}?ref=${branche()}`).then((r) => r.expiration ?? "", () => "erreur") : null,
     });
+  }
+  if (d.action === "contenu_lire") {
+    const { d: f } = await github(`${FICHIER_CONTENU}?ref=${encodeURIComponent(branche())}&t=${Date.now()}`);
+    return json(req, { content: f.content, sha: f.sha });
+  }
+  if (d.action === "contenu_publier") {
+    verifierContenu(d.contenu ?? "");
+    if (!/^[0-9a-f]{40}$/.test(d.sha ?? "")) throw new ErreurClient("Version du contenu manquante : rechargez la page.");
+    const { d: r } = await github(FICHIER_CONTENU, {
+      method: "PUT",
+      body: JSON.stringify({ message: texte(d.message, 200) || "Mise à jour du contenu du site (admin)", content: d.contenu, sha: d.sha, branch: branche(), committer: auteur(utilisateur) }),
+    });
+    return json(req, { content: { sha: r.content?.sha }, commit: { sha: r.commit?.sha } });
+  }
+  if (d.action === "photo_publier") {
+    const chemin = String(d.chemin ?? "");
+    if (!/^img\/[a-z0-9-]{1,80}\.jpg$/.test(chemin)) throw new ErreurClient("Nom de photo invalide.");
+    const contenu = String(d.contenu ?? "");
+    if (!contenu || contenu.length > 4_000_000 || !contenu.startsWith("/9j/")) throw new ErreurClient("Photo invalide (JPEG de 3 Mo maximum).");
+    const { d: r } = await github(chemin, { method: "PUT", body: JSON.stringify({ message: `Ajout de la photo ${chemin} (admin)`, content: contenu, branch: branche(), committer: auteur(utilisateur) }) });
+    return json(req, { content: { sha: r.content?.sha } }, 201);
   }
   if (d.action === "creer_commande") {
     if (!d.vente) throw new ErreurClient("Vente manquante.");

@@ -78,7 +78,7 @@
   }
 
   // Retour depuis l'email « mot de passe oublié » : on propose de choisir le nouveau mot de passe.
-  function surveillerRecuperation(D, ctx) {
+  function surveillerRecuperation(D, ctx, apres = () => {}) {
     const c = obtenir(D);
     if (!c || c.__surveille) return;
     c.__surveille = true;
@@ -97,7 +97,10 @@
         ev.preventDefault();
         const { error } = await c.auth.updateUser({ password: f.querySelector("#srv-nouveau").value });
         ctx.toast(error ? `Échec : ${error.message}` : "Mot de passe enregistré.", !!error);
-        if (!error) f.close();
+        if (!error) {
+          f.close();
+          apres();
+        }
       };
     });
   }
