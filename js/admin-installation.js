@@ -192,10 +192,13 @@
             <ol>
               <li>Créez un compte gratuit sur <a href="https://onboarding.brevo.com/account/register" target="_blank" rel="noopener">brevo.com</a> <strong>avec l'email de la boutique</strong> (il devient l'expéditeur validé).</li>
               <li>Menu du compte → <em>SMTP &amp; API</em> → onglet <em>Clés API</em> → <strong>Générer une nouvelle clé API</strong>, copiez-la (<code>xkeysib-…</code>).</li>
+              <li>Même page, onglet <em>SMTP</em> : copiez l'<strong>identifiant</strong> (<code>…@smtp-brevo.com</code>) et générez une <strong>clé SMTP</strong> (<code>xsmtpsib-…</code>). Elles servent à l'email « mot de passe oublié » de l'admin.</li>
               <li>Avec votre nom de domaine : <em>Expéditeurs, domaines et IP dédiées</em> → <em>Domaines</em> → <strong>Authentifier le domaine</strong> (Brevo indique les lignes DNS à copier), puis indiquez ici une adresse de ce domaine, par exemple <code>Mon Truc en Bois &lt;bonjour@montrucenbois.fr&gt;</code>.</li>
             </ol>
             <div class="grille-champs">
               ${champ("ins-brevo", "Clé Brevo", { type: "password", placeholder: "xkeysib-…", aide: garde("BREVO_API_KEY") || (gh?.secrets.RESEND_API_KEY ? "Les emails passent actuellement par Resend : une clé Brevo le remplace." : "") })}
+              ${champ("ins-smtp-login", "Identifiant SMTP Brevo", { valeur: v.BREVO_SMTP_LOGIN || "", placeholder: "9a1b2c001@smtp-brevo.com" })}
+              ${champ("ins-smtp-cle", "Clé SMTP Brevo", { type: "password", placeholder: "xsmtpsib-…", aide: garde("BREVO_SMTP_CLE") || "Sans elle, l'email « mot de passe oublié » n'arrive qu'aux membres du projet Supabase." })}
               ${champ("ins-expediteur", "Expéditeur des emails", { valeur: v.EMAIL_EXPEDITEUR || "", placeholder: "Vide = « Mon Truc en Bois » avec l'email de la boutique" })}
               ${champ("ins-boutique", "Email qui reçoit les commandes et devis", { type: "email", valeur: v.BOUTIQUE_EMAIL || emailBoutique, requis: true })}
             </div>
@@ -242,7 +245,7 @@
       publication: val("ins-publication"),
       admin: val("ins-admin").toLowerCase(), mdp: zone.querySelector("#ins-mdp").value, mdp2: zone.querySelector("#ins-mdp2").value,
       stripe: val("ins-stripe"), carte: zone.querySelector("#ins-carte").checked,
-      brevo: val("ins-brevo"), expediteur: val("ins-expediteur"), boutique: val("ins-boutique").toLowerCase(),
+      brevo: val("ins-brevo"), smtpLogin: val("ins-smtp-login"), smtpCle: val("ins-smtp-cle"), expediteur: val("ins-expediteur"), boutique: val("ins-boutique").toLowerCase(),
       site: val("ins-site").replace(/\/+$/, ""),
     };
   }
@@ -267,6 +270,8 @@
     if (x.carte && !x.stripe && !gh.secrets.STRIPE_SECRET_KEY) return "Pour proposer le paiement par carte, collez la clé secrète Stripe (ou décochez la case).";
     if (x.publication && !/^github_pat_\w{20,}$/.test(x.publication)) return "La clé de publication commence par github_pat_.";
     if (x.publication && x.publication === ctx.github.cfg.cle) return "Créez une clé de publication distincte de la clé de l'agence, avec la seule permission Contents.";
+    if (x.smtpCle && !/^xsmtpsib-[A-Za-z0-9-]{20,}$/.test(x.smtpCle)) return "La clé SMTP Brevo commence par xsmtpsib- (onglet SMTP).";
+    if (x.smtpLogin && !/@smtp-brevo\.com$/.test(x.smtpLogin)) return "L'identifiant SMTP Brevo se termine par @smtp-brevo.com.";
     if (x.brevo && !/^xkeysib-[A-Za-z0-9-]{20,}$/.test(x.brevo)) return "La clé Brevo commence par xkeysib- (menu SMTP & API → Clés API).";
     if (x.expediteur && !/@/.test(x.expediteur)) return "Expéditeur : une adresse email, par exemple « Mon Truc en Bois <bonjour@votre-domaine.fr> ».";
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(x.boutique)) return "Indiquez l'email qui reçoit les commandes.";
@@ -330,7 +335,7 @@
 
       // 2. Secrets chiffrés
       const cle = await api("/actions/secrets/public-key");
-      const secrets = { SUPABASE_ACCESS_TOKEN: x.jeton, STRIPE_SECRET_KEY: x.stripe, BREVO_API_KEY: x.brevo, CONTENU_GITHUB_TOKEN: x.publication, ADMIN_MOT_DE_PASSE: x.mdp };
+      const secrets = { SUPABASE_ACCESS_TOKEN: x.jeton, STRIPE_SECRET_KEY: x.stripe, BREVO_API_KEY: x.brevo, BREVO_SMTP_CLE: x.smtpCle, CONTENU_GITHUB_TOKEN: x.publication, ADMIN_MOT_DE_PASSE: x.mdp };
       for (const [nom, valeur] of Object.entries(secrets)) {
         if (!valeur) continue;
         await api(`/actions/secrets/${nom}`, { method: "PUT", body: JSON.stringify({ encrypted_value: await chiffrer(cle, valeur), key_id: cle.key_id }) });
@@ -342,7 +347,7 @@
       const vars = {
         SUPABASE_PROJECT_REF: ok.ref, SUPABASE_URL: url, SUPABASE_ANON_KEY: x.cle, SITE_URL: x.site,
         SITE_ORIGINES: [...new Set([origine, location.origin].filter((o) => /^https:/.test(o)))].join(","),
-        BOUTIQUE_EMAIL: x.boutique, EMAIL_EXPEDITEUR: x.expediteur || `Mon Truc en Bois <${x.boutique}>`, ADMIN_EMAIL: x.admin,
+        BOUTIQUE_EMAIL: x.boutique, ...(x.smtpLogin ? { BREVO_SMTP_LOGIN: x.smtpLogin } : {}), EMAIL_EXPEDITEUR: x.expediteur || `Mon Truc en Bois <${x.boutique}>`, ADMIN_EMAIL: x.admin,
       };
       for (const [nom, valeur] of Object.entries(vars)) await ecrireVariable(nom, valeur);
       etape(2, "ok");

@@ -70,10 +70,23 @@ jobs:
           done
           rm -f requete.json reponse.json
 
-      - name: Réglages de connexion (adresse du site, inscriptions fermées)
+      - name: Réglages de connexion (adresse du site, inscriptions fermées, email de mot de passe)
+        env:
+          BREVO_SMTP_LOGIN: ${{ vars.BREVO_SMTP_LOGIN }}
+          BREVO_SMTP_CLE: ${{ secrets.BREVO_SMTP_CLE }}
+          BOUTIQUE_EMAIL: ${{ vars.BOUTIQUE_EMAIL }}
         run: |
           [ -n "$SITE_URL" ] || { echo "::error::Variable SITE_URL manquante."; exit 1; }
-          jq -n --arg site "$SITE_URL" '{site_url: $site, uri_allow_list: ($site + "/**"), disable_signup: true}' > auth.json
+          # Email « mot de passe oublié » en français ; envoyé par Brevo si sa connexion SMTP est fournie
+          # (le service d'email intégré de Supabase n'écrit qu'aux membres du projet Supabase).
+          jq -n --arg site "$SITE_URL" --rawfile modele supabase/emails/mot-de-passe.html \
+            --arg login "$BREVO_SMTP_LOGIN" --arg cle "$BREVO_SMTP_CLE" --arg exp "$BOUTIQUE_EMAIL" '
+            {site_url: $site, uri_allow_list: ($site + "/**"), disable_signup: true,
+             mailer_subjects_recovery: "Mon Truc en Bois : choisir un nouveau mot de passe",
+             mailer_templates_recovery_content: ($modele | gsub("__SITE__"; $site))}
+            + (if ($login != "" and $cle != "" and $exp != "") then
+                {smtp_host: "smtp-relay.brevo.com", smtp_port: "587", smtp_user: $login, smtp_pass: $cle,
+                 smtp_admin_email: $exp, smtp_sender_name: "Mon Truc en Bois"} else {} end)' > auth.json
           code=$(curl -sS -o reponse.json -w '%{http_code}' -X PATCH "$API/config/auth" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @auth.json)
           if [ "$code" -ge 300 ]; then echo "::error::Réglages de connexion : $(cat reponse.json)"; exit 1; fi

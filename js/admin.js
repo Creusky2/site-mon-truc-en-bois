@@ -498,7 +498,8 @@
     const L = D.site.legal;
     const legalOk = !!(L.exploitant && L.formeJuridique && D.site.siret && L.regimeTva);
     const mediateurOk = !!L.mediateur.nom;
-    const pret = emailOk && D.site.prixVerifies && legalOk && mediateurOk;
+    // Les points légaux restent signalés ci-dessous mais ne bloquent pas l'ouverture (à régler avec le client).
+    const pret = emailOk && D.site.prixVerifies;
     const etape = (etat, titre, detail, action = "") =>
       `<li><span class="etat ${etat}">${etat === "ok" ? "✓" : etat === "afaire" ? "!" : "·"}</span><span>${titre}${detail ? `<small>${detail}</small>` : ""}</span>${action}</li>`;
     const aller = (o, t) => `<button class="mini" data-aller="${o}">${t}</button>`;
@@ -516,7 +517,7 @@
       <section class="bloc">
         <div class="bloc-tete">
           <h2>Avant d'ouvrir les commandes</h2>
-          ${D.site.apercu ? `<button class="btn" data-action="ouvrir-commandes" ${pret ? "" : "disabled"} title="${pret ? "" : "Complétez d'abord les points marqués « ! » ci-dessous"}">Ouvrir les commandes</button>` : `<span class="pastille" style="background:#e3f1e9;color:#1f6b45">Commandes ouvertes</span>`}
+          ${D.site.apercu ? `<button class="btn" data-action="ouvrir-commandes" ${pret ? "" : "disabled"} title="${pret ? "" : "Complétez d'abord l'email de la boutique et la vérification des prix"}">Ouvrir les commandes</button>` : `<span class="pastille" style="background:#e3f1e9;color:#1f6b45">Commandes ouvertes</span>`}
         </div>
         <ul class="checklist">
           ${etape(emailOk ? "ok" : "afaire", "Adresse email de la boutique", emailOk ? echapper(D.site.email) : "L'adresse actuelle est provisoire : les commandes s'y perdraient.", emailOk ? "" : aller("boutique", "Corriger"))}
