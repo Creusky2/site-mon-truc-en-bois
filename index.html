@@ -19,7 +19,7 @@
   <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=202610191040">
 </head>
 <body>
   <header class="entete"></header>
@@ -29,14 +29,17 @@
       <div class="conteneur heros-grille">
         <div class="heros-texte">
           <img class="heros-logo" src="img/logo-200.webp" alt="" width="200" height="183">
-          <span class="etiquette">Boutique de personnalisation · Auchel (62)</span>
           <h1 data-texte="heroTitre"></h1>
           <p class="chapeau" data-texte="heroTexte"></p>
           <div class="heros-actions">
-            <a class="btn" href="boutique.html">Découvrir la boutique <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a class="btn" href="boutique.html">Découvrir la boutique</a>
             <a class="btn btn-ligne" href="contact.html">Demander un devis</a>
           </div>
           <a class="preuve" href="avis.html"><span class="etoiles" aria-hidden="true">★★★★★</span><span data-avis-court></span></a>
+          <figure class="mot-atelier" style="margin:0.4rem 0 0">
+            <img src="img/logo-200.webp" alt="" width="64" height="64" style="object-fit:contain;background:#fff;padding:4px">
+            <figcaption><p>« Chaque pièce passe entre nos mains, de la maquette à la dernière gravure. »</p><span class="signature" data-texte="equipe"></span></figcaption>
+          </figure>
         </div>
         <div class="mosaique" id="mosaique"></div>
       </div>
@@ -54,11 +57,11 @@
     <section class="section">
       <div class="conteneur">
         <div class="titre-section">
-          <div class="pile">
-            <span class="etiquette">Nos univers</span>
+          <div class="section-tete">
             <h2>Un objet, une envie, un message</h2>
+            <p>Du bois gravé au mug imprimé : choisissez l'objet, nous y mettons vos mots.</p>
           </div>
-          <a class="lien-fleche" href="boutique.html">Tout le catalogue <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="lien-fleche" href="boutique.html">Tout le catalogue</a>
         </div>
         <div class="categories" id="categories"></div>
       </div>
@@ -67,24 +70,38 @@
     <section class="section section-alt">
       <div class="conteneur">
         <div class="titre-section">
-          <div class="pile">
-            <span class="etiquette">Coups de cœur</span>
-            <h2>Les idées cadeaux qui font mouche</h2>
+          <div class="section-tete">
+            <h2>Nos coups de cœur du moment</h2>
+            <p>Les créations que l'on nous demande le plus en boutique.</p>
           </div>
-          <a class="lien-fleche" href="boutique.html">Voir tous les produits <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="lien-fleche" href="boutique.html">Voir tous les produits</a>
         </div>
         <div class="produits" id="vedettes"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="conteneur atelier-bandeau">
+        <div class="photos">
+          <img src="img/boutique-interieur.jpg" alt="L'intérieur de la boutique Mon Truc en Bois" loading="lazy">
+          <img src="img/salon-stand.jpg" alt="Le stand de Mon Truc en Bois sur un salon" loading="lazy">
+        </div>
+        <div class="texte">
+          <h2>Un atelier, deux paires de mains</h2>
+          <p data-a-propos="0"></p>
+          <p data-a-propos="1"></p>
+          <div><a class="btn btn-ligne" href="atelier.html">Découvrir l'atelier</a></div>
+        </div>
       </div>
     </section>
 
     <section class="section" id="idees">
       <div class="conteneur">
         <div class="titre-section">
-          <div class="pile">
-            <span class="etiquette">Idées cadeaux</span>
+          <div class="section-tete">
             <h2>Un cadeau pour quelle occasion ?</h2>
           </div>
-          <a class="lien-fleche" href="idees-cadeaux.html">Toutes les idées <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="lien-fleche" href="idees-cadeaux.html">Toutes les idées</a>
         </div>
         <div class="occasions" id="occasions"></div>
       </div>
@@ -93,11 +110,10 @@
     <section class="section section-alt" id="bloc-avis" hidden>
       <div class="conteneur">
         <div class="titre-section">
-          <div class="pile">
-            <span class="etiquette">Avis clients</span>
-            <h2>Ils nous ont fait confiance</h2>
+          <div class="section-tete">
+            <h2>Ce que nos clients en disent</h2>
           </div>
-          <a class="lien-fleche" href="avis.html">Tous les avis <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="lien-fleche" href="avis.html">Tous les avis</a>
         </div>
         <div class="scores" id="scores"></div>
         <div class="avis-grille" id="avis"></div>
@@ -108,9 +124,9 @@
     <section class="section">
       <div class="conteneur">
         <div class="titre-section">
-          <div class="pile">
-            <span class="etiquette">Comment ça marche</span>
+          <div class="section-tete">
             <h2>De votre idée à l'objet gravé</h2>
+            <p>Vous voyez le résultat avant que nous lancions la fabrication.</p>
           </div>
         </div>
         <div class="etapes">
@@ -126,7 +142,6 @@
       <div class="conteneur visite">
         <img src="img/boutique-auchel.jpg" alt="La boutique Mon Truc en Bois à Auchel" loading="lazy">
         <div class="pile" style="gap:1.4rem">
-          <span class="etiquette">La boutique</span>
           <h2>Venez nous voir à Auchel</h2>
           <div class="infos-contact">
             <span data-icone="lieu"><span data-site="adresse"></span></span>
@@ -155,16 +170,18 @@
   <footer class="pied"></footer>
 
   <script src="data/donnees.js"></script>
-  <script src="js/demo.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/demo.js?v=202610191040"></script>
+  <script src="js/main.js?v=202610191040"></script>
   <script>
     const { D, echapper, carteProduit } = MTB;
     const vedettes = PRODUITS.filter((p) => p.vedette);
 
-    const photos = ["img/boutique-interieur.jpg", ...vedettes.filter((p) => p.image).slice(0, 2).map((p) => p.image)];
+    // En tête : trois créations (la boutique est montrée plus bas, avec l'atelier)
+    const photos = (vedettes.length >= 3 ? vedettes : PRODUITS).filter((p) => p.image).slice(0, 3);
     document.getElementById("mosaique").innerHTML = photos
-      .map((src, i) => `<img src="${echapper(src)}" alt="${i ? "Création personnalisée" : "Intérieur de la boutique"}"${i ? ' loading="lazy"' : ""}>`)
+      .map((p, i) => `<img src="${echapper(p.image)}" alt="${echapper(p.nom)}"${i ? ' loading="lazy"' : ""}>`)
       .join("");
+    document.querySelectorAll("[data-a-propos]").forEach((el) => (el.textContent = D.textes?.aPropos?.[Number(el.dataset.aPropos)] || ""));
 
     document.getElementById("categories").innerHTML = D.categories
       .map((c) => {

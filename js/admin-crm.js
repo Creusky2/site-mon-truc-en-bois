@@ -43,6 +43,7 @@
   const fenetre = () => document.getElementById("fenetre");
   const lien = (tel) => String(tel || "").replace(/[^\d+]/g, "");
   const sansEmail = (email) => !email || email.endsWith(".invalid");
+  const avatar = (nom) => `<span class="avatar" aria-hidden="true">${e(String(nom || "?").split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((m) => m[0].toUpperCase()).join(""))}</span>`;
   // Adresse du site pour les liens envoyés aux clients : l'adresse publique réglée dans Infos boutique, sinon le dossier
   // de cette page (Cloudflare Pages sert l'admin à « /admin » sans « .html » : on ne peut pas se fier au nom de la page).
   const adresseSite = () => (ctx.D.site.url ? ctx.D.site.url.replace(/\/*$/, "/") : location.origin + location.pathname.replace(/[^/]*$/, ""));
@@ -71,8 +72,7 @@
   }
   function majCompteurDemandes() {
     const n = donnees.demandes.filter((d) => d.statut === "nouvelle" && d.type !== "newsletter").length;
-    const b = document.querySelector('[data-onglet="demandes"]');
-    if (b) b.innerHTML = `Demandes${n ? ` <span class="compteur">${n}</span>` : ""}`;
+    window.AdminPastille?.("demandes", n);
   }
 
   async function monter(nomVue, element, contexte) {
@@ -342,6 +342,7 @@
             .map((c) => {
               const s = st(c.id);
               return `<button class="ligne ligne-commande" data-crm="client" data-id="${c.id}">
+                ${avatar(c.nom || c.email)}
                 <span class="ligne-texte"><strong>${e(c.nom || "(sans nom)")}</strong><span>${[c.email, c.tel].filter(Boolean).map(e).join(" · ") || "—"}${s.derniere ? ` · dernier achat le ${date(s.derniere)}` : ""}</span></span>
                 <span class="pastilles">${c.consentement_marketing ? `<span class="pastille" style="background:#e3f1e9;color:#1f6b45">Abonné</span>` : ""}${(c.etiquettes || []).map((t) => `<span class="pastille">#${e(t)}</span>`).join("")}</span>
                 <span class="prix"><strong>${euros(s.total)}</strong><small class="aide"> ${s.n} achat${s.n > 1 ? "s" : ""}</small></span>
@@ -452,6 +453,7 @@
           ${liste
             .map(
               (d) => `<button class="ligne ligne-commande" data-crm="demande" data-id="${d.id}">
+                ${avatar(d.nom || d.email)}
                 <span class="ligne-texte"><strong>${e(d.nom || d.email)}${d.sujet ? ` — ${e(d.sujet)}` : ""}</strong><span>${date(d.cree_le, true)}${d.quantite ? ` · quantité ${d.quantite}` : ""} · ${e(d.message.slice(0, 90))}${d.message.length > 90 ? "…" : ""}</span></span>
                 <span class="pastilles"><span class="pastille">${TYPES_DEM[d.type]}</span><span class="pastille demande-${d.statut}">${ST_DEM[d.statut]}</span></span>
               </button>`
@@ -672,7 +674,7 @@
     const canauxAnnee = {};
     douze.forEach((m) => Object.entries(parMois[m]?.canaux || {}).forEach(([k, v]) => (canauxAnnee[k] = (canauxAnnee[k] || 0) + v)));
     el.innerHTML = `
-      <div class="bloc-tete"><h2>Ventes</h2>${nbDemandes.count ? `<button class="btn" data-aller="demandes">${nbDemandes.count} demande${nbDemandes.count > 1 ? "s" : ""} à traiter</button>` : ""}</div>
+      <div class="bloc-tete"><h2>Vos ventes</h2></div>
       <div class="chiffres-admin" style="margin:0 0 1rem">
         <div class="chiffre"><strong>${euros(ce.ca)}</strong><span>chiffre d'affaires ce mois-ci, dont ${euros(ce.encaisse)} encaissés${avant.ca ? ` · mois dernier : ${euros(avant.ca)}` : ""}</span></div>
         <div class="chiffre"><strong>${ce.n}</strong><span>ventes ce mois-ci</span></div>

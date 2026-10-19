@@ -14,17 +14,21 @@ Tout se gère depuis une seule page, **montrucenbois.fr/admin.html**, sur votre 
 
 Mot de passe oublié : sur l'écran de connexion, tapez votre email puis **Mot de passe oublié ?**. Un email arrive avec un bouton pour en choisir un nouveau.
 
-Sur un appareil qui n'est pas le vôtre, pensez à **Déconnexion** en haut à droite.
+Sur un appareil qui n'est pas le vôtre, pensez à **Déconnexion**, en bas du menu.
+
+Le menu regroupe *Au quotidien* (Accueil, Commandes, Caisse, Clients, Demandes, Marketing) et *Le site* (Produits, Galerie, Textes…). Sur le téléphone, les gestes de tous les jours sont dans la barre en bas de l'écran ; le reste s'ouvre avec **Plus**.
+
+L'**Accueil** commence par ce qui vous attend aujourd'hui : nouvelles commandes, devis à traiter, commandes à encaisser et commandes prêtes. Touchez une case pour y aller.
 
 ## La règle d'or : publier
 
-Ce qui touche à la vitrine du site ne change pour les clients qu'après le bouton **Publier les modifications**, en haut de la page. Le reste s'enregistre tout seul.
+Ce qui touche à la vitrine du site ne change pour les clients qu'après le bouton **Publier les modifications**, qui apparaît en haut de la page dès que vous avez changé quelque chose. Le reste s'enregistre tout seul.
 
 | S'enregistre tout seul | Demande de cliquer sur « Publier les modifications » |
 | --- | --- |
 | Commandes, Caisse, Clients, Demandes, Marketing | Produits, Catégories & occasions, Avis clients, FAQ, Infos boutique, Textes & annonce, Galerie |
 
-- En haut, le petit mot passe de « Modifications non publiées » à « À jour » une fois publié.
+- En haut, le petit mot passe de « Modifications non publiées » à « Site à jour » une fois publié.
 - Le site se met à jour en une à deux minutes ; rechargez la page du site pour voir le changement.
 - **Prévisualiser** montre le site avec vos changements avant de les publier, sur votre appareil seulement.
 - Page fermée sans publier ? Rien n'est perdu : vos changements vous sont proposés à la prochaine ouverture.
@@ -54,16 +58,16 @@ La page à imprimer et à garder près de la caisse : tout le reste du guide dé
 **Chaque mois**
 
 - [ ] **Commandes** → *Toutes* → **Exporter (tableur)** pour le comptable.
-- [ ] Coup d'œil au **Tableau de bord** : chiffre d'affaires, panier moyen, ce qui vient du site, de la boutique et des salons.
+- [ ] Coup d'œil à l'**Accueil** : chiffre d'affaires, panier moyen, ce qui vient du site, de la boutique et des salons.
 - [ ] **Clients** → liste *Sans achat depuis 6 mois* : un petit mot ou un code promo pour les faire revenir.
 
 ## Traiter une commande du site
 
-Chaque nouvelle commande vous arrive par email, et un nombre s'affiche sur l'onglet **Commandes**. Le client a déjà reçu sa confirmation.
+Chaque nouvelle commande vous arrive par email, et un nombre s'affiche à côté de **Commandes** dans le menu. Le client a déjà reçu sa confirmation.
 
-1. Onglet **Commandes** → liste *À traiter* → touchez la commande.
+1. **Commandes** → liste *À traiter* → touchez la commande.
 2. Tout y est : le texte à graver et sa police, la date souhaitée, le message pour la carte. Pour les photos : **Voir / télécharger les photos du client**.
-3. Quand la commande avance, choisissez le nouveau **Statut**, laissez coché *Prévenir le client par email*, ajoutez si besoin un *Message au client*, puis **Enregistrer**. Pour un client sans email (vente en boutique), la fiche le signale : prévenez-le par téléphone.
+3. Quand la commande avance, touchez le bouton de l'étape suivante (par exemple **Lancer la fabrication et prévenir le client**) : le client reçoit son email tout seul. Pour un autre changement, choisissez le **Statut**, ajoutez si besoin un *Message au client*, puis **Enregistrer**. Pour un client sans email (vente en boutique), la fiche le signale : prévenez-le par téléphone.
 
 | Statut | Quand le choisir | Le client reçoit |
 | --- | --- | --- |
@@ -88,7 +92,7 @@ Une commande payée porte l'étiquette **Payée** et reçoit son numéro de fact
 - **Facture** : bouton **Imprimer la facture** dans la commande, à imprimer ou enregistrer en PDF pour l'envoyer. Elle existe dès que la commande est payée (avant, seul le bon de commande est proposé).
 - **Rembourser** : dans l'application Stripe, ouvrez le paiement → *Rembourser* ; puis dans la commande, **Marquer comme remboursée**. Une commande remboursée ne reçoit plus de lien de paiement : si le client doit payer de nouveau, faites une nouvelle vente depuis la **Caisse**.
 
-L'onglet *Commandes* → liste **À payer** montre tout ce qui reste à encaisser.
+*Commandes* → liste **À payer** montre tout ce qui reste à encaisser.
 
 ## Vendre en boutique, au téléphone ou sur un salon
 
@@ -107,7 +111,7 @@ Si votre boutique est assujettie à la TVA, les paiements en espèces s'enregist
 
 ## Répondre à une demande de devis
 
-Les demandes envoyées depuis la page Contact arrivent par email et dans l'onglet **Demandes** (un nombre s'affiche quand il y en a de nouvelles). Le client a déjà reçu un accusé de réception.
+Les demandes envoyées depuis la page Contact arrivent par email et dans **Demandes** (un nombre s'affiche quand il y en a de nouvelles). Le client a déjà reçu un accusé de réception.
 
 1. Onglet **Demandes** → touchez la demande : projet, quantité, coordonnées.
 2. **Répondre par email** : votre réponse part avec le logo de la boutique ; la demande passe en « Répondue ».
@@ -116,36 +120,36 @@ Les demandes envoyées depuis la page Contact arrivent par email et dans l'ongle
 
 ## Changer un prix, une photo, un produit
 
-Tout se passe dans l'onglet **Produits**, puis **Publier les modifications**.
+Tout se passe dans **Produits**, puis **Publier les modifications**.
 
 - **Changer un prix** : tapez le nouveau prix directement dans la liste.
 - **Mettre en avant** : le cœur ♥ place le produit dans les coups de cœur de l'accueil.
 - **Retirer du site sans le supprimer** : l'œil 👁 le masque (pratique pour une rupture ou un produit de saison).
 - **Modifier un produit** : bouton **Modifier** → nom, description, prix, photos (prises directement avec le téléphone), choix et suppléments, options de personnalisation, délai, badge « Promo » ou « Nouveau ».
 - **Nouveau produit** : **+ Ajouter un produit**, ou **Dupliquer** un produit proche et modifier la copie (elle reste masquée jusqu'à ce que vous l'affichiez).
-- **Photos de réalisations** : onglet **Galerie** → *Ajouter des photos*.
+- **Photos de réalisations** : **Galerie** → *Ajouter des photos*.
 
 Vérifiez avec **Prévisualiser** avant de publier si vous avez fait beaucoup de changements.
 
 ## Prévenir les clients
 
-**Une annonce en haut du site** (fermeture, salon, date limite pour Noël) : onglet **Textes & annonce** → cochez *Afficher l'annonce*, écrivez le texte → **Publier les modifications**. Décochez pour la retirer.
+**Une annonce en haut du site** (fermeture, salon, date limite pour Noël) : **Textes & annonce** → cochez *Afficher l'annonce*, écrivez le texte → **Publier les modifications**. Décochez pour la retirer.
 
-**Un code promo** : onglet **Marketing** → **+ Nouveau code** → le code (ex. `NOEL10`), la remise en % ou en euros, les dates, un montant minimum si besoin → *Enregistrer*. Le client le tape dans son panier (champ *Code promo*) ; en boutique, tapez-le dans la **Caisse**. Le bouton **Texte à partager** copie un message tout prêt pour Facebook, Instagram ou WhatsApp.
+**Un code promo** : **Marketing** → **+ Nouveau code** → le code (ex. `NOEL10`), la remise en % ou en euros, les dates, un montant minimum si besoin → *Enregistrer*. Le client le tape dans son panier (champ *Code promo*) ; en boutique, tapez-le dans la **Caisse**. Le bouton **Texte à partager** copie un message tout prêt pour Facebook, Instagram ou WhatsApp.
 
-**Un email à vos abonnés** : onglet **Marketing** → *Email aux abonnés* → sujet, message, et si vous voulez un bouton vers la boutique ou un produit → **M'envoyer un essai**, vérifiez-le dans votre boîte, puis **Envoyer**. Seuls les clients qui l'ont accepté le reçoivent, avec un lien personnel pour se désinscrire. Jusqu'à 300 emails par jour, emails des commandes compris.
+**Un email à vos abonnés** : **Marketing** → *Email aux abonnés* → sujet, message, et si vous voulez un bouton vers la boutique ou un produit → **M'envoyer un essai**, vérifiez-le dans votre boîte, puis **Envoyer**. Seuls les clients qui l'ont accepté le reçoivent, avec un lien personnel pour se désinscrire. Jusqu'à 300 emails par jour, emails des commandes compris.
 
 Les bons moments : début mai (fête des mères), début juin (fête des pères), début novembre (Noël, en rappelant la date limite de commande).
 
-**Plus d'avis Google** : onglet **Avis clients** → **Créer la carte** → **Imprimer la carte** (format A6, avec son code QR), et posez-la près de la caisse.
+**Plus d'avis Google** : **Avis clients** → **Créer la carte** → **Imprimer la carte** (format A6, avec son code QR), et posez-la près de la caisse.
 
 ## Chaque mois, et pour retrouver un client
 
-**Pour le comptable** : onglet **Commandes** → liste **Toutes** → **Exporter (tableur)**. Le fichier s'ouvre dans Excel ; envoyez-le avec les factures du mois.
+**Pour le comptable** : **Commandes** → liste **Toutes** → **Exporter (tableur)**. Le fichier s'ouvre dans Excel ; envoyez-le avec les factures du mois.
 
-**Vos chiffres** : le **Tableau de bord** montre le chiffre d'affaires du mois (et ce qui est déjà encaissé), le panier moyen, les 12 derniers mois et ce qui vient du site, de la boutique, du téléphone ou des salons. Les commandes annulées ou remboursées n'y comptent pas.
+**Vos chiffres** : l'**Accueil** montre le chiffre d'affaires du mois (et ce qui est déjà encaissé), le panier moyen, les 12 derniers mois et ce qui vient du site, de la boutique, du téléphone ou des salons. Les commandes annulées ou remboursées n'y comptent pas.
 
-**Retrouver un client** : onglet **Clients** → tapez un nom, un téléphone (avec ou sans espaces) ou un email. Sa fiche montre ses achats et ses demandes ; vous pouvez y noter ses préférences, l'appeler, lui écrire ou lui faire une nouvelle vente. Des listes toutes prêtes en haut de l'onglet : abonnés aux nouveautés, clients fidèles (2 achats ou plus), sans achat depuis 6 mois, jamais commandé. Les étiquettes (`pro`, `mariage`, `club`…) regroupent des clients pour les retrouver d'un clic.
+**Retrouver un client** : **Clients** → tapez un nom, un téléphone (avec ou sans espaces) ou un email. Sa fiche montre ses achats et ses demandes ; vous pouvez y noter ses préférences, l'appeler, lui écrire ou lui faire une nouvelle vente. Des listes toutes prêtes en haut de l'onglet : abonnés aux nouveautés, clients fidèles (2 achats ou plus), sans achat depuis 6 mois, jamais commandé. Les étiquettes (`pro`, `mariage`, `club`…) regroupent des clients pour les retrouver d'un clic.
 
 ## Un souci ?
 
@@ -153,7 +157,7 @@ Vous ne pouvez rien casser : chaque publication est gardée, et l'agence peut re
 
 | Ce qui se passe | Que faire |
 | --- | --- |
-| Mon changement n'apparaît pas sur le site | Vérifier qu'il est publié (« À jour » en haut), attendre deux minutes, recharger la page du site. |
+| Mon changement n'apparaît pas sur le site | Vérifier qu'il est publié (« Site à jour » en haut), attendre deux minutes, recharger la page du site. |
 | « Le site a été modifié ailleurs » | Recharger la page de l'admin : vos changements vous sont proposés à nouveau (ils remplacent ceux faits ailleurs), puis publier. |
 | Bandeau rouge « Publication indisponible » en haut de l'admin | Appeler l'agence. Commandes, caisse, clients et demandes fonctionnent normalement ; seules les modifications du site attendent. |
 | Je ne peux plus me connecter | *Mot de passe oublié ?* sur l'écran de connexion. |

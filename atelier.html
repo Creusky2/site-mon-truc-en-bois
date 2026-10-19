@@ -19,7 +19,7 @@
   <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=202610191040">
 </head>
 <body>
   <header class="entete"></header>
@@ -30,8 +30,12 @@
         <div class="apropos-texte">
           <img src="img/logo.webp" alt="Logo Mon Truc en Bois" width="200" height="183" style="width:clamp(150px,22vw,210px);height:auto">
           <span class="etiquette" id="equipe"></span>
-          <h1>Qui sommes-nous ?</h1>
+          <h1>Deux artisans, une boutique à Auchel</h1>
           <div class="pile" id="apropos"></div>
+          <figure class="mot-atelier" style="margin:0">
+            <img src="img/logo-200.webp" alt="" width="64" height="64" style="object-fit:contain;background:#fff;padding:4px">
+            <figcaption><p>« Venez nous voir : on aime parler de votre projet autour de l'établi. »</p><span class="signature" data-texte="equipe"></span></figcaption>
+          </figure>
           <div><a class="btn" href="contact.html">Parlons de votre projet</a></div>
         </div>
         <img class="photo" src="img/boutique-interieur.jpg" alt="Intérieur de la boutique Mon Truc en Bois" style="aspect-ratio:4/5">
@@ -40,7 +44,7 @@
 
     <section class="section section-alt">
       <div class="conteneur">
-        <div class="titre-section"><div class="pile"><span class="etiquette">Savoir-faire</span><h2>Ce que nous fabriquons</h2></div></div>
+        <div class="titre-section"><div class="pile"><h2>Ce que nous fabriquons</h2></div></div>
         <div class="savoirs">
           <div class="savoir" data-icone="gravure"><h3>Gravure texte et photo</h3><p>Gravure laser précise sur bois, verre et ardoise : textes, dessins, logos et même vos photos.</p></div>
           <div class="savoir" data-icone="tshirt"><h3>Sérigraphie et impression</h3><p>Mugs, verres, plaques voiture, tirelires, baskets : vos visuels imprimés à l'unité ou en série.</p></div>
@@ -53,8 +57,8 @@
     <section class="section">
       <div class="conteneur">
         <div class="titre-section">
-          <div class="pile"><span class="etiquette">Réalisations</span><h2>Quelques pièces sorties de la boutique</h2></div>
-          <a class="lien-fleche" data-facebook target="_blank" rel="noopener">Toutes nos nouveautés sur Facebook <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <div class="pile"><h2>Quelques pièces sorties de la boutique</h2></div>
+          <a class="lien-fleche" data-facebook target="_blank" rel="noopener">Toutes nos nouveautés sur Facebook</a>
         </div>
         <div class="galerie" id="galerie"></div>
       </div>
@@ -64,8 +68,8 @@
   <footer class="pied"></footer>
 
   <script src="data/donnees.js"></script>
-  <script src="js/demo.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/demo.js?v=202610191040"></script>
+  <script src="js/main.js?v=202610191040"></script>
   <script>
     const { D, echapper } = MTB;
     document.getElementById("equipe").textContent = D.textes.equipe ? `${D.textes.equipe} · depuis 2024` : "Depuis 2024";

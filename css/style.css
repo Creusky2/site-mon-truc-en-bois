@@ -1,10 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Dancing+Script:wght@600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Dancing+Script:wght@600&family=Caveat:wght@500;600&display=swap");
 
-/* Mise en page : un catalogue d'atelier — beaucoup de blanc, photos carrées comme des planches,
-   étiquettes en police « machine » façon fiche de gravure, accent vert forêt + touche bois. */
+/* Mise en page : l'atelier de Christophe et Laetitia — beaucoup de blanc, les photos des créations en premier,
+   le vert forêt et le vert sauge des feuillages du logo, le bois en touche, et un seul élément manuscrit :
+   le mot de l'atelier. Pas d'étiquettes en capitales : des titres simples, des phrases. */
 :root {
   --fond: #ffffff;
-  --fond-alt: #f4f2ee;
+  --fond-alt: #eef3ef; /* vert sauge très pâle : les feuillages des photos produits */
   --surface: #ffffff;
   --encre: #1b1a17;
   --encre-douce: #5f5a52;
@@ -12,13 +13,15 @@
   --foret: #24453a;
   --foret-fonce: #183128;
   --bois: #a8693a;
-  --sable: #efe9df;
+  --sable: #f3ece2;
+  --sauge: #dce8e0;
   --succes: #1f6b45;
   --alerte: #fff3d1;
 
   --f-titre: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-texte: "Figtree", "Segoe UI", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+  --f-main: "Caveat", "Segoe Script", cursive; /* écriture de l'atelier : le mot signé, rien d'autre */
 
   --r: 14px;
   --r-petit: 10px;
@@ -50,10 +53,7 @@ p { margin: 0; }
 .section { padding-block: clamp(56px, 8vw, 96px); }
 .section-alt { background: var(--fond-alt); }
 .pile { display: grid; gap: 1rem; align-content: start; }
-.etiquette {
-  font: 500 0.75rem/1.2 var(--f-mono);
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--encre-douce);
-}
+.etiquette { font: 600 0.88rem/1.3 var(--f-texte); color: var(--bois); }
 .chapeau { color: var(--encre-douce); font-size: 1.08rem; max-width: 60ch; }
 .titre-section { display: flex; justify-content: space-between; align-items: end; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.25rem; }
 .titre-section .pile { gap: 0.6rem; }
@@ -92,9 +92,10 @@ p { margin: 0; }
 .logo { display: flex; align-items: center; gap: 0.65rem; color: var(--encre); text-decoration: none; }
 
 .logo-nom { font: 700 1.2rem/1 var(--f-titre); letter-spacing: -0.02em; display: block; }
-.logo-lieu { font: 500 0.66rem/1 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--encre-douce); display: block; margin-top: 4px; }
+.logo-lieu { font: 500 0.8rem/1 var(--f-texte); color: var(--encre-douce); display: block; margin-top: 4px; }
 .nav { display: flex; gap: 0.25rem; align-items: center; }
-.nav a { text-decoration: none; color: var(--encre); font-weight: 500; padding: 0.55em 0.85em; border-radius: 8px; }
+.nav a { text-decoration: none; color: var(--encre); font-weight: 500; padding: 0.55em 0.85em; border-radius: 8px; white-space: nowrap; }
+@media (max-width: 1120px) and (min-width: 861px) { .nav a { padding-inline: 0.55em; font-size: 0.95rem; } }
 .nav a:hover { background: var(--fond-alt); }
 .nav a[aria-current="page"] { color: var(--foret); font-weight: 600; }
 .lien-panier { display: inline-flex; align-items: center; gap: 0.45em; border: 1px solid var(--trait); margin-left: 0.5rem; }
@@ -153,7 +154,12 @@ p { margin: 0; }
 .categorie-texte h3 { font-size: 1.3rem; }
 .categorie-texte p { font-size: 0.9rem; opacity: 0.88; }
 .categorie-texte .etiquette { color: rgba(255,255,255,0.8); }
-@media (max-width: 480px) { .categorie { aspect-ratio: 16 / 10; } }
+/* Téléphone : les univers défilent sur une ligne au lieu de s'empiler */
+@media (max-width: 480px) {
+  .categories { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; }
+  .categories::-webkit-scrollbar { display: none; }
+  .categorie { flex: 0 0 78%; aspect-ratio: 4 / 5; scroll-snap-align: start; }
+}
 
 /* ---------- Cartes produit ---------- */
 .produits { display: grid; gap: 28px 20px; grid-template-columns: repeat(4, 1fr); }
@@ -174,8 +180,8 @@ p { margin: 0; }
 .etapes { display: grid; gap: 20px; grid-template-columns: repeat(4, 1fr); counter-reset: etape; }
 @media (max-width: 900px) { .etapes { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .etapes { grid-template-columns: 1fr; } }
-.etape { display: grid; gap: 0.6rem; align-content: start; padding-top: 1.25rem; border-top: 2px solid var(--encre); }
-.etape::before { counter-increment: etape; content: "0" counter(etape); font: 500 0.8rem/1 var(--f-mono); color: var(--bois); letter-spacing: 0.08em; }
+.etape { display: grid; gap: 0.6rem; align-content: start; padding-top: 1.1rem; border-top: 2px solid var(--sauge); }
+.etape::before { counter-increment: etape; content: counter(etape); font: 700 2.2rem/1 var(--f-titre); color: var(--bois); }
 .etape p { color: var(--encre-douce); }
 
 /* ---------- Visite boutique ---------- */
@@ -187,7 +193,7 @@ p { margin: 0; }
 .horaires li span:first-child { font-weight: 500; }
 .horaires li span:last-child { color: var(--encre-douce); text-align: right; }
 .horaires li.aujourdhui span { color: var(--foret); font-weight: 700; }
-.horaires li.aujourdhui span:first-child::after { content: " · aujourd'hui"; font: 500 0.7rem var(--f-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.horaires li.aujourdhui span:first-child::after { content: " (aujourd'hui)"; font-weight: 500; }
 .infos-contact { display: grid; gap: 0.75rem; }
 .infos-contact a, .infos-contact span { display: flex; gap: 0.7rem; align-items: center; color: var(--encre); text-decoration: none; }
 .infos-contact .ico { color: var(--bois); }
@@ -312,7 +318,7 @@ input[type="file"] { font: inherit; font-size: 0.9rem; }
 .pied-grille { display: grid; gap: 32px; grid-template-columns: 1.3fr 1fr 1fr 1fr; }
 @media (max-width: 900px) { .pied-grille { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .pied-grille { grid-template-columns: 1fr; } }
-.pied h4 { color: #fff; font: 500 0.75rem var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 0.9rem; }
+.pied h4 { color: #fff; font: 600 1rem var(--f-titre); margin: 0 0 0.9rem; }
 .pied .pile { gap: 0.45rem; }
 .pied .logo { color: #fff; }
 .pied .logo-lieu { color: #a39d93; }
@@ -365,7 +371,7 @@ input[type="file"] { font: inherit; font-size: 0.9rem; }
 .occasions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .occasion { display: inline-flex; align-items: center; gap: 0.5em; padding: 0.7em 1.1em; border: 1px solid var(--trait); border-radius: 999px; background: #fff; color: var(--encre); text-decoration: none; font-weight: 500; transition: border-color 0.15s, background 0.15s; }
 .occasion:hover { border-color: var(--foret); background: #f2f6f4; }
-.occasion small { color: var(--encre-douce); font: 500 0.75rem var(--f-mono); }
+.occasion small { color: var(--encre-douce); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
 .occasions-grandes { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 860px) { .occasions-grandes { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 480px) { .occasions-grandes { grid-template-columns: 1fr; } }
@@ -507,3 +513,39 @@ a.preuve:hover { color: var(--encre); text-decoration: underline; }
 .pre-rendu { padding-block: 2rem; display: grid; gap: 1rem; max-width: 640px; }
 .pre-rendu img { width: 100%; height: auto; border-radius: var(--r); }
 .newsletter-pied .btn { background: var(--bois); border-color: var(--bois); color: #fff; }
+
+/* ======================================================================
+   Le mot de l'atelier : la seule touche manuscrite du site
+   ====================================================================== */
+.mot-atelier { display: grid; grid-template-columns: 64px 1fr; gap: 0.9rem; align-items: center; max-width: 34rem; }
+.mot-atelier img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 10px rgba(27, 26, 23, 0.15); }
+.mot-atelier p { font: 500 1.35rem/1.25 var(--f-main); color: var(--encre); }
+.mot-atelier .signature { display: block; font: 600 1.2rem/1 var(--f-main); color: var(--bois); margin-top: 0.3rem; }
+.section-tete { display: grid; gap: 0.5rem; max-width: 46rem; }
+.section-tete p { color: var(--encre-douce); font-size: 1.05rem; }
+/* L'atelier en grand : photo de la boutique et texte des artisans */
+.atelier-bandeau { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 64px); align-items: center; }
+.atelier-bandeau .photos { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+.atelier-bandeau .photos img { width: 100%; height: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: var(--r); }
+.atelier-bandeau .photos img + img { margin-top: 2.5rem; aspect-ratio: 3 / 4; }
+.atelier-bandeau .texte { display: grid; gap: 1.1rem; }
+.atelier-bandeau .texte p { color: var(--encre-douce); font-size: 1.05rem; max-width: 60ch; }
+@media (max-width: 860px) { .atelier-bandeau { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .heros-actions .btn { flex: 1 1 100%; }
+  .garanties-grille { grid-template-columns: 1fr 1fr; }
+  .garantie { padding: 1rem 0.6rem; align-items: flex-start; flex-direction: column; gap: 0.4rem; font-size: 0.9rem; }
+  .garantie + .garantie { border-left: 0; border-top: 0; }
+  .garantie:nth-child(even) { border-left: 1px solid var(--trait) !important; }
+  .garantie:nth-child(n + 3) { border-top: 1px solid var(--trait) !important; }
+}
+.apercu-texte.indice { opacity: 0.75; font-style: italic; }
+.apercu-direct { position: absolute; top: 12px; right: 12px; display: inline-flex; align-items: center; gap: 0.4em; padding: 0.4em 0.75em; border-radius: 999px; background: rgba(255, 255, 255, 0.92); color: var(--foret); font-weight: 600; font-size: 0.8rem; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
+.apercu-direct::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #2fa36b; }
+/* Ajout de photo : une zone claire au lieu du bouton brut du navigateur */
+.depot-photo { position: relative; display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1rem; border: 1.5px dashed var(--trait); border-radius: var(--r-petit); background: #fff; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.depot-photo:hover, .depot-photo:focus-within { border-color: var(--foret); background: var(--fond-alt); }
+.depot-photo .ico { width: 1.8em; height: 1.8em; color: var(--bois); }
+.depot-photo span { display: grid; gap: 0.1rem; min-width: 0; }
+.depot-photo strong { overflow-wrap: anywhere; }
+.depot-photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }

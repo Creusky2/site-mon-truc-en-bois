@@ -22,6 +22,6 @@ for (const f of PUBLICS)
 for (const dossier of [DIST, join(DIST, "p")])
   for (const f of readdirSync(dossier).filter((x) => x.endsWith(".html"))) {
     const chemin = join(dossier, f);
-    writeFileSync(chemin, readFileSync(chemin, "utf8").replace(/^[ \t]*<script src="js\/demo\.js"><\/script>\r?\n/m, ""));
+    writeFileSync(chemin, readFileSync(chemin, "utf8").replace(/^[ \t]*<script src="js\/demo\.js(\?v=\w+)?"><\/script>\r?\n/m, ""));
   }
 console.log(`Site construit dans dist/ (${PUBLICS.length} éléments).`);

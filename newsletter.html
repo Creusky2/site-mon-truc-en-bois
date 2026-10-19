@@ -19,7 +19,7 @@
   <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=202610191040">
 </head>
 <body>
   <header class="entete"></header>
@@ -29,8 +29,8 @@
   <footer class="pied"></footer>
 
   <script src="data/donnees.js"></script>
-  <script src="js/demo.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/demo.js?v=202610191040"></script>
+  <script src="js/main.js?v=202610191040"></script>
   <script>
     const { echapper, serveur, appelServeur } = MTB;
     const zone = document.getElementById("contenu");
@@ -39,7 +39,7 @@
 
     if (params.get("desinscription")) {
       zone.innerHTML = `
-        <div class="page-tete"><span class="etiquette">Désinscription</span><h1>Ne plus recevoir nos emails</h1>
+        <div class="page-tete"><h1>Ne plus recevoir nos emails</h1>
           <p class="chapeau">Vous ne recevrez plus nos nouveautés ni nos promotions. Les emails liés à vos commandes (confirmation, suivi) continuent d'arriver.</p></div>
         <form class="carte pile" id="desinscription">
           <div class="champ"><label for="n-email">Votre email</label><input type="email" id="n-email" name="email" required value="${echapper(email)}" autocomplete="email"></div>
@@ -68,7 +68,7 @@
       });
     } else {
       zone.innerHTML = `
-        <div class="page-tete"><span class="etiquette">Newsletter</span><h1>Les nouveautés et idées cadeaux, avant tout le monde</h1>
+        <div class="page-tete"><h1>Les nouveautés et idées cadeaux, avant tout le monde</h1>
           <p class="chapeau">Quelques emails par an, juste avant les grandes occasions (fête des mères, fête des pères, rentrée, Noël), avec nos nouvelles créations et parfois un code promo réservé aux abonnés.</p></div>
         ${serveur() ? `
         <form class="carte pile" data-newsletter>

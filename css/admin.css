@@ -201,3 +201,135 @@ body.admin { background: var(--fond-alt); min-height: 100vh; }
   .caisse-barre { display: flex; justify-content: space-between; align-items: center; position: sticky; bottom: 12px; z-index: 5; margin-top: 1rem; background: var(--foret); color: #fff; text-decoration: none; padding: 0.9rem 1.2rem; border-radius: var(--r); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); font-weight: 600; }
   .ticket { position: static; scroll-margin-top: 110px; }
 }
+
+/* ======================================================================
+   Mise en page de l'admin : menu latéral regroupé (PC), barre du bas (téléphone)
+   ====================================================================== */
+.admin-app { display: grid; grid-template-columns: 252px minmax(0, 1fr); min-height: 100vh; }
+.admin-nav {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto; background: #fff; border-right: 1px solid var(--trait);
+  display: flex; flex-direction: column; gap: 1rem; padding: 18px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+}
+.admin-nav .logo { padding: 0 8px 8px; }
+.admin-nav .logo img { width: 48px; height: auto; }
+.admin-nav .logo-nom { font-size: 1.05rem; }
+.admin-nav .onglets { display: grid; gap: 2px; overflow: visible; }
+.nav-groupe { font-size: 0.8rem; font-weight: 600; color: var(--encre-douce); padding: 0.9rem 10px 0.35rem; }
+.admin-nav .onglets button, .nav-lien {
+  display: flex; align-items: center; gap: 0.7rem; width: 100%; text-align: left; border: 0; border-radius: 10px; background: none;
+  padding: 0.6rem 10px; font: 500 0.95rem var(--f-texte); color: var(--encre); cursor: pointer; text-decoration: none; white-space: normal;
+}
+.admin-nav .onglets button .ico, .nav-lien .ico { width: 1.25em; height: 1.25em; color: var(--encre-douce); }
+.admin-nav .onglets button:hover, .nav-lien:hover { background: var(--fond-alt); }
+.admin-nav .onglets button[aria-selected="true"] { background: var(--sauge); color: var(--foret-fonce); font-weight: 600; border: 0; }
+.admin-nav .onglets button[aria-selected="true"] .ico { color: var(--foret); }
+.nav-libelle { flex: 1; }
+.admin-nav .compteur, .barre-mobile .compteur { background: #c2410c; color: #fff; }
+.nav-pied { margin-top: auto; display: grid; gap: 2px; border-top: 1px solid var(--trait); padding-top: 0.8rem; }
+
+.admin-principal { min-width: 0; display: grid; align-content: start; }
+.admin-tete { position: sticky; top: 0; z-index: 30; background: rgba(238, 243, 239, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 0; }
+.admin-tete-int { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; min-height: 68px; padding: 0.6rem clamp(16px, 3vw, 36px); }
+.admin-titre { font-size: 1.55rem; }
+.admin-contenu { width: 100%; max-width: 1180px; padding: 8px clamp(16px, 3vw, 36px) 80px; margin: 0; }
+.bandeau-publication { margin: 0 clamp(16px, 3vw, 36px) 12px; }
+.statut { display: inline-flex; align-items: center; gap: 0.4em; }
+.statut::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #2fa36b; }
+.statut.modifie::before { background: #d97706; }
+.barre-mobile, .admin-voile { display: none; }
+
+/* Pastilles : en clair, pas en capitales */
+.pastille { font: 600 0.75rem/1.5 var(--f-texte); text-transform: none; letter-spacing: 0; padding: 0.15em 0.65em; }
+
+@media (max-width: 999px) {
+  .admin-app { grid-template-columns: minmax(0, 1fr); }
+  /* Le menu complet s'ouvre par « Plus », par-dessus la page */
+  .admin-nav {
+    position: fixed; inset: 0 auto 0 0; z-index: 60; width: min(300px, 86vw); transform: translateX(-102%);
+    transition: transform 0.22s ease; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  }
+  .admin-nav.ouvert { transform: none; }
+  .admin-voile { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(20, 18, 15, 0.4); }
+  .admin-voile[hidden] { display: none; }
+  .admin-tete-int { min-height: 56px; padding-block: 0.5rem; }
+  .admin-titre { font-size: 1.3rem; }
+  .admin-actions .btn { padding: 0.6em 0.9em; font-size: 0.88rem; }
+  .admin-contenu { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .barre-mobile {
+    display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: #fff; border-top: 1px solid var(--trait); box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.06);
+    padding: 6px max(6px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+  }
+  .barre-mobile button {
+    position: relative; display: grid; justify-items: center; gap: 2px; border: 0; background: none; padding: 6px 2px; border-radius: 10px;
+    font: 600 0.72rem var(--f-texte); color: var(--encre-douce); cursor: pointer;
+  }
+  .barre-mobile button .ico { width: 1.45em; height: 1.45em; }
+  .barre-mobile button[aria-selected="true"] { color: var(--foret); background: var(--sauge); }
+  .barre-mobile .compteur { position: absolute; top: 2px; right: calc(50% - 22px); font-size: 0.68rem; }
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .caisse-barre { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .admin-nav { transition: none; } }
+
+/* Accueil : le travail du jour */
+.jour { display: grid; gap: 1rem; }
+.jour-tete h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); }
+.jour-tete p { color: var(--encre-douce); margin-top: 0.2rem; }
+.jour-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.tuile {
+  display: grid; gap: 0.25rem; align-content: start; text-align: left; cursor: pointer; font: inherit; color: var(--encre-douce);
+  background: #fff; border: 1px solid var(--trait); border-radius: var(--r); padding: 1rem 1.1rem; min-height: 104px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.tuile strong { font: 700 2rem/1 var(--f-titre); color: var(--encre-douce); font-variant-numeric: tabular-nums; }
+.tuile span { font-size: 0.92rem; line-height: 1.35; }
+.tuile:hover { border-color: var(--foret); transform: translateY(-1px); }
+.tuile.a-faire { border-color: #f1c58f; background: #fff8ee; color: var(--encre); }
+.tuile.a-faire strong { color: #b45309; }
+.tuile-vente { background: var(--foret); border-color: var(--foret); color: rgba(255, 255, 255, 0.85); }
+.tuile-vente strong { color: #fff; font-size: 1.35rem; }
+.tuile-vente:hover { background: var(--foret-fonce); border-color: var(--foret-fonce); }
+.jour-calme { grid-column: 1 / -1; color: var(--encre-douce); }
+.bloc-repli > summary { list-style: none; cursor: pointer; }
+.bloc-repli > summary::-webkit-details-marker { display: none; }
+.bloc-repli > summary h2::before { content: "▸ "; color: var(--encre-douce); font-size: 0.9em; }
+.bloc-repli[open] > summary h2::before { content: "▾ "; }
+@media (max-width: 520px) { .jour-actions { grid-template-columns: 1fr 1fr; } .tuile { min-height: 96px; padding: 0.85rem; } .tuile strong { font-size: 1.7rem; } }
+@media (max-width: 520px) { .tuile-vente { grid-column: 1 / -1; min-height: 0; } .tuile-vente strong { font-size: 1.2rem; } }
+/* Chiffres à l'intérieur d'un bloc : de simples valeurs, sans cadre dans le cadre */
+.bloc .chiffres-admin { gap: 0; border-block: 1px solid var(--trait); }
+.bloc .chiffre { border: 0; border-radius: 0; background: none; padding: 0.9rem 1rem 0.9rem 0; }
+.bloc .chiffre + .chiffre { border-left: 1px solid var(--trait); padding-left: 1rem; }
+@media (max-width: 760px) { .bloc .chiffre:nth-child(3) { border-left: 0; padding-left: 0; } .bloc .chiffre:nth-child(n + 3) { border-top: 1px solid var(--trait); } }
+
+/* Commandes : le client d'abord, le numéro ensuite */
+.ligne-commande { grid-template-columns: auto minmax(0, 1fr) auto auto; padding-block: 0.8rem; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--sauge); color: var(--foret-fonce); display: grid; place-items: center; font: 700 0.85rem var(--f-texte); flex: none; }
+.ligne-texte small { color: var(--encre-douce); font-size: 0.78rem; }
+.ligne-texte b { color: #b45309; font-weight: 600; }
+@media (max-width: 640px) {
+  .ligne-commande { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .ligne-commande .pastilles { grid-column: 2 / -1; grid-row: 2; margin-left: 0; }
+}
+/* Fiche commande : où en est la commande */
+.avancement { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.avancement li { font-size: 0.78rem; color: var(--encre-douce); padding-top: 0.55rem; border-top: 4px solid var(--trait); }
+.avancement li.faite { border-top-color: var(--foret); }
+.avancement li.en-cours { border-top-color: var(--bois); color: var(--encre); font-weight: 600; }
+@media (max-width: 520px) { .avancement li { font-size: 0.7rem; } }
+/* Commandes : le titre est déjà en haut de page ; sur téléphone, la liste vient tout de suite */
+#zone-commandes .bloc > .bloc-tete h2 { display: none; }
+#zone-commandes .bloc > .bloc-tete { justify-content: flex-start; }
+@media (max-width: 640px) {
+  #zone-commandes > .chiffres-admin { display: none; }
+  .bloc-tete .raccourcis .btn { padding: 0.6em 0.9em; font-size: 0.88rem; }
+}
+/* Caisse sur téléphone : une liste compacte, photo à gauche, prix à droite (plus rapide à parcourir au comptoir) */
+@media (max-width: 520px) {
+  .caisse-produits { grid-template-columns: minmax(0, 1fr) !important; gap: 6px; }
+  .caisse-produit { grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 0.7rem; padding: 0.4rem 0.6rem 0.4rem 0.4rem; }
+  .caisse-produit img { width: 52px; height: 52px; aspect-ratio: 1; }
+  .caisse-produit span { font-size: 0.95rem; }
+}
+@media (max-width: 640px) { #zone-crm > .chiffres-admin, #zone-crm > section > .chiffres-admin:first-child { display: none; } }

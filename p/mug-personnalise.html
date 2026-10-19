@@ -23,7 +23,7 @@
   <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=202610191040">
 </head>
 <body data-produit="mug-personnalise">
   <header class="entete"></header>
@@ -41,8 +41,8 @@
   <footer class="pied"></footer>
 
   <script src="data/donnees.js"></script>
-  <script src="js/demo.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/demo.js?v=202610191040"></script>
+  <script src="js/main.js?v=202610191040"></script>
   <script>
     const { echapper, euros, icone, ajouterAuPanier, carteProduit, imagesProduit, badges, estFavori, lienWhatsapp, telLien } = MTB;
     const POLICES = [
@@ -102,6 +102,7 @@
               ${images[0] ? `<img id="image-principale" src="${echapper(images[0])}" alt="${echapper(produit.nom)}">` : `<div class="vide-image">${icone("image", "")}</div>`}
               <img class="apercu-photo" id="apercu-photo" alt="Votre photo" hidden>
               <div class="apercu-texte" id="apercu-texte"></div>
+              ${opt.texte ? `<span class="apercu-direct">Aperçu en direct</span>` : ""}
               ${badges(produit)}
             </div>
             ${images.length > 1 ? `<div class="vignettes" id="vignettes">${images.map((src, i) => `<button type="button" data-i="${i}" aria-current="${i === 0}" aria-label="Photo ${i + 1}"><img src="${echapper(src)}" alt=""></button>`).join("")}</div>` : ""}
@@ -130,7 +131,7 @@
               <div class="champ">
                 <label for="texte">Votre texte</label>
                 <textarea id="texte" maxlength="200" placeholder="Ex. : Marie & Paul — 14.06.2026"></textarea>
-                <small><span id="nb">0</span>/200 caractères — l'aperçu ci-contre se met à jour pendant que vous écrivez.</small>
+                <small><span id="nb">0</span>/200 caractères — l'aperçu se met à jour pendant que vous écrivez.</small>
               </div>
               <div class="champ">
                 <span class="label">Police d'écriture</span>
@@ -140,8 +141,11 @@
               </div>` : ""}
             ${opt.photo ? `
               <div class="champ">
-                <label for="photo">Votre photo ou logo <small>(facultatif)</small></label>
-                <input type="file" id="photo" accept="image/*">
+                <span class="label">Votre photo ou logo <small>(facultatif)</small></span>
+                <label class="depot-photo" for="photo">
+                  ${icone("image", "")}<span><strong id="photo-libelle">Ajouter une photo</strong><small>Depuis votre téléphone ou votre ordinateur</small></span>
+                  <input type="file" id="photo" accept="image/*">
+                </label>
                 <small>Envoyez une image de bonne qualité. Vous pourrez aussi nous la transmettre après la commande.</small>
               </div>` : ""}
             <div class="champ">
@@ -171,13 +175,13 @@
           const lies = (DONNEES.avis || []).filter((a) => a.produit === produit.id && a.texte);
           return lies.length ? `
           <section style="padding-top:5rem">
-            <div class="titre-section"><div class="pile"><span class="etiquette">Avis clients</span><h2>Ils l'ont offert</h2></div><a class="lien-fleche" href="avis.html">Tous les avis →</a></div>
+            <div class="titre-section"><div class="pile"><h2>Ils l'ont offert</h2></div><a class="lien-fleche" href="avis.html">Tous les avis</a></div>
             <div class="avis-grille">${lies.slice(0, 3).map(MTB.avisCarte).join("")}</div>
           </section>` : "";
         })()}
         ${autres.length ? `
           <section style="padding-top:5rem">
-            <div class="titre-section"><div class="pile"><span class="etiquette">Dans la même catégorie</span><h2>Vous aimerez aussi</h2></div></div>
+            <div class="titre-section"><div class="pile"><h2>Vous aimerez aussi</h2></div></div>
             <div class="produits">${autres.map(carteProduit).join("")}</div>
           </section>` : ""}
         ${epuise ? "" : `<div class="barre-achat" id="barre-achat"><span class="pile" style="gap:0"><small class="aide">${echapper(produit.nom)}</small><strong id="prix-barre-achat"></strong></span><button class="btn" type="button" id="aller-achat">Personnaliser</button></div>`}`;
@@ -212,7 +216,10 @@
         $("prix").textContent = total;
         if ($("prix-barre-achat")) $("prix-barre-achat").textContent = total;
         if (opt.texte) {
-          $("apercu-texte").textContent = $("texte").value;
+          // Tant que rien n'est écrit, l'aperçu montre où le texte apparaîtra
+          const saisi = $("texte").value.trim();
+          $("apercu-texte").textContent = saisi || "Votre texte ici";
+          $("apercu-texte").classList.toggle("indice", !saisi);
           $("apercu-texte").style.fontFamily = police().css;
           $("nb").textContent = $("texte").value.length;
         }
@@ -251,6 +258,7 @@
         if (!fichier) return;
         photo = "";
         photoNom = fichier.name;
+        $("photo-libelle").textContent = `Photo choisie : ${fichier.name}`;
         photoCle = "";
         const img = new Image();
         img.onload = () => {

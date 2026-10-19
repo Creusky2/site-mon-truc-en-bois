@@ -160,9 +160,12 @@
   }
   function majStatut(texte) {
     const s = $("#statut");
-    s.textContent = texte || (modifie ? "Modifications non publiées" : "À jour");
+    s.textContent = texte || (modifie ? "Modifications non publiées" : "Site à jour");
     s.classList.toggle("modifie", modifie && !texte);
     $("#publier").disabled = !modifie || !!publicationBloquee;
+    // Le bouton n'apparaît que lorsqu'il y a quelque chose à publier (ou pendant la publication)
+    $("#publier").hidden = !modifie && !texte;
+    $("#previsualiser").hidden = !modifie;
     if (publicationBloquee && !texte) s.textContent = "Publication indisponible";
   }
   let minuteurToast;
@@ -290,7 +293,7 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
     bandeau.hidden = !publicationBloquee;
     bandeau.textContent = publicationBloquee;
     // Le commerçant ne voit pas l'onglet réservé à l'agence
-    document.querySelector('[data-onglet="installation"]').hidden = mode === "serveur";
+    document.querySelector(".nav-agence").hidden = mode === "serveur";
     majStatut();
     majCompteurs().catch(() => {});
     const ancre = location.hash.slice(1);
@@ -308,12 +311,8 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
       c.from("commandes").select("id", { count: "exact", head: true }).eq("statut", "nouvelle"),
       c.from("demandes").select("id", { count: "exact", head: true }).eq("statut", "nouvelle").neq("type", "newsletter"),
     ]);
-    const pastille = (o, nom, n) => {
-      const b = document.querySelector(`[data-onglet="${o}"]`);
-      if (b && typeof n === "number") b.innerHTML = `${nom}${n ? ` <span class="compteur">${n}</span>` : ""}`;
-    };
-    pastille("commandes", "Commandes", cmd.count);
-    pastille("demandes", "Demandes", dem.count);
+    window.AdminPastille("commandes", cmd.count);
+    window.AdminPastille("demandes", dem.count);
   }
   setInterval(() => majCompteurs().catch(() => {}), 5 * 60_000);
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && majCompteurs().catch(() => {}));
@@ -401,18 +400,36 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
     toast("Publié ! Le site sera à jour d'ici quelques minutes (rechargez la page du site).");
   });
 
-  // ---------- Onglets ----------
+  // ---------- Navigation : menu latéral (PC), barre du bas et menu « Plus » (téléphone) ----------
+  function menu(ouvert) {
+    $("#admin-nav").classList.toggle("ouvert", ouvert);
+    $("#admin-voile").hidden = !ouvert;
+    $("#ouvrir-menu").setAttribute("aria-expanded", ouvert);
+  }
   function allerA(nom) {
     if (nom === "installation" && mode === "serveur") nom = "accueil"; // réservé à l'agence
     onglet = nom;
-    document.querySelectorAll(".onglets button").forEach((x) => x.setAttribute("aria-selected", x.dataset.onglet === nom));
+    document.querySelectorAll("#app [data-onglet]").forEach((x) => x.setAttribute("aria-selected", x.dataset.onglet === nom));
+    const bouton = document.querySelector(`.onglets [data-onglet="${nom}"] .nav-libelle`);
+    $("#titre-vue").textContent = bouton ? bouton.textContent : "";
+    menu(false);
     rendre();
     scrollTo(0, 0);
   }
-  document.querySelector(".onglets").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-onglet]");
+  document.querySelector("#app").addEventListener("click", (e) => {
+    const b = e.target.closest(".onglets [data-onglet], .barre-mobile [data-onglet]");
     if (b) allerA(b.dataset.onglet);
+    if (e.target.closest("#ouvrir-menu")) menu(!$("#admin-nav").classList.contains("ouvert"));
+    if (e.target.closest("#admin-voile")) menu(false);
   });
+  // Pastille d'un onglet (commandes, demandes) dans le menu et dans la barre du téléphone
+  window.AdminPastille = (nom, n) => {
+    if (typeof n !== "number") return;
+    document.querySelectorAll(`[data-compteur="${nom}"]`).forEach((el) => {
+      el.textContent = n;
+      el.hidden = !n;
+    });
+  };
 
   const VUES = {
     accueil: () => vueAccueil(),
@@ -442,11 +459,39 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
     if (onglet === "installation") window.AdminInstallation?.monter($("#zone-installation"), contexte());
     if (["caisse", "clients", "demandes", "marketing"].includes(onglet)) window.AdminCRM?.monter(onglet, $("#zone-crm"), contexte());
     if (onglet === "accueil") {
-      resumeCommandes();
+      actionsDuJour().catch(() => ($("#jour-actions").innerHTML = ""));
       window.AdminCRM?.statistiques($("#stats-ventes"), contexte()).catch(() => {});
     }
   }
-  // Encadré « commandes à traiter » du tableau de bord
+  // Accueil : ce qu'il y a à faire aujourd'hui (commandes, paiements, retraits, demandes), en un coup d'œil
+  async function actionsDuJour() {
+    const el = $("#jour-actions");
+    const S = window.AdminServeur;
+    if (!el) return;
+    if (!S?.client(dServeur()) || !(await S.connecte(dServeur()).catch(() => false))) {
+      el.innerHTML = `<p class="aide">Les commandes, la caisse et les clients apparaîtront ici une fois le serveur de la boutique installé.</p>`;
+      return;
+    }
+    const c = S.client(dServeur());
+    const compter = (requete) => requete.then((r) => r.count ?? 0);
+    const tete = (table) => c.from(table).select("id", { count: "exact", head: true });
+    const [nouvelles, aPayer, pretes, demandes] = await Promise.all([
+      compter(tete("commandes").eq("statut", "nouvelle")),
+      compter(tete("commandes").eq("paiement_statut", "en_attente").neq("statut", "annulee")),
+      compter(tete("commandes").eq("statut", "prete")),
+      compter(tete("demandes").in("statut", ["nouvelle", "en_cours"]).neq("type", "newsletter")),
+    ]);
+    const tuile = (n, un, plusieurs, vers) =>
+      `<button class="tuile ${n ? "a-faire" : ""}" data-aller="${vers}"><strong>${n}</strong><span>${n > 1 ? plusieurs : un}</span></button>`;
+    el.innerHTML = `
+      ${tuile(nouvelles, "nouvelle commande à regarder", "nouvelles commandes à regarder", "commandes")}
+      ${tuile(demandes, "demande de devis à traiter", "demandes de devis à traiter", "demandes")}
+      ${tuile(aPayer, "commande à encaisser", "commandes à encaisser", "commandes")}
+      ${tuile(pretes, "commande prête, client à prévenir", "commandes prêtes, clients à prévenir", "commandes")}
+      <button class="tuile tuile-vente" data-aller="caisse"><strong>Nouvelle vente</strong><span>En boutique, au téléphone ou sur un salon</span></button>
+      ${nouvelles + demandes + aPayer + pretes ? "" : `<p class="jour-calme">Rien d'urgent. C'est le bon moment pour ajouter une photo de réalisation dans la Galerie.</p>`}`;
+  }
+  // (ancien encadré « commandes à traiter », remplacé par actionsDuJour)
   async function resumeCommandes() {
     const el = $("#resume-commandes");
     const r = await window.AdminCommandes?.resume(contexte());
@@ -555,20 +600,27 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
     const etape = (etat, titre, detail, action = "") =>
       `<li><span class="etat ${etat}">${etat === "ok" ? "✓" : etat === "afaire" ? "!" : "·"}</span><span>${titre}${detail ? `<small>${detail}</small>` : ""}</span>${action}</li>`;
     const aller = (o, t) => `<button class="mini" data-aller="${o}">${t}</button>`;
+    const maintenant = new Date();
+    const salut = maintenant.getHours() >= 18 ? "Bonsoir" : "Bonjour";
+    const jour = maintenant.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    const aRevoir = [!emailOk, !D.site.prixVerifies, !legalOk, !mediateurOk, !L.plateformeFacturation].filter(Boolean).length;
+    // Une fois les commandes ouvertes, la liste de vérification se replie : l'accueil commence par le travail du jour.
+    const ouverte = D.site.apercu ? "open" : "";
     return `
-      <div class="chiffres-admin">
-        <div class="chiffre"><strong>${visibles.length}</strong><span>produits en ligne</span></div>
-        <div class="chiffre"><strong>${D.produits.filter((p) => p.vedette).length}</strong><span>coups de cœur</span></div>
-        <div class="chiffre"><strong>${D.produits.filter((p) => p.prixBarre > p.prix || p.badge === "promo").length}</strong><span>en promotion</span></div>
-        <div class="chiffre"><strong>${D.avis.length}</strong><span>avis clients affichés</span></div>
-      </div>
+      <section class="jour">
+        <div class="jour-tete"><h2>${salut} !</h2><p>On est ${jour}. Voici ce qui vous attend.</p></div>
+        <div class="jour-actions" id="jour-actions"><p class="aide">Chargement…</p></div>
+      </section>
 
       <section class="bloc" id="stats-ventes" hidden></section>
-      <section class="bloc" id="resume-commandes" hidden></section>
 
-      <section class="bloc">
+      <details class="bloc bloc-repli" ${ouverte}>
+        <summary class="bloc-tete">
+          <h2>${D.site.apercu ? "Avant d'ouvrir les commandes" : "Réglages de la boutique"}</h2>
+          <span class="aide">${aRevoir ? `${aRevoir} point${aRevoir > 1 ? "s" : ""} à revoir` : "Tout est en ordre"}</span>
+        </summary>
         <div class="bloc-tete">
-          <h2>Avant d'ouvrir les commandes</h2>
+          <p class="aide">${D.site.apercu ? "Les commandes en ligne s'ouvrent quand l'email et les prix sont vérifiés." : "Ce qui rend la boutique complète et en règle."}</p>
           ${D.site.apercu ? `<button class="btn" data-action="ouvrir-commandes" ${pret ? "" : "disabled"} title="${pret ? "" : "Complétez d'abord l'email de la boutique et la vérification des prix"}">Ouvrir les commandes</button>` : `<span class="pastille" style="background:#e3f1e9;color:#1f6b45">Commandes ouvertes</span>`}
         </div>
         <ul class="checklist">
@@ -584,12 +636,12 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
           ${etape(mediateurOk ? "ok" : "afaire", "Médiateur de la consommation", mediateurOk ? echapper(L.mediateur.nom) : "Obligatoire pour vendre aux particuliers (amende jusqu'à 3 000 €) : adhésion de 30 à 150 € auprès d'un médiateur référencé par la CECMC.", mediateurOk ? "" : aller("boutique", "Renseigner"))}
           ${etape(L.plateformeFacturation ? "ok" : "afaire", "Factures électroniques", L.plateformeFacturation ? "Compte ouvert sur une plateforme agréée." : "Obligatoire depuis le 1er septembre 2026 : pouvoir recevoir les factures de vos fournisseurs sur une plateforme agréée (souvent proposée par la banque ou le logiciel comptable). L'émission suivra en septembre 2027.", `<label class="case"><input type="checkbox" data-chemin="site.legal.plateformeFacturation" data-type="case" data-rendre ${L.plateformeFacturation ? "checked" : ""}> Fait</label>`)}
         </ul>
-      </section>
+      </details>
 
       <section class="bloc">
-        <div class="bloc-tete"><h2>Raccourcis</h2></div>
+        <div class="bloc-tete"><h2>Votre site</h2><span class="aide">${visibles.length} produits en ligne · ${D.produits.filter((p) => p.vedette).length} coups de cœur · ${D.avis.length} avis affichés</span></div>
         <div class="raccourcis">
-          ${D.site.commandes?.supabaseUrl ? `<button class="btn" data-aller="caisse">+ Nouvelle vente (caisse)</button><button class="btn btn-ligne" data-aller="marketing">Créer un code promo</button>` : ""}
+          ${D.site.commandes?.supabaseUrl ? `<button class="btn btn-ligne" data-aller="marketing">Créer un code promo</button>` : ""}
           <button class="btn ${D.site.commandes?.supabaseUrl ? "btn-ligne" : ""}" data-action="nouveau-produit">+ Ajouter un produit</button>
           <button class="btn btn-ligne" data-aller="textes">Écrire une annonce (fermeture, salon…)</button>
           <a class="btn btn-ligne" href="index.html" target="_blank" rel="noopener">Voir le site en ligne</a>

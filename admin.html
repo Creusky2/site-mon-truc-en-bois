@@ -14,8 +14,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="MTB Admin">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/style.css?v=202610191040">
+  <link rel="stylesheet" href="css/admin.css?v=202610191040">
 </head>
 <body class="admin">
   <!-- Écran de connexion -->
@@ -75,39 +75,61 @@
   </main>
 
   <!-- Interface d'administration -->
-  <div id="app" hidden>
-    <header class="admin-tete">
-      <div class="conteneur admin-tete-int">
-        <a class="logo" href="index.html" target="_blank" rel="noopener" title="Voir le site">
-          <img src="img/logo-200.webp" alt="" width="48" height="44">
-          <span><span class="logo-nom">Administration</span><span class="logo-lieu">Mon Truc en Bois</span></span>
-        </a>
-        <div class="admin-actions">
-          <span id="statut" class="statut" aria-live="polite"></span>
-          <button class="btn btn-ligne" id="previsualiser" title="Voir le site avec les modifications pas encore publiées">Prévisualiser</button>
-          <button class="btn" id="publier" disabled>Publier les modifications</button>
-          <button class="btn btn-ligne" id="deconnexion">Déconnexion</button>
+  <div id="app" class="admin-app" hidden>
+    <aside class="admin-nav" id="admin-nav">
+      <a class="logo" href="index.html" target="_blank" rel="noopener" title="Voir le site">
+        <img src="img/logo-200.webp" alt="" width="48" height="44">
+        <span><span class="logo-nom">Mon Truc en Bois</span><span class="logo-lieu">Administration</span></span>
+      </a>
+      <nav class="onglets" role="tablist" aria-label="Sections">
+        <p class="nav-groupe">Au quotidien</p>
+        <button role="tab" data-onglet="accueil" aria-selected="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg><span class="nav-libelle">Accueil</span></button>
+        <button role="tab" data-onglet="commandes" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span class="nav-libelle">Commandes</span><span class="compteur" data-compteur="commandes" hidden></span></button>
+        <button role="tab" data-onglet="caisse" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg><span class="nav-libelle">Caisse</span></button>
+        <button role="tab" data-onglet="clients" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 6M17.5 19a5 5 0 0 0-2-4"/></svg><span class="nav-libelle">Clients</span></button>
+        <button role="tab" data-onglet="demandes" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="nav-libelle">Demandes</span><span class="compteur" data-compteur="demandes" hidden></span></button>
+        <button role="tab" data-onglet="marketing" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3l7 4V6L7 10z"/><path d="M18 9a4 4 0 0 1 0 6"/></svg><span class="nav-libelle">Marketing</span></button>
+        <p class="nav-groupe">Le site</p>
+        <button role="tab" data-onglet="produits" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg><span class="nav-libelle">Produits</span></button>
+        <button role="tab" data-onglet="categories" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span class="nav-libelle">Catégories & occasions</span></button>
+        <button role="tab" data-onglet="avis" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/></svg><span class="nav-libelle">Avis clients</span></button>
+        <button role="tab" data-onglet="faq" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/></svg><span class="nav-libelle">Questions fréquentes</span></button>
+        <button role="tab" data-onglet="boutique" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5 5.5 4h13L20 9.5M4 9.5V20h16V9.5M4 9.5h16"/><path d="M10 20v-5h4v5"/></svg><span class="nav-libelle">Infos boutique</span></button>
+        <button role="tab" data-onglet="textes" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 11h14M5 16h9"/></svg><span class="nav-libelle">Textes & annonce</span></button>
+        <button role="tab" data-onglet="galerie" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m20.5 16-5-5-9 8"/></svg><span class="nav-libelle">Galerie</span></button>
+        <div class="nav-agence">
+          <p class="nav-groupe">Agence</p>
+          <button role="tab" data-onglet="installation" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><span class="nav-libelle">Installation</span></button>
         </div>
-      </div>
-      <nav class="conteneur onglets" role="tablist" aria-label="Sections">
-        <button role="tab" data-onglet="accueil" aria-selected="true">Tableau de bord</button>
-        <button role="tab" data-onglet="commandes" aria-selected="false">Commandes</button>
-        <button role="tab" data-onglet="caisse" aria-selected="false">Caisse</button>
-        <button role="tab" data-onglet="clients" aria-selected="false">Clients</button>
-        <button role="tab" data-onglet="demandes" aria-selected="false">Demandes</button>
-        <button role="tab" data-onglet="marketing" aria-selected="false">Marketing</button>
-        <button role="tab" data-onglet="produits" aria-selected="false">Produits</button>
-        <button role="tab" data-onglet="categories" aria-selected="false">Catégories & occasions</button>
-        <button role="tab" data-onglet="avis" aria-selected="false">Avis clients</button>
-        <button role="tab" data-onglet="faq" aria-selected="false">FAQ</button>
-        <button role="tab" data-onglet="boutique" aria-selected="false">Infos boutique</button>
-        <button role="tab" data-onglet="textes" aria-selected="false">Textes & annonce</button>
-        <button role="tab" data-onglet="galerie" aria-selected="false">Galerie</button>
-        <button role="tab" data-onglet="installation" aria-selected="false">Installation</button>
       </nav>
-    </header>
-    <p class="conteneur message message-alerte" id="bandeau-publication" role="alert" hidden></p>
-    <main class="conteneur admin-contenu" id="contenu"></main>
+      <div class="nav-pied">
+        <a class="nav-lien" href="index.html" target="_blank" rel="noopener"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg><span>Voir le site</span></a>
+        <button class="nav-lien" id="deconnexion" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg><span>Déconnexion</span></button>
+      </div>
+    </aside>
+    <div class="admin-voile" id="admin-voile" hidden></div>
+
+    <div class="admin-principal">
+      <header class="admin-tete">
+        <div class="admin-tete-int">
+          <h1 class="admin-titre" id="titre-vue">Accueil</h1>
+          <div class="admin-actions">
+            <span id="statut" class="statut" aria-live="polite"></span>
+            <button class="btn btn-ligne" id="previsualiser" title="Voir le site avec les modifications pas encore publiées">Prévisualiser</button>
+            <button class="btn" id="publier" disabled>Publier les modifications</button>
+          </div>
+        </div>
+      </header>
+      <p class="message message-alerte bandeau-publication" id="bandeau-publication" role="alert" hidden></p>
+      <main class="admin-contenu" id="contenu"></main>
+    </div>
+    <nav class="barre-mobile" aria-label="Raccourcis">
+      <button data-onglet="accueil" aria-selected="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></button>
+      <button data-onglet="commandes" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Commandes</span><span class="compteur" data-compteur="commandes" hidden></span></button>
+      <button data-onglet="caisse" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg><span>Caisse</span></button>
+      <button data-onglet="demandes" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span>Demandes</span><span class="compteur" data-compteur="demandes" hidden></span></button>
+      <button type="button" id="ouvrir-menu" aria-controls="admin-nav" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg><span>Plus</span></button>
+    </nav>
   </div>
 
   <!-- Fenêtre d'édition (produit / catégorie) -->
@@ -118,11 +140,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="data/donnees.js"></script>
-  <script src="js/demo.js"></script>
-  <script src="js/admin-serveur.js"></script>
-  <script src="js/admin-commandes.js"></script>
-  <script src="js/admin-crm.js"></script>
-  <script src="js/admin-installation.js"></script>
-  <script src="js/admin.js"></script>
+  <script src="js/demo.js?v=202610191040"></script>
+  <script src="js/admin-serveur.js?v=202610191040"></script>
+  <script src="js/admin-commandes.js?v=202610191040"></script>
+  <script src="js/admin-crm.js?v=202610191040"></script>
+  <script src="js/admin-installation.js?v=202610191040"></script>
+  <script src="js/admin.js?v=202610191040"></script>
 </body>
 </html>

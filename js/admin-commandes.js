@@ -31,6 +31,17 @@
   let minuteur = null;
 
   const e = (s) => ctx.echapper(s);
+  // « aujourd'hui à 9h30 », « hier à 17h05 », « jeudi à 11h », puis « 12 oct. »
+  const quand = (d) => {
+    const t = new Date(d);
+    const jours = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / 864e5);
+    const heure = t.toLocaleTimeString("fr-FR", { hour: "numeric", minute: "2-digit" }).replace(":", "h");
+    if (jours === 0) return `aujourd'hui à ${heure}`;
+    if (jours === 1) return `hier à ${heure}`;
+    if (jours > 1 && jours < 7) return `${t.toLocaleDateString("fr-FR", { weekday: "long" })} à ${heure}`;
+    return t.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: t.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+  };
+  const initiales = (nom) => String(nom || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((m) => m[0].toUpperCase()).join("");
   const date = (d, heure = false) =>
     d ? new Date(d).toLocaleString("fr-FR", heure ? { dateStyle: "short", timeStyle: "short" } : { dateStyle: "medium" }) : "";
 
@@ -54,8 +65,7 @@
 
   function majCompteur() {
     const n = commandes.filter((c) => c.statut === "nouvelle").length;
-    const b = document.querySelector('[data-onglet="commandes"]');
-    if (b) b.innerHTML = `Commandes${n ? ` <span class="compteur">${n}</span>` : ""}`;
+    window.AdminPastille?.("commandes", n);
   }
 
   function liste() {
@@ -78,7 +88,6 @@
             <button class="btn" data-aller="caisse">+ Nouvelle vente</button>
             <button class="btn btn-ligne" data-cmd="actualiser">Actualiser</button>
             <button class="btn btn-ligne" data-cmd="export">Exporter (tableur)</button>
-            <button class="btn btn-ligne" data-cmd="deconnexion">Se déconnecter</button>
           </div>
         </div>
         <div class="barre">
@@ -90,9 +99,11 @@
             .map(
               (c) => `
             <button class="ligne ligne-commande" data-ouvrir="${c.id}">
+              <span class="avatar" aria-hidden="true">${e(initiales(c.client_nom))}</span>
               <span class="ligne-texte">
-                <strong>${e(c.numero)} · ${e(c.client_nom)}</strong>
-                <span>${date(c.cree_le, true)} · ${c.lignes.length} article${c.lignes.length > 1 ? "s" : ""} · ${c.mode_reception === "retrait" ? "Retrait" : "Livraison"}${c.cadeau?.date ? ` · pour le ${new Date(c.cadeau.date).toLocaleDateString("fr-FR")}` : ""}</span>
+                <strong>${e(c.client_nom)}</strong>
+                <span>${e(c.lignes[0]?.nom || "")}${c.lignes.length > 1 ? ` et ${c.lignes.length - 1} autre${c.lignes.length > 2 ? "s" : ""}` : ""} · ${c.mode_reception === "retrait" ? "retrait" : "livraison"}${c.cadeau?.date ? ` · <b>pour le ${new Date(c.cadeau.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</b>` : ""}</span>
+                <small>${e(c.numero)} · ${quand(c.cree_le)}</small>
               </span>
               <span class="pastilles">${CANAUX[c.canal] ? `<span class="pastille">${CANAUX[c.canal]}</span>` : ""}<span class="pastille statut-${c.statut}">${STATUTS[c.statut]}</span><span class="pastille paiement-${c.paiement_statut}">${PAIEMENTS[c.paiement_statut]}</span></span>
               <strong class="prix">${ctx.euros(c.total)}</strong>
@@ -109,6 +120,17 @@
     const tel = String(c.client_tel || "").replace(/[^\d+]/g, "");
     const wa = tel ? `https://wa.me/${tel.startsWith("0") ? "33" + tel.slice(1) : tel.replace("+", "")}` : "";
     const sansEmail = c.client_email.endsWith(".invalid");
+    // Étape suivante proposée en un geste (le menu « Statut » reste là pour tout autre changement)
+    const SUIVANT = {
+      nouvelle: ["confirmee", "Maquette validée"],
+      confirmee: ["en_fabrication", "Lancer la fabrication"],
+      en_fabrication: c.mode_reception === "livraison" ? ["expediee", "Marquer comme expédiée"] : ["prete", "Prête à retirer"],
+      prete: ["terminee", "Remise au client"],
+      expediee: ["terminee", "Livrée au client"],
+    };
+    const suivant = SUIVANT[c.statut];
+    const ETAPES = ["nouvelle", "confirmee", "en_fabrication", c.mode_reception === "livraison" ? "expediee" : "prete", "terminee"];
+    const rang = ETAPES.indexOf(c.statut);
     f.innerHTML = `
       <form method="dialog" id="form-commande">
         <div class="bloc-tete">
@@ -157,6 +179,8 @@
 
         <section class="pile" style="gap:.8rem;border-top:1px solid var(--trait);padding-top:1rem">
           <h3>Avancement</h3>
+          ${c.statut !== "annulee" ? `<ol class="avancement">${ETAPES.map((s, i) => `<li class="${i < rang ? "faite" : i === rang ? "en-cours" : ""}">${STATUTS[s]}</li>`).join("")}</ol>` : ""}
+          ${suivant ? `<button type="button" class="btn" data-action-cmd="suivant" data-statut="${suivant[0]}" style="justify-self:start">${suivant[1]}${sansEmail ? "" : " et prévenir le client"}</button>` : ""}
           <div class="grille-champs">
             <div class="champ"><label for="cmd-statut">Statut</label><select id="cmd-statut">${Object.entries(STATUTS).map(([k, v]) => `<option value="${k}" ${k === c.statut ? "selected" : ""}>${v}</option>`).join("")}</select></div>
             <div class="champ"><label for="cmd-colis">N° de suivi du colis</label><input type="text" id="cmd-colis" value="${e(c.suivi_colis)}" placeholder="Colissimo, Mondial Relay…"></div>
@@ -214,6 +238,10 @@
       if (!b) return;
       const a = b.dataset.actionCmd;
       if (a === "fermer") return f.close();
+      if (a === "suivant") {
+        f.querySelector("#cmd-statut").value = b.dataset.statut;
+        return f.querySelector("#form-commande").requestSubmit();
+      }
       if (a === "bon" || a === "facture") return imprimer(c, a);
       if (a === "photos") {
         b.disabled = true;
