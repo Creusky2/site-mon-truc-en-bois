@@ -549,3 +549,32 @@ a.preuve:hover { color: var(--encre); text-decoration: underline; }
 .depot-photo span { display: grid; gap: 0.1rem; min-width: 0; }
 .depot-photo strong { overflow-wrap: anywhere; }
 .depot-photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* ======================================================================
+   Panier : la commande en quatre étapes, le récapitulatif toujours visible
+   ====================================================================== */
+.etapes-commande { display: grid; gap: 1.6rem; }
+.etape-commande { border: 0; padding: 0; margin: 0; display: grid; gap: 0.9rem; min-width: 0; }
+.etape-commande legend { display: flex; align-items: center; gap: 0.65rem; font: 600 1.25rem/1.2 var(--f-titre); padding: 0; margin-bottom: 0.9rem; }
+.etape-commande legend small { font: 500 0.85rem var(--f-texte); color: var(--encre-douce); }
+.etape-commande .num { width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--sauge); color: var(--foret-fonce); display: grid; place-items: center; font: 700 0.95rem var(--f-texte); flex: none; }
+.etape-commande + .etape-commande { border-top: 1px solid var(--trait); padding-top: 1.6rem; }
+.choix-cartes { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.choix-cartes-pile { grid-template-columns: 1fr; }
+@media (max-width: 520px) { .choix-cartes { grid-template-columns: 1fr; } }
+.choix-carte { position: relative; display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.9rem 1rem; border: 1.5px solid var(--trait); border-radius: var(--r-petit); background: #fff; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.choix-carte input { margin-top: 0.25em; accent-color: var(--foret); flex: none; }
+.choix-carte span { display: grid; gap: 0.15rem; }
+.choix-carte small { color: var(--encre-douce); font-size: 0.86rem; line-height: 1.35; }
+.choix-carte:has(input:checked) { border-color: var(--foret); background: #f3f8f5; }
+.choix-carte:has(input:focus-visible) { outline: 2px solid var(--foret); outline-offset: 2px; }
+.recap { position: sticky; top: 92px; background: #fff; box-shadow: var(--ombre); }
+.recap h2 { font-size: 1.35rem; }
+.recap-articles { list-style: none; margin: 0; padding: 0 0 0.9rem; display: grid; gap: 0.4rem; border-bottom: 1px solid var(--trait); font-size: 0.93rem; }
+.recap-articles li { display: flex; justify-content: space-between; gap: 1rem; }
+.recap-articles li span:first-child { color: var(--encre-douce); min-width: 0; overflow-wrap: anywhere; }
+.recap-articles li span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 900px) { .recap { position: static; } }
+/* Le titre d'étape reste dans le cadre (sinon il se pose sur la ligne de séparation) */
+.etape-commande legend { float: left; width: 100%; }
+.etape-commande legend + * { clear: both; }

@@ -92,7 +92,14 @@
   function afficher() {
     if (!zone || !document.contains(zone)) return;
     zone.innerHTML = { caisse: vueCaisse, clients: vueClients, demandes: vueDemandes, marketing: vueMarketing }[vue]();
-    if (vue === "caisse") majTotalCaisse();
+    if (vue === "caisse") {
+      majTotalCaisse();
+      // Téléphone : la barre verte « Ticket » s'efface quand le ticket (et son total) est à l'écran
+      const barre = zone.querySelector(".caisse-barre");
+      const ticket = zone.querySelector("#cs-ticket");
+      if (barre && ticket && "IntersectionObserver" in window)
+        new IntersectionObserver(([x]) => barre.classList.toggle("cachee", x.isIntersecting), { threshold: 0 }).observe(ticket);
+    }
   }
   const exporterCsv = (nom, entetes, lignes) => {
     const champ = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -155,7 +162,7 @@
         </section>
 
         <section class="bloc ticket" id="cs-ticket">
-          <div class="bloc-tete"><h2>Ticket</h2>${caisse.lignes.length ? `<button class="mini" data-crm="vider">Vider</button>` : ""}</div>
+          <div class="bloc-tete"><div><h2>Ticket</h2><span class="aide">${new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span></div>${caisse.lignes.length ? `<button class="mini" data-crm="vider">Vider le ticket</button>` : ""}</div>
           <div class="liste">
             ${caisse.lignes
               .map((l, i) => {
@@ -210,8 +217,10 @@
             </div>
           </fieldset>
 
-          <div class="ticket-total" id="cs-total"></div>
-          <button class="btn btn-plein" data-crm="encaisser" ${caisse.lignes.length ? "" : "disabled"}>Enregistrer la vente</button>
+          <div class="ticket-pied">
+            <div class="ticket-total" id="cs-total"></div>
+            <button class="btn btn-plein" data-crm="encaisser" ${caisse.lignes.length ? "" : "disabled"}>Enregistrer la vente</button>
+          </div>
         </section>
       </div>
       ${caisse.lignes.length ? `<a class="caisse-barre" href="#cs-ticket"><span>Ticket · ${caisse.lignes.reduce((t, l) => t + l.quantite, 0)} article${caisse.lignes.reduce((t, l) => t + l.quantite, 0) > 1 ? "s" : ""}</span><strong id="cs-barre-total"></strong></a>` : ""}`;
@@ -222,7 +231,11 @@
     if (!el) return;
     const barre = zone.querySelector("#cs-barre-total");
     if (barre) barre.textContent = euros(t.total);
-    el.innerHTML = `${t.remise ? `<span>Sous-total ${euros(t.sous)}</span><span>Remise −${euros(t.remise)}</span>` : ""}${t.port ? `<span>Livraison ${euros(t.port)}</span>` : ""}<strong>Total ${euros(t.total)}</strong>`;
+    const ligne = (libelle, montant, classe = "") => `<div class="ticket-somme ${classe}"><span>${libelle}</span><span>${montant}</span></div>`;
+    el.innerHTML = `${t.remise || t.port ? ligne("Sous-total", euros(t.sous)) : ""}${t.remise ? ligne(caisse.promo ? `Code ${e(caisse.promo.code)}` : "Remise", `−${euros(t.remise)}`, "remise") : ""}${t.port ? ligne("Livraison", euros(t.port)) : ""}${ligne("Total", euros(t.total), "total")}`;
+    // Le bouton dit exactement ce qui va se passer, avec le montant
+    const bouton = zone.querySelector('[data-crm="encaisser"]');
+    if (bouton) bouton.textContent = caisse.lignes.length ? (caisse.paye ? `Encaisser ${euros(t.total)}` : `Enregistrer la vente à régler (${euros(t.total)})`) : "Enregistrer la vente";
     caisse.lignes.forEach((l, i) => {
       const x = zone.querySelector(`[data-total-ligne="${i}"]`);
       if (x) x.textContent = euros(l.prix * l.quantite);
@@ -362,23 +375,42 @@
     const demandes = donnees.demandes.filter((d) => d.client_id === c.id);
     const tel = lien(c.tel);
     const f = fenetre();
-    f.innerHTML = `
-      <form method="dialog" class="pile" data-crm-form="client">
-        <div class="bloc-tete"><h2 style="font-size:1.35rem">${id ? e(c.nom || "Client") : "Nouveau client"}</h2>${id ? `<span class="aide">Client depuis le ${date(c.cree_le)} · ${e(SOURCES[c.source] || c.source)}</span>` : ""}</div>
-        ${id ? `<div class="chiffres-admin" style="margin:0"><div class="chiffre"><strong>${st.n}</strong><span>achats</span></div><div class="chiffre"><strong>${euros(st.total)}</strong><span>dépensés</span></div><div class="chiffre"><strong>${st.n ? euros(st.total / st.n) : "—"}</strong><span>panier moyen</span></div></div>` : ""}
+    const STATUTS_CMD = { nouvelle: "Nouvelle", confirmee: "Maquette validée", en_fabrication: "En fabrication", prete: "Prête", expediee: "Expédiée", terminee: "Terminée", annulee: "Annulée" };
+    const wa = tel ? `https://wa.me/${tel.startsWith("0") ? "33" + tel.slice(1) : tel.replace("+", "")}` : "";
+    // Fiche d'un client connu : qui c'est, comment le joindre, ce qu'il a acheté, puis ses coordonnées (repliées).
+    // Nouveau client : directement le formulaire.
+    const champs = `
         <div class="grille-champs">
           <div class="champ"><label for="cl-nom">Nom</label><input id="cl-nom" name="nom" value="${e(c.nom)}" required></div>
           <div class="champ"><label for="cl-tel">Téléphone</label><input id="cl-tel" name="tel" type="tel" value="${e(c.tel)}"></div>
           <div class="champ large"><label for="cl-email">Email</label><input id="cl-email" name="email" type="email" value="${e(c.email || "")}"></div>
           <div class="champ large"><label for="cl-adresse">Adresse</label><textarea id="cl-adresse" name="adresse" rows="2">${e(c.adresse)}</textarea></div>
           <div class="champ large"><label for="cl-etiquettes">Étiquettes</label><input id="cl-etiquettes" name="etiquettes" value="${e((c.etiquettes || []).join(", "))}" placeholder="pro, mariage 2026, club de foot…"><small>Séparées par des virgules : pour retrouver et cibler un groupe de clients.</small></div>
-          <div class="champ large"><label for="cl-notes">Notes</label><textarea id="cl-notes" name="notes" rows="3" placeholder="Préférences, tailles, dates importantes…">${e(c.notes)}</textarea></div>
           ${id ? "" : `<div class="champ"><label for="cl-source">Connu par</label><select id="cl-source" name="source">${Object.entries(SOURCES).map(([k, v]) => `<option value="${k}" ${c.source === k ? "selected" : ""}>${v}</option>`).join("")}</select></div>`}
           <label class="case large"><input type="checkbox" name="consentement" ${c.consentement_marketing ? "checked" : ""}> <span>Accepte de recevoir les nouveautés et promotions par email${c.consentement_le ? `<br><small class="aide">Choix enregistré le ${date(c.consentement_le, true)}</small>` : ""}</span></label>
+        </div>`;
+    f.innerHTML = `
+      <form method="dialog" class="pile" data-crm-form="client">
+        ${id ? `
+        <div class="fiche-client-tete">
+          ${avatar(c.nom || c.email)}
+          <div>
+            <h2>${e(c.nom || "Client")}</h2>
+            <p class="aide">Client depuis le ${date(c.cree_le)} · ${e(SOURCES[c.source] || c.source)}</p>
+            <div class="pastilles" style="margin:0.4rem 0 0">${c.consentement_marketing ? `<span class="pastille paiement-paye">Abonné aux nouveautés</span>` : ""}${(c.etiquettes || []).map((t) => `<span class="pastille">#${e(t)}</span>`).join("")}</div>
+          </div>
         </div>
-        ${id && (c.email || tel) ? `<div class="raccourcis">${c.email ? `<button class="btn btn-ligne" type="button" data-crm="ecrire" data-id="${c.id}">Écrire un email</button>` : ""}${tel ? `<a class="btn btn-ligne" href="tel:${e(tel)}">Appeler</a><a class="btn btn-ligne" target="_blank" rel="noopener" href="https://wa.me/${tel.startsWith("0") ? "33" + tel.slice(1) : tel.replace("+", "")}">WhatsApp</a>` : ""}<button class="btn btn-ligne" type="button" data-crm="vendre" data-id="${c.id}">Nouvelle vente</button></div>` : ""}
-        ${achats.length ? `<h3>Achats</h3><div class="liste">${achats.map((a) => `<div class="ligne"><span class="ligne-texte"><strong>${e(a.numero)}</strong><span>${date(a.cree_le)} · ${e(CANAUX_STATS[a.canal] || "Site internet")}</span></span><span class="pastilles"><span class="pastille statut-${a.statut}">${e(a.statut.replace("_", " "))}</span></span><strong class="prix">${euros(a.total)}</strong></div>`).join("")}</div>` : ""}
-        ${demandes.length ? `<h3>Demandes</h3><div class="liste">${demandes.map((d) => `<div class="ligne"><span class="ligne-texte"><strong>${e(TYPES_DEM[d.type])}${d.sujet ? ` — ${e(d.sujet)}` : ""}</strong><span>${date(d.cree_le)} · ${e(ST_DEM[d.statut])}</span></span></div>`).join("")}</div>` : ""}
+        <div class="raccourcis">
+          <button class="btn" type="button" data-crm="vendre" data-id="${c.id}">Nouvelle vente</button>
+          ${tel ? `<a class="btn btn-ligne" href="tel:${e(tel)}">Appeler</a>` : ""}
+          ${wa ? `<a class="btn btn-ligne" target="_blank" rel="noopener" href="${e(wa)}">WhatsApp</a>` : ""}
+          ${c.email ? `<button class="btn btn-ligne" type="button" data-crm="ecrire" data-id="${c.id}">Écrire un email</button>` : ""}
+        </div>
+        <p class="fiche-client-chiffres"><span><strong>${st.n}</strong> achat${st.n > 1 ? "s" : ""}</span><span><strong>${euros(st.total)}</strong> dépensés</span>${st.n ? `<span>panier moyen <strong>${euros(st.total / st.n)}</strong></span>` : ""}</p>` : `<h2 style="font-size:1.35rem">Nouveau client</h2>`}
+        <div class="champ"><label for="cl-notes">Notes</label><textarea id="cl-notes" name="notes" rows="3" placeholder="Préférences, tailles, dates importantes (anniversaire, mariage…)">${e(c.notes)}</textarea></div>
+        ${achats.length ? `<h3>Achats</h3><div class="liste">${achats.map((a) => `<div class="ligne ligne-simple"><span class="ligne-texte"><strong>${e(a.numero)}</strong><span>${date(a.cree_le)} · ${e(CANAUX_STATS[a.canal] || "Site internet")}</span></span><span class="pastilles"><span class="pastille statut-${a.statut}">${e(STATUTS_CMD[a.statut] || a.statut)}</span></span><strong class="prix">${euros(a.total)}</strong></div>`).join("")}</div>` : id ? `<p class="aide">Pas encore d'achat.</p>` : ""}
+        ${demandes.length ? `<h3>Demandes</h3><div class="liste">${demandes.map((d) => `<div class="ligne ligne-simple"><span class="ligne-texte"><strong>${e(TYPES_DEM[d.type])}${d.sujet ? ` — ${e(d.sujet)}` : ""}</strong><span>${date(d.cree_le)} · ${e(ST_DEM[d.statut])}</span></span></div>`).join("")}</div>` : ""}
+        ${id ? `<details class="coordonnees"><summary>Coordonnées, étiquettes et accord pour les emails</summary>${champs}</details>` : champs}
         <div class="raccourcis">
           <button class="btn" value="ok">Enregistrer</button>
           <button class="btn btn-ligne" value="annuler" formnovalidate>Fermer</button>
@@ -530,22 +562,26 @@
       <section class="bloc">
         <div class="bloc-tete"><h2>Codes promo</h2><button class="btn" data-crm="nouveau-code">+ Nouveau code</button></div>
         <p class="aide">Le client saisit le code dans son panier ; la remise est calculée par le serveur et appliquée au paiement par carte. Idées : <em>BIENVENUE10</em> pour les abonnés, <em>FETEDESMERES</em> sur une période, un code pour un salon.</p>
-        <div class="liste">
+        <div class="bons">
           ${donnees.promos
             .map((p) => {
               const [ok, txt] = promoValide(p);
-              return `<div class="ligne ligne-produit">
-                <span class="ligne-texte"><strong><code style="font-size:1rem">${e(p.code)}</code> ${libellePromo(p)}</strong><span>${e(p.description) || "—"}${Number(p.minimum) ? ` · dès ${euros(p.minimum)} d'achat` : ""}${p.fin ? ` · jusqu'au ${date(p.fin)}` : ""}</span></span>
-                <span class="pastilles"><span class="pastille" style="${ok ? "background:#e3f1e9;color:#1f6b45" : ""}">${txt}</span><span class="pastille">${p.utilisations} utilisation${p.utilisations > 1 ? "s" : ""}${p.utilisations_max ? ` / ${p.utilisations_max}` : ""}</span></span>
-                <span class="ligne-boutons">
+              const conditions = [Number(p.minimum) ? `dès ${euros(p.minimum)} d'achat` : "", p.debut ? `à partir du ${date(p.debut)}` : "", p.fin ? `jusqu'au ${date(p.fin)}` : "", p.utilisations_max ? `${p.utilisations_max} utilisations au plus` : ""].filter(Boolean).join(", ");
+              // Une carte par code, comme un bon de réduction : le code, la remise, les conditions, l'usage
+              return `<article class="bon ${ok ? "" : "bon-inactif"}">
+                <div class="bon-tete"><span class="bon-code">${e(p.code)}</span><span class="bon-remise">${libellePromo(p)}</span></div>
+                <p>${e(p.description) || "Sans description"}</p>
+                ${conditions ? `<p class="aide">${conditions[0].toUpperCase() + conditions.slice(1)}</p>` : ""}
+                <div class="pastilles" style="margin:0"><span class="pastille" style="${ok ? "background:#e3f1e9;color:#1f6b45" : ""}">${txt}</span><span class="pastille">${p.utilisations ? `Utilisé ${p.utilisations} fois` : "Pas encore utilisé"}</span></div>
+                <div class="ligne-boutons">
                   <button class="mini" data-crm="partager-code" data-code="${e(p.code)}">Texte à partager</button>
-                  <button class="mini" data-crm="basculer-code" data-code="${e(p.code)}">${p.actif ? "Désactiver" : "Activer"}</button>
                   <button class="mini" data-crm="modifier-code" data-code="${e(p.code)}">Modifier</button>
-                  <button class="mini danger" data-crm="supprimer-code" data-code="${e(p.code)}">Supprimer</button>
-                </span>
-              </div>`;
+                  <button class="mini" data-crm="basculer-code" data-code="${e(p.code)}">${p.actif ? "Désactiver" : "Activer"}</button>
+                  <button class="mini danger" data-crm="supprimer-code" data-code="${e(p.code)}" aria-label="Supprimer le code ${e(p.code)}">Supprimer</button>
+                </div>
+              </article>`;
             })
-            .join("") || `<p class="aide" style="padding:1rem 0">Aucun code pour l'instant.</p>`}
+            .join("") || `<p class="aide" style="padding:1rem 0">Aucun code pour l'instant. Un code de bienvenue (par exemple BIENVENUE10) est un bon début.</p>`}
         </div>
       </section>
 
@@ -570,7 +606,7 @@
             <button class="btn" value="envoyer" ${abonnes ? "" : "disabled"}>Envoyer à ${abonnes} abonné${abonnes > 1 ? "s" : ""}</button>
           </div>
         </form>
-        ${donnees.campagnes.length ? `<h3 style="margin-top:1.2rem">Déjà envoyés</h3><div class="liste">${donnees.campagnes.map((c) => `<div class="ligne"><span class="ligne-texte"><strong>${e(c.sujet)}</strong><span>${date(c.cree_le, true)} · ${c.destinataires} destinataire${c.destinataires > 1 ? "s" : ""}</span></span><button class="mini" data-crm="reprendre-campagne" data-id="${c.id}">Réutiliser</button></div>`).join("")}</div>` : ""}
+        ${donnees.campagnes.length ? `<h3 style="margin-top:1.2rem">Déjà envoyés</h3><div class="liste">${donnees.campagnes.map((c) => `<div class="ligne ligne-simple"><span class="ligne-texte"><strong>${e(c.sujet)}</strong><span>${date(c.cree_le, true)} · ${c.destinataires} destinataire${c.destinataires > 1 ? "s" : ""}</span></span><button class="mini" data-crm="reprendre-campagne" data-id="${c.id}">Réutiliser</button></div>`).join("")}</div>` : ""}
       </section>
 
       <section class="bloc">

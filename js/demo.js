@@ -359,7 +359,9 @@
 
   // ---------- Fausse publication du contenu (API GitHub du serveur) ----------
   let serveur = null;
-  const chargerServeur = () => (serveur ??= import(BASE + "js/demo-serveur.js"));
+  // Même numéro de version que js/demo.js : après une mise à jour, le navigateur recharge aussi le serveur de démo
+  const VERSION = new URL(SCRIPT).searchParams.get("v") || "";
+  const chargerServeur = () => (serveur ??= import(`${BASE}js/demo-serveur.js${VERSION ? `?v=${VERSION}` : ""}`));
   async function github(url, methode, corps) {
     const chemin = decodeURIComponent(url.pathname.replace("/repos/demo/site/contents/", ""));
     const expiration = { "github-authentication-token-expiration": "2027-10-01 00:00:00 UTC" };

@@ -422,6 +422,12 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
     if (e.target.closest("#ouvrir-menu")) menu(!$("#admin-nav").classList.contains("ouvert"));
     if (e.target.closest("#admin-voile")) menu(false);
   });
+  // Un seul menu « … » ouvert à la fois ; un clic ailleurs (ou sur une action) le referme
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll("details.plus-actions[open]").forEach((d) => {
+      if (!d.contains(e.target) || e.target.closest(".plus-menu button")) d.open = false;
+    });
+  });
   // Pastille d'un onglet (commandes, demandes) dans le menu et dans la barre du téléphone
   window.AdminPastille = (nom, n) => {
     if (typeof n !== "number") return;
@@ -672,7 +678,7 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
           <h2>Produits <span class="aide">(${D.produits.length})</span></h2>
           <button class="btn" data-action="nouveau-produit">+ Ajouter un produit</button>
         </div>
-        <p class="aide">Modifiez les prix directement dans la liste. ♥ = coup de cœur sur l'accueil, 👁 = visible sur le site.</p>
+        <p class="aide">Changez un prix directement dans la liste. ♥ met le produit dans les coups de cœur de l'accueil, 👁 l'affiche ou le masque sur le site.</p>
         <div class="barre">
           <input type="search" id="filtre-q" placeholder="Rechercher…" value="${echapper(filtre.q)}" aria-label="Rechercher un produit">
           <select id="filtre-cat" aria-label="Filtrer par catégorie">
@@ -696,11 +702,17 @@ Annuler : les abandonner et partir du site tel qu'il est en ligne.`;
                 <button class="mini oeil" data-action="basculer-visible" data-i="${i}" aria-pressed="${p.visible !== false}" title="Visible sur le site" aria-label="Visible sur le site">👁</button>
               </div>
               <div class="ligne-boutons">
-                <button class="mini" data-action="monter" data-i="${i}" ${i === 0 ? "disabled" : ""} title="Monter" aria-label="Monter">↑</button>
-                <button class="mini" data-action="descendre" data-i="${i}" ${i === D.produits.length - 1 ? "disabled" : ""} title="Descendre" aria-label="Descendre">↓</button>
                 <button class="mini" data-action="modifier-produit" data-i="${i}">Modifier</button>
-                <button class="mini" data-action="dupliquer-produit" data-i="${i}">Dupliquer</button>
-                <button class="mini danger" data-action="supprimer-produit" data-i="${i}">Supprimer</button>
+                <!-- Les gestes plus rares sont rangés dans « … » -->
+                <details class="plus-actions">
+                  <summary class="mini" aria-label="Plus d'actions pour ${echapper(p.nom)}">…</summary>
+                  <div class="plus-menu">
+                    <button data-action="monter" data-i="${i}" ${i === 0 ? "disabled" : ""}>Monter dans la liste</button>
+                    <button data-action="descendre" data-i="${i}" ${i === D.produits.length - 1 ? "disabled" : ""}>Descendre dans la liste</button>
+                    <button data-action="dupliquer-produit" data-i="${i}">Dupliquer</button>
+                    <button class="danger" data-action="supprimer-produit" data-i="${i}">Supprimer</button>
+                  </div>
+                </details>
               </div>
             </div>`
             )

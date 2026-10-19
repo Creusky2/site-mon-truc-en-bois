@@ -567,18 +567,26 @@ async function envoyerLot(messages, repondreA) {
   };
 }
 var site = () => env("SITE_URL").replace(/\/$/, "");
-function gabarit(titre, corps) {
-  return `<!doctype html><html lang="fr"><body style="margin:0;background:#f4f2ee;font-family:Arial,Helvetica,sans-serif;color:#1b1a17">
-  <div style="max-width:600px;margin:0 auto;padding:24px 16px">
-    <div style="text-align:center;padding:8px 0 16px"><img src="${site()}/img/logo-email.png" alt="Mon Truc en Bois" width="110" style="width:110px;height:auto"></div>
-    <div style="background:#fff;border-radius:14px;padding:28px 24px">
-      <h1 style="font-size:22px;margin:0 0 16px">${echapper(titre)}</h1>
+var SIGNATURE = `
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:26px;border-top:1px solid #e5e0d8;padding-top:18px;width:100%">
+        <tr><td style="width:64px;vertical-align:middle"><img src="__SITE__/img/logo-email.png" alt="" width="52" style="width:52px;height:auto;border-radius:50%"></td>
+        <td style="vertical-align:middle;font-size:15px;line-height:1.45;color:#1b1a17">\xC0 tr\xE8s vite,<br><strong>Christophe et Laetitia</strong><br><span style="color:#5f5a52;font-size:13px">Mon Truc en Bois \xB7 une question ? r\xE9pondez simplement \xE0 cet email</span></td></tr>
+      </table>`;
+function gabarit(titre, corps, { pourClient = true, apercu = "" } = {}) {
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+  <body style="margin:0;background:#eef3ef;font-family:Arial,Helvetica,sans-serif;color:#1b1a17">
+  ${apercu ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${echapper(apercu)}</div>` : ""}
+  <div style="max-width:600px;margin:0 auto;padding:28px 16px">
+    <div style="text-align:center;padding:4px 0 18px"><a href="${site()}"><img src="${site()}/img/logo-email.png" alt="Mon Truc en Bois" width="104" style="width:104px;height:auto"></a></div>
+    <div style="background:#fff;border-radius:16px;padding:30px 26px;font-size:16px;line-height:1.55">
+      <h1 style="font-size:23px;line-height:1.25;margin:0 0 16px;color:#1b1a17">${echapper(titre)}</h1>
       ${corps}
+      ${pourClient ? SIGNATURE.replace("__SITE__", site()) : ""}
     </div>
-    <p style="text-align:center;color:#5f5a52;font-size:13px;margin-top:18px">Mon Truc en Bois \xB7 3 rue Salengro, 62260 Auchel \xB7 <a href="${site()}" style="color:#24453a">${site().replace(/^https?:\/\//, "")}</a></p>
+    <p style="text-align:center;color:#5f5a52;font-size:13px;line-height:1.5;margin-top:18px">Mon Truc en Bois \xB7 3 rue Salengro, 62260 Auchel<br><a href="${site()}" style="color:#24453a">${site().replace(/^https?:\/\//, "")}</a></p>
   </div></body></html>`;
 }
-var bouton = (url, texte4) => `<p style="margin:22px 0"><a href="${echapper(url)}" style="background:#24453a;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:bold;display:inline-block">${echapper(texte4)}</a></p>`;
+var bouton = (url, texte4) => `<p style="margin:24px 0"><a href="${echapper(url)}" style="background:#24453a;color:#fff;text-decoration:none;padding:14px 24px;border-radius:10px;font-weight:bold;font-size:16px;display:inline-block">${echapper(texte4)}</a></p>`;
 function recapitulatif(c) {
   const lignes = (c.lignes ?? []).map((l) => `<tr>
         <td style="padding:8px 0;border-bottom:1px solid #eee">
@@ -617,7 +625,9 @@ function emailNouvelleCommande(c) {
       ${c.cadeau?.date ? `<p>Date souhait\xE9e : ${echapper(new Date(c.cadeau.date).toLocaleDateString("fr-FR"))}</p>` : ""}
       ${c.message ? `<p>Message : ${echapper(c.message)}</p>` : ""}
       ${recapitulatif(c)}
-      ${bouton(`${site()}/admin.html#commandes`, "Ouvrir dans l'admin")}`)
+      ${bouton(`${site()}/admin.html#commandes`, "Ouvrir dans l'admin")}`, {
+      pourClient: false
+    })
   };
 }
 function emailConfirmationClient(c, paiementUrl) {
@@ -630,7 +640,9 @@ function emailConfirmationClient(c, paiementUrl) {
       ${paiementUrl || c.paiement_mode === "en_ligne" && c.paiement_statut !== "paye" ? bouton(lienPayer(c), "Payer ma commande") : ""}
       ${recapitulatif(c)}
       ${bouton(lienSuivi(c), "Suivre ma commande")}
-      <p style="color:#5f5a52;font-size:14px">Une question ? R\xE9pondez simplement \xE0 cet email.</p>`)
+`, {
+      apercu: `Commande ${c.numero} bien re\xE7ue : nous revenons vers vous pour valider la personnalisation.`
+    })
   };
 }
 function emailPaiementRecu(c) {
@@ -645,7 +657,9 @@ function emailPaiementRecu(c) {
 function emailPaiementRecuBoutique(c) {
   return {
     sujet: `Paiement re\xE7u : ${c.numero} \u2014 ${euros(c.total)}`,
-    html: gabarit(`Paiement re\xE7u pour ${c.numero}`, `<p>${echapper(c.client_nom)} a pay\xE9 ${euros(c.total)} en ligne.</p>${bouton(`${site()}/admin.html#commandes`, "Ouvrir dans l'admin")}`)
+    html: gabarit(`Paiement re\xE7u pour ${c.numero}`, `<p>${echapper(c.client_nom)} a pay\xE9 ${euros(c.total)} en ligne.</p>${bouton(`${site()}/admin.html#commandes`, "Ouvrir dans l'admin")}`, {
+      pourClient: false
+    })
   };
 }
 function emailPaiementInattendu(c) {
@@ -655,8 +669,28 @@ function emailPaiementInattendu(c) {
     html: gabarit(`Paiement re\xE7u pour une commande ${etat}`, `
       <p>${echapper(c.client_nom)} vient de payer ${euros(c.total)} par carte pour la commande <strong>${c.numero}</strong>, qui est ${etat}.</p>
       <p>La commande n'a pas \xE9t\xE9 modifi\xE9e. Ouvrez l'application Stripe pour rembourser ce paiement, ou reprenez la commande avec le client.</p>
-      ${bouton(`${site()}/admin.html#commandes`, "Ouvrir dans l'admin")}`)
+      ${bouton(`${site()}/admin.html#commandes`, "Ouvrir dans l'admin")}`, {
+      pourClient: false
+    })
   };
+}
+function frise(c) {
+  const etapes = [
+    "confirmee",
+    "en_fabrication",
+    c.mode_reception === "livraison" ? "expediee" : "prete",
+    "terminee"
+  ];
+  const libelles = {
+    confirmee: "Maquette valid\xE9e",
+    en_fabrication: "En fabrication",
+    prete: "Pr\xEAte",
+    expediee: "Exp\xE9di\xE9e",
+    terminee: "Termin\xE9e"
+  };
+  const rang = etapes.indexOf(c.statut);
+  if (rang < 0) return "";
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:18px 0 6px;border-collapse:separate;border-spacing:4px 0"><tr>${etapes.map((e, i) => `<td style="width:25%;padding-top:8px;border-top:4px solid ${i <= rang ? "#24453a" : "#e5e0d8"};font-size:12px;color:${i === rang ? "#1b1a17" : "#5f5a52"};${i === rang ? "font-weight:bold;" : ""}vertical-align:top">${libelles[e]}</td>`).join("")}</tr></table>`;
 }
 function emailStatut(c, message = "") {
   const textes = {
@@ -672,6 +706,7 @@ function emailStatut(c, message = "") {
     html: gabarit(STATUTS[c.statut] ?? "Votre commande", `
       <p>Bonjour ${echapper(c.client_nom.split(" ")[0])},</p>
       <p>${textes[c.statut] ?? "Le statut de votre commande a chang\xE9."}</p>
+      ${frise(c)}
       ${message ? `<p style="background:#f4f2ee;border-radius:10px;padding:12px 14px">${echapper(message).replace(/\n/g, "<br>")}</p>` : ""}
       ${bouton(lienSuivi(c), "Voir ma commande")}`)
   };
@@ -699,7 +734,9 @@ function emailDemandeBoutique(d) {
       <p><strong>${echapper(d.nom)}</strong><br>${echapper(d.email)}${d.tel ? ` \xB7 ${echapper(d.tel)}` : ""}</p>
       ${d.sujet ? `<p>Sujet : <strong>${echapper(d.sujet)}</strong>${d.quantite ? ` \xB7 quantit\xE9 : ${d.quantite}` : ""}</p>` : ""}
       ${d.message ? `<p style="background:#f4f2ee;border-radius:10px;padding:12px 14px">${echapper(d.message).replace(/\n/g, "<br>")}</p>` : ""}
-      ${bouton(`${site()}/admin.html#demandes`, "Ouvrir dans l'admin")}`)
+      ${bouton(`${site()}/admin.html#demandes`, "Ouvrir dans l'admin")}`, {
+      pourClient: false
+    })
   };
 }
 async function emailAccuseDemande(d) {
@@ -716,7 +753,7 @@ function emailLibre(nom, sujet, message) {
     sujet,
     html: gabarit(sujet, `<p>Bonjour ${echapper(String(nom || "").split(" ")[0])},</p>
       <p style="white-space:pre-line">${echapper(message)}</p>
-      <p>\xC0 bient\xF4t,<br>L'\xE9quipe Mon Truc en Bois</p>`)
+`)
   };
 }
 var lienDesinscription = async (email) => `${site()}/newsletter.html?desinscription=1&email=${encodeURIComponent(email)}&cle=${await cleDesinscription(email)}`;
@@ -729,7 +766,6 @@ async function emailCampagne(c) {
     html: gabarit(c.sujet, `${c.nom ? `<p>Bonjour ${echapper(String(c.nom).split(" ")[0])},</p>` : ""}
       <p style="white-space:pre-line">${echapper(c.message)}</p>
       ${c.lien ? bouton(c.lien, c.texte_lien || "D\xE9couvrir") : ""}
-      <p>\xC0 bient\xF4t,<br>L'\xE9quipe Mon Truc en Bois</p>
       <p style="font-size:12px;color:#5f5a52;margin-top:24px">Vous recevez cet email car vous \xEAtes inscrit(e) aux nouveaut\xE9s de Mon Truc en Bois.
       <a href="${desinscription}" style="color:#5f5a52">Se d\xE9sinscrire</a></p>`)
   };

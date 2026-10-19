@@ -8,7 +8,7 @@
   <link rel="icon" href="img/favicon-64.png" sizes="64x64" type="image/png">
   <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/style.css?v=202610191040">
+  <link rel="stylesheet" href="css/style.css?v=20261019110342">
 </head>
 <body data-sans-contact>
   <header class="entete"></header>
@@ -18,8 +18,8 @@
   <footer class="pied"></footer>
 
   <script src="data/donnees.js"></script>
-  <script src="js/demo.js?v=202610191040"></script>
-  <script src="js/main.js?v=202610191040"></script>
+  <script src="js/demo.js?v=20261019110342"></script>
+  <script src="js/main.js?v=20261019110342"></script>
   <script>
     const { echapper, euros, visuel, lirePanier, ecrirePanier, lienWhatsapp, serveur, appelServeur, modesPaiement, photoLire, photoSupprimer } = MTB;
     const zone = document.getElementById("contenu");
@@ -123,91 +123,113 @@
       }
       const t = totaux(panier);
       const restant = SITE.livraisonOfferteDes - t.sousTotal;
+      const nbArticles = panier.reduce((n, l) => n + l.quantite, 0);
+      const modes = modesDisponibles();
+      if (modes.length && !modes.some(([v]) => v === paiement)) paiement = modes[0][0];
+      // À gauche : le panier puis la commande en quatre étapes ; à droite : le récapitulatif, qui reste visible.
+      // Le bouton de commande est dans le récapitulatif mais appartient au formulaire (attribut form).
       zone.innerHTML = `
-        <div class="page-tete"><h1>Mon panier</h1></div>
+        <div class="page-tete">
+          <h1>Mon panier</h1>
+          <p class="chapeau">${nbArticles} création${nbArticles > 1 ? "s" : ""} à personnaliser. Nous validons le rendu avec vous avant de lancer la fabrication.</p>
+        </div>
         <div class="panier-grille">
-          <div>
-            <div class="lignes">
-              ${panier.map((l) => {
-                const p = trouverProduit(l.id) || { nom: l.nom, image: "" };
-                return `
-                <div class="ligne-panier" data-uid="${echapper(l.uid)}">
-                  <div class="vignette">${l.photo ? `<img src="${l.photo}" alt="Votre photo">` : visuel(p)}</div>
-                  <div>
-                    <h3><a href="produit.html?id=${encodeURIComponent(l.id)}">${echapper(l.nom)}</a></h3>
-                    <ul>
-                      ${l.variante ? `<li>${echapper(l.variante)}</li>` : ""}
-                      ${l.texte ? `<li>Texte : « ${echapper(l.texte)} » — ${echapper(l.police)}</li>` : ""}
-                      ${l.photoNom ? `<li>Photo : ${echapper(l.photoNom)}</li>` : ""}
-                      ${l.remarque ? `<li>Précisions : ${echapper(l.remarque)}</li>` : ""}
-                    </ul>
-                  </div>
-                  <div class="ligne-actions">
-                    <strong class="prix">${euros(l.prix * l.quantite)}</strong>
-                    <input type="number" min="1" max="99" value="${l.quantite}" data-qte aria-label="Quantité">
-                    <button class="supprimer" data-suppr>Retirer</button>
-                  </div>
-                </div>`;
-              }).join("")}
+          <div class="pile" style="gap:2.2rem">
+            <div>
+              <div class="lignes">
+                ${panier.map((l) => {
+                  const p = trouverProduit(l.id) || { nom: l.nom, image: "" };
+                  return `
+                  <div class="ligne-panier" data-uid="${echapper(l.uid)}">
+                    <div class="vignette">${l.photo ? `<img src="${l.photo}" alt="Votre photo">` : visuel(p)}</div>
+                    <div>
+                      <h3><a href="produit.html?id=${encodeURIComponent(l.id)}">${echapper(l.nom)}</a></h3>
+                      <ul>
+                        ${l.variante ? `<li>${echapper(l.variante)}</li>` : ""}
+                        ${l.texte ? `<li>Texte : « ${echapper(l.texte)} » — ${echapper(l.police)}</li>` : ""}
+                        ${l.photoNom ? `<li>Photo : ${echapper(l.photoNom)}</li>` : ""}
+                        ${l.remarque ? `<li>Précisions : ${echapper(l.remarque)}</li>` : ""}
+                      </ul>
+                    </div>
+                    <div class="ligne-actions">
+                      <strong class="prix">${euros(l.prix * l.quantite)}</strong>
+                      <input type="number" min="1" max="99" value="${l.quantite}" data-qte aria-label="Quantité">
+                      <button class="supprimer" data-suppr>Retirer</button>
+                    </div>
+                  </div>`;
+                }).join("")}
+              </div>
+              <p style="margin-top:1.1rem"><a class="lien-fleche" href="boutique.html">Continuer mes achats</a></p>
             </div>
-            <p style="margin-top:1.25rem"><a class="lien-fleche" href="boutique.html">← Continuer mes achats</a></p>
+
+            <form id="commande" class="etapes-commande">
+              <fieldset class="etape-commande">
+                <legend><span class="num">1</span> Retrait ou livraison</legend>
+                <div class="choix-cartes">
+                  <label class="choix-carte"><input type="radio" name="mode" value="retrait" ${modeLivraison === "retrait" ? "checked" : ""}><span><strong>Retrait à la boutique</strong><small>Gratuit, à Auchel, aux heures d'ouverture</small></span></label>
+                  <label class="choix-carte"><input type="radio" name="mode" value="livraison" ${modeLivraison === "livraison" ? "checked" : ""}><span><strong>Livraison à domicile</strong><small>${euros(SITE.livraison)}, offerte dès ${euros(SITE.livraisonOfferteDes)}</small></span></label>
+                </div>
+                ${modeLivraison === "livraison" ? `<div class="champ"><label for="c-adr">Adresse de livraison *</label><textarea id="c-adr" name="adresse" required autocomplete="street-address" style="min-height:80px"></textarea></div>` : ""}
+              </fieldset>
+
+              <fieldset class="etape-commande">
+                <legend><span class="num">2</span> Vos coordonnées</legend>
+                <div class="champ"><label for="c-nom">Nom et prénom *</label><input type="text" id="c-nom" name="nom" required autocomplete="name"></div>
+                <div class="deux-champs">
+                  <div class="champ"><label for="c-email">Email *</label><input type="email" id="c-email" name="email" required autocomplete="email"></div>
+                  <div class="champ"><label for="c-tel">Téléphone *</label><input type="tel" id="c-tel" name="telephone" required autocomplete="tel"></div>
+                </div>
+                <p class="aide">Pour vous envoyer la confirmation et vous appeler si une précision est nécessaire.</p>
+              </fieldset>
+
+              <fieldset class="etape-commande">
+                <legend><span class="num">3</span> C'est pour offrir ? <small>facultatif</small></legend>
+                ${emballageActif ? `<label class="case"><input type="checkbox" id="c-emballage" ${cadeau.emballage ? "checked" : ""}> Emballage cadeau (+${euros(prixEmballage)})</label>` : ""}
+                <div class="deux-champs">
+                  <div class="champ"><label for="c-carte">Message pour la carte</label><input type="text" id="c-carte" maxlength="160" value="${echapper(cadeau.message)}" placeholder="Joyeux anniversaire Mamie !"></div>
+                  <div class="champ"><label for="c-date">Pour quelle date ?</label><input type="date" id="c-date" value="${echapper(cadeau.date)}" min="${new Date().toISOString().slice(0, 10)}"></div>
+                </div>
+                <div class="champ"><label for="c-msg">Un mot pour l'atelier <small>(occasion, question…)</small></label><textarea id="c-msg" name="message" style="min-height:70px"></textarea></div>
+              </fieldset>
+
+              ${modes.length ? `
+              <fieldset class="etape-commande">
+                <legend><span class="num">4</span> Paiement</legend>
+                <div class="choix-cartes choix-cartes-pile">
+                  ${modes.map(([v, titre, aide]) => `<label class="choix-carte"><input type="radio" name="paiement" value="${v}" ${v === paiement ? "checked" : ""}><span><strong>${titre}</strong><small>${aide}</small></span></label>`).join("")}
+                </div>
+              </fieldset>` : ""}
+            </form>
           </div>
 
-          <div class="recap">
-            <h2 style="font-size:1.35rem">Récapitulatif</h2>
-            <div class="champ">
-              <span class="label">Mode de réception</span>
-              <label class="case"><input type="radio" name="mode" value="livraison" ${modeLivraison === "livraison" ? "checked" : ""}> Livraison à domicile</label>
-              <label class="case"><input type="radio" name="mode" value="retrait" ${modeLivraison === "retrait" ? "checked" : ""}> Retrait à la boutique d'Auchel (gratuit)</label>
-            </div>
+          <aside class="recap">
+            <h2>Votre commande</h2>
+            <ul class="recap-articles">
+              ${panier.map((l) => `<li><span>${echapper(l.nom)}${l.quantite > 1 ? ` × ${l.quantite}` : ""}</span><span>${euros(l.prix * l.quantite)}</span></li>`).join("")}
+            </ul>
             <div class="pile" style="gap:.5rem">
               <div class="recap-ligne"><span>Sous-total</span><span>${euros(t.sousTotal)}</span></div>
-              <div class="recap-ligne"><span>${modeLivraison === "retrait" ? "Retrait" : "Livraison"}</span><span>${t.port ? euros(t.port) : "Offert"}</span></div>
+              <div class="recap-ligne"><span>${modeLivraison === "retrait" ? "Retrait à la boutique" : "Livraison"}</span><span>${t.port ? euros(t.port) : "Offert"}</span></div>
               ${modeLivraison === "livraison" && restant > 0 ? `<p class="aide">Plus que <strong>${euros(restant)}</strong> pour la livraison offerte.</p><div class="jauge" aria-hidden="true"><span style="width:${Math.min(100, (t.sousTotal / SITE.livraisonOfferteDes) * 100)}%"></span></div>` : ""}
               ${t.emballage ? `<div class="recap-ligne"><span>Emballage cadeau</span><span>${euros(t.emballage)}</span></div>` : ""}
               ${t.remise ? `<div class="recap-ligne recap-remise"><span>Code ${echapper(simulation.code_promo)}${simulation.promo_description ? ` — ${echapper(simulation.promo_description)}` : ""} <button type="button" class="supprimer" id="retirer-code">Retirer</button></span><span>−${euros(t.remise)}</span></div>` : ""}
               <div class="recap-ligne recap-total"><span>Total</span><span>${euros(t.total)}</span></div>
-              ${serveur() && !t.remise ? `
-              <div class="champ">
-                <label for="c-code">Code promo</label>
-                <div class="code-promo"><input type="text" id="c-code" placeholder="Ex. BIENVENUE10" autocomplete="off" maxlength="30"><button type="button" class="btn btn-ligne" id="appliquer-code">Appliquer</button></div>
-                ${simulation?.erreur_code ? `<p class="message message-alerte" style="margin-top:.5rem">${echapper(simulation.erreur_code)}</p>` : ""}
-              </div>` : ""}
             </div>
-
-            <form id="commande" class="pile" style="gap:1rem">
-              <h3>Vos coordonnées</h3>
-              <div class="champ"><label for="c-nom">Nom et prénom *</label><input type="text" id="c-nom" name="nom" required autocomplete="name"></div>
-              <div class="deux-champs">
-                <div class="champ"><label for="c-email">Email *</label><input type="email" id="c-email" name="email" required autocomplete="email"></div>
-                <div class="champ"><label for="c-tel">Téléphone *</label><input type="tel" id="c-tel" name="telephone" required autocomplete="tel"></div>
-              </div>
-              ${modeLivraison === "livraison" ? `<div class="champ"><label for="c-adr">Adresse de livraison *</label><textarea id="c-adr" name="adresse" required autocomplete="street-address" style="min-height:80px"></textarea></div>` : ""}
-              <div class="options-cadeau">
-                <span class="label" style="display:flex;gap:.5rem;align-items:center">${MTB.icone("cadeau")} C'est pour offrir ?</span>
-                ${emballageActif ? `<label class="case"><input type="checkbox" id="c-emballage" ${cadeau.emballage ? "checked" : ""}> Emballage cadeau (+${euros(prixEmballage)})</label>` : ""}
-                <div class="champ"><label for="c-carte">Message pour la carte <small>(facultatif)</small></label><input type="text" id="c-carte" maxlength="160" value="${echapper(cadeau.message)}" placeholder="Joyeux anniversaire Mamie !"></div>
-                <div class="champ"><label for="c-date">Pour quelle date ? <small>(facultatif)</small></label><input type="date" id="c-date" value="${echapper(cadeau.date)}" min="${new Date().toISOString().slice(0, 10)}"></div>
-              </div>
-              <div class="champ"><label for="c-msg">Message <small>(occasion, question…)</small></label><textarea id="c-msg" name="message" style="min-height:70px"></textarea></div>
-              ${(() => {
-                const modes = modesDisponibles();
-                if (!modes.length) return "";
-                if (!modes.some(([v]) => v === paiement)) paiement = modes[0][0];
-                return `<div class="champ"><span class="label">Paiement</span>${modes
-                  .map(([v, titre, aide]) => `<label class="case"><input type="radio" name="paiement" value="${v}" ${v === paiement ? "checked" : ""}> <span><strong>${titre}</strong><br><small class="aide">${aide}</small></span></label>`)
-                  .join("")}</div>`;
-              })()}
-              ${serveur() ? `<label class="case"><input type="checkbox" id="c-nouveautes"> <span>Je souhaite recevoir les nouveautés et idées cadeaux par email <small class="aide">(quelques emails par an, désinscription en un clic)</small></span></label>` : ""}
-              <label class="case"><input type="checkbox" id="c-cgv" required> <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span></label>
-              <button class="btn btn-plein" type="submit" data-canal="email">${serveur() && paiement === "en_ligne" ? `${MTB.icone("cadeau")} Payer ${euros(t.total)}` : "Envoyer ma commande"}</button>
-              ${lienWhatsapp() ? `<div class="ou">ou</div><button class="btn btn-plein btn-whatsapp" type="submit" data-canal="whatsapp">${MTB.icone("bulle")} Commander par WhatsApp</button>` : ""}
-              <div id="envoi-etat" aria-live="polite"></div>
-              <p class="aide">${serveur()
-                ? "Vous recevez une confirmation par email avec un lien pour suivre votre commande. Nous vous recontactons pour valider la personnalisation (maquette si besoin) avant fabrication."
-                : "Nous vous recontactons sous 48 h pour valider la personnalisation (maquette si besoin) et vous indiquer les modalités de paiement. Aucun paiement n'est demandé à cette étape."}</p>
-            </form>
-          </div>
+            ${serveur() && !t.remise ? `
+            <div class="champ">
+              <label for="c-code">Code promo</label>
+              <div class="code-promo"><input type="text" id="c-code" placeholder="Ex. BIENVENUE10" autocomplete="off" maxlength="30"><button type="button" class="btn btn-ligne" id="appliquer-code">Appliquer</button></div>
+              ${simulation?.erreur_code ? `<p class="message message-alerte" style="margin-top:.5rem">${echapper(simulation.erreur_code)}</p>` : ""}
+            </div>` : ""}
+            ${serveur() ? `<label class="case"><input type="checkbox" id="c-nouveautes" form="commande"> <span>Recevoir les nouveautés et idées cadeaux par email <small class="aide">(quelques emails par an)</small></span></label>` : ""}
+            <label class="case"><input type="checkbox" id="c-cgv" form="commande" required> <span>J'accepte les <a href="cgv.html" target="_blank">conditions générales de vente</a> *</span></label>
+            <button class="btn btn-plein" type="submit" form="commande" data-canal="email">${serveur() && paiement === "en_ligne" ? `${MTB.icone("cadeau")} Payer ${euros(t.total)}` : "Envoyer ma commande"}</button>
+            ${lienWhatsapp() ? `<div class="ou">ou</div><button class="btn btn-plein btn-whatsapp" type="submit" form="commande" data-canal="whatsapp">${MTB.icone("bulle")} Commander par WhatsApp</button>` : ""}
+            <div id="envoi-etat" aria-live="polite"></div>
+            <p class="aide">${serveur()
+              ? "Vous recevez une confirmation par email avec un lien pour suivre votre commande. Nous vous recontactons pour valider la personnalisation (maquette si besoin) avant fabrication."
+              : "Nous vous recontactons sous 48 h pour valider la personnalisation (maquette si besoin) et vous indiquer les modalités de paiement. Aucun paiement n'est demandé à cette étape."}</p>
+          </aside>
         </div>`;
     }
 
@@ -291,7 +313,7 @@
         resumeTexte(panier),
       ].filter((x) => x !== "").join("\n");
       const aDesPhotos = panier.some((l) => l.photoNom);
-      f.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      [...f.elements].filter((x) => x.tagName === "BUTTON").forEach((b) => (b.disabled = true));
       const parWhatsapp = e.submitter?.dataset.canal === "whatsapp";
       if (serveur() && !parWhatsapp) return envoyerAuServeur(f, panier, client);
 
@@ -375,7 +397,7 @@
         location.href = r.paiement_url || suite.href;
       } catch (err) {
         dire(`${echapper(err.message)} Vous pouvez aussi nous appeler au ${echapper(SITE.telephone)}.`, true);
-        f.querySelectorAll("button").forEach((b) => (b.disabled = false));
+        [...f.elements].filter((x) => x.tagName === "BUTTON").forEach((b) => (b.disabled = false));
       }
     }
 

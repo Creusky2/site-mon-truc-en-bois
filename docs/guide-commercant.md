@@ -103,7 +103,7 @@ La **Caisse** enregistre la vente, la facture et le client en une minute ; elle 
 3. Dans le *Ticket* : quantité avec − et +, prix modifiable, texte à graver si besoin. Sur téléphone, la barre verte en bas de l'écran descend jusqu'au ticket.
 4. *Client* : tapez son nom et **choisissez-le dans la liste proposée**, ou remplissez nom et téléphone pour un nouveau client (tout vide = client de passage). Cochez la case s'il veut recevoir vos nouveautés.
 5. *Vente* : **En boutique**, **Par téléphone** ou **Salon / marché** ; **Réglée maintenant** avec le moyen de paiement, ou **À régler plus tard**. Remise en euros ou en %, ou le code promo du client (*Code promo* → **Appliquer**), livraison et date souhaitée si besoin.
-6. **Enregistrer la vente**, puis **Imprimer la facture** si le client la demande (vente réglée), et **Nouvelle vente**.
+6. **Encaisser** (le bouton affiche le montant, et reste en bas du ticket), puis **Imprimer la facture** si le client la demande (vente réglée), et **Nouvelle vente**. Pour une vente à régler plus tard, le bouton devient **Enregistrer la vente à régler**.
 
 Une vente réglée et remise sur place (boutique, salon) est classée *Terminée* ; une commande prise par téléphone ou à livrer reste *À traiter* jusqu'à ce que vous la fassiez avancer. Une vente « à régler plus tard » se retrouve dans *Commandes* → *À payer* : vous pourrez y envoyer un lien de paiement par carte, et sa facture sera créée au paiement.
 

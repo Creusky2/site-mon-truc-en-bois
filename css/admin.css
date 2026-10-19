@@ -333,3 +333,51 @@ body.admin { background: var(--fond-alt); min-height: 100vh; }
   .caisse-produit span { font-size: 0.95rem; }
 }
 @media (max-width: 640px) { #zone-crm > .chiffres-admin, #zone-crm > section > .chiffres-admin:first-child { display: none; } }
+
+/* Caisse : le ticket se lit comme un reçu */
+.ticket .liste { border-top: 1px dashed var(--trait); }
+.ticket .ligne-edit { border-bottom: 1px dashed var(--trait); padding-block: 0.8rem; }
+.ticket-total { display: grid; gap: 0.25rem; justify-items: stretch; border-top: 2px solid var(--encre); padding-top: 0.7rem; }
+.ticket-somme { display: flex; justify-content: space-between; gap: 1rem; font-variant-numeric: tabular-nums; color: var(--encre-douce); }
+.ticket-somme.remise { color: var(--succes); font-weight: 600; }
+.ticket-somme.total { color: var(--encre); font: 700 1.6rem/1.2 var(--f-titre); margin-top: 0.2rem; }
+/* Client et Vente : des sections du ticket, pas des cadres dans le cadre */
+.ticket fieldset { border: 0; border-top: 1px solid var(--trait); border-radius: 0; padding: 1rem 0 0; }
+.ticket legend { font: 600 1rem var(--f-titre); padding: 0 0.6rem 0 0; }
+/* Le total et le bouton restent visibles en bas du ticket pendant qu'on remplit client et vente */
+.ticket { position: static; }
+.ticket-pied { position: sticky; bottom: 0; z-index: 4; display: grid; gap: 0.7rem; background: #fff; padding: 0.8rem 0 0.2rem; margin-bottom: -0.2rem; box-shadow: 0 -10px 14px -12px rgba(0, 0, 0, 0.25); }
+.ticket-ligne strong[data-total-ligne] { margin-left: auto; font-variant-numeric: tabular-nums; }
+@media (max-width: 999px) { .ticket-pied { bottom: calc(68px + env(safe-area-inset-bottom, 0px)); } }
+
+/* Fiche client : qui, comment le joindre, ce qu'il a acheté ; les coordonnées se replient */
+.fiche-client-tete { display: flex; gap: 1rem; align-items: center; }
+.fiche-client-tete .avatar { width: 56px; height: 56px; font-size: 1.1rem; }
+.fiche-client-tete h2 { font-size: 1.5rem; }
+.fiche-client-chiffres { display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; color: var(--encre-douce); padding-block: 0.7rem; border-block: 1px solid var(--trait); }
+.fiche-client-chiffres strong { color: var(--encre); font-variant-numeric: tabular-nums; }
+.coordonnees { border: 1px solid var(--trait); border-radius: var(--r-petit); padding: 0.8rem 1rem; }
+.coordonnees[open] summary { margin-bottom: 0.9rem; }
+.ligne-simple { grid-template-columns: minmax(0, 1fr) auto auto; }
+@media (max-width: 640px) { .ligne-simple { grid-template-columns: minmax(0, 1fr) auto; } .ligne-simple .pastilles { grid-column: 1 / -1; margin-left: 0; } }
+
+/* Marketing : chaque code promo comme un bon de réduction */
+.bons { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.bon { display: grid; gap: 0.55rem; align-content: start; padding: 1rem 1.1rem; border: 1.5px dashed #d9c7ad; border-radius: var(--r); background: #fffaf3; }
+.bon-inactif { background: var(--fond); border-color: var(--trait); opacity: 0.8; }
+.bon-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.bon-code { font: 700 1.25rem/1.1 var(--f-titre); letter-spacing: 0.02em; color: var(--encre); overflow-wrap: anywhere; }
+.bon-remise { font: 700 1.25rem/1.1 var(--f-titre); color: var(--bois); white-space: nowrap; }
+.bon .ligne-boutons { flex-wrap: wrap; }
+
+/* Produits : les gestes rares dans un petit menu « … » */
+.plus-actions { position: relative; }
+.plus-actions > summary { list-style: none; display: grid; place-items: center; }
+.plus-actions > summary::-webkit-details-marker { display: none; }
+.plus-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; display: grid; min-width: 210px; padding: 6px; background: #fff; border: 1px solid var(--trait); border-radius: var(--r-petit); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14); }
+.plus-menu button { text-align: left; border: 0; background: none; padding: 0.55rem 0.7rem; border-radius: 8px; font: 500 0.92rem var(--f-texte); color: var(--encre); cursor: pointer; }
+.plus-menu button:hover:not([disabled]) { background: var(--fond-alt); }
+.plus-menu button[disabled] { opacity: 0.4; cursor: default; }
+.plus-menu .danger { color: #9b2c2c; }
+.ligne-produit .ligne-image { border-radius: 10px; }
+.caisse-barre.cachee { visibility: hidden; }
